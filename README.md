@@ -97,17 +97,25 @@ npm run dev
 
 Frontend: `http://127.0.0.1:5173`
 
-## 4) Variables d'environnement frontend
+## 4) Variables d'environnement
 
-- `VITE_API_BASE_URL`: base API explicite (ex: `http://127.0.0.1:5000`)
-- `VITE_PROXY_TARGET`: cible proxy Vite pour `/api`
+### Frontend (`frontend/.env.example`)
 
-Exemple:
+- `VITE_API_BASE_URL`: base API explicite (ex: `http://127.0.0.1:5000` en local, URL publique API en Railway)
+- `VITE_PROXY_TARGET`: cible proxy Vite pour `/api` en local (`npm run dev`)
+
+Exemple local:
 
 ```bash
 cd frontend
 VITE_API_BASE_URL=http://127.0.0.1:5000 npm run dev
 ```
+
+### API (`src/Atlas.Api/.env.example`)
+
+- `ASPNETCORE_ENVIRONMENT`: `Production` ou `Development`
+- `PORT`: port runtime (injecté automatiquement par Railway)
+- `CORS_ALLOWED_ORIGINS`: liste d'origines autorisées séparées par virgules
 
 ## 5) Résolution des erreurs "Failed to fetch" / `ECONNREFUSED`
 
@@ -115,6 +123,7 @@ VITE_API_BASE_URL=http://127.0.0.1:5000 npm run dev
 2. Vérifier que l'API écoute bien sur `127.0.0.1:5000`.
 3. Depuis `frontend/`, utiliser `../src/Atlas.Api` (et non `src/Atlas.Api`).
 4. Si port custom, aligner `VITE_API_BASE_URL` ou `VITE_PROXY_TARGET`.
+5. En production, définir `VITE_API_BASE_URL` vers l'URL publique de l'API (pas de fallback localhost).
 
 ## 6) Fonctionnalités institutionnelles implémentées
 
@@ -320,6 +329,38 @@ npm run build
 4. Déployer observabilité externe (Prometheus/Grafana/OTel collector).
 5. Ajouter runbooks d'incident + on-call 24/7.
 
-## 13) Licence
+## 13) Déploiement Railway (sans VPS)
+
+Le repo est prêt pour un déploiement Railway en **2 services**:
+- Service API avec root directory `src/Atlas.Api` et config `[railway.json](src/Atlas.Api/railway.json)`.
+- Service Frontend avec root directory `frontend` et config `[railway.json](frontend/railway.json)`.
+
+### Étapes Railway
+
+1. Connecter le repo GitHub dans Railway.
+2. Créer le service API avec root directory `src/Atlas.Api`.
+3. Déployer l'API puis récupérer son URL publique (`https://...up.railway.app`).
+4. Créer le service Frontend avec root directory `frontend`.
+5. Définir `VITE_API_BASE_URL=https://<api-url>` dans le service Frontend.
+6. Définir `CORS_ALLOWED_ORIGINS=https://<frontend-url>` dans le service API.
+7. Redéployer les deux services.
+
+### Vérifications
+
+```bash
+curl -s https://<api-url>/health
+curl -s https://<api-url>/api/system/health
+```
+
+- UI: `https://<frontend-url>`
+- Swagger: `https://<api-url>/swagger`
+
+### Local inchangé
+
+- API local: `dotnet run --project src/Atlas.Api`
+- Front local: `cd frontend && npm run dev`
+- Le fallback `127.0.0.1` est actif uniquement en développement.
+
+## 14) Licence
 
 Proprietary. All rights reserved.

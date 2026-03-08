@@ -1,9 +1,18 @@
 using Atlas.Api.Middleware;
 using Atlas.Api.Services;
 using Atlas.ToxicFlow;
+using Microsoft.AspNetCore.HttpOverrides;
 using System.Text.Json.Serialization;
 
 var builder = WebApplication.CreateBuilder(args);
+var corsOrigins = ParseCorsOrigins(builder.Configuration["CORS_ALLOWED_ORIGINS"]);
+var port = Environment.GetEnvironmentVariable("PORT");
+
+if (!string.IsNullOrWhiteSpace(port) &&
+    string.IsNullOrWhiteSpace(builder.Configuration["ASPNETCORE_URLS"]))
+{
+    builder.WebHost.UseUrls($"http://0.0.0.0:{port}");
+}
 
 builder.Services
     .AddControllers()
@@ -40,11 +49,26 @@ builder.Services.AddSingleton<IPaperTradingService, PaperTradingService>();
 builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
-        policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader());
+    {
+        if (corsOrigins.Length == 0 || corsOrigins.Contains("*"))
+        {
+            policy.AllowAnyOrigin().AllowAnyMethod().AllowAnyHeader();
+            return;
+        }
+
+        policy.WithOrigins(corsOrigins).AllowAnyMethod().AllowAnyHeader();
+    });
 });
 
 var app = builder.Build();
+var forwardHeaders = new ForwardedHeadersOptions
+{
+    ForwardedHeaders = ForwardedHeaders.XForwardedFor | ForwardedHeaders.XForwardedProto
+};
+forwardHeaders.KnownNetworks.Clear();
+forwardHeaders.KnownProxies.Clear();
 
+app.UseForwardedHeaders(forwardHeaders);
 app.UseSwagger();
 app.UseSwaggerUI();
 app.UseCors();
@@ -53,3 +77,17 @@ app.MapControllers();
 app.MapGet("/health", () => Results.Ok(new { ok = true, timestamp = DateTimeOffset.UtcNow }));
 
 app.Run();
+
+static string[] ParseCorsOrigins(string? raw)
+{
+    if (string.IsNullOrWhiteSpace(raw))
+    {
+        return Array.Empty<string>();
+    }
+
+    return raw
+        .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+        .Where(origin => !string.IsNullOrWhiteSpace(origin))
+        .Distinct(StringComparer.OrdinalIgnoreCase)
+        .ToArray();
+}

@@ -1,0 +1,12 @@
+{
+  "build": {
+    "builder": "NIXPACKS",
+    "buildCommand": "dotnet publish Atlas.Api.csproj -c Release -o /app/publish"
+  },
+  "deploy": {
+    "startCommand": "dotnet /app/publish/Atlas.Api.dll --urls http://0.0.0.0:$PORT",
+    "healthcheckPath": "/health",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 10
+  }
+}

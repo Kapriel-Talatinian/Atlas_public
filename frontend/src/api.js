@@ -1,4 +1,6 @@
-const FALLBACK_BASES = ["http://127.0.0.1:5000", "http://127.0.0.1:5050"];
+const IS_DEV = Boolean(import.meta.env.DEV);
+const LOCAL_FALLBACK_BASES = ["http://127.0.0.1:5000", "http://127.0.0.1:5050"];
+const FALLBACK_BASES = IS_DEV ? LOCAL_FALLBACK_BASES : [];
 const REQUEST_TIMEOUT_MS = 12000;
 const RETRYABLE_HTTP_STATUS = new Set([404, 500, 502, 503, 504]);
 const ENV_BASE = normalizeBase(import.meta.env.VITE_API_BASE_URL || "");
@@ -13,7 +15,7 @@ function candidateBases() {
   if (preferredBase) list.push(preferredBase);
   if (ENV_BASE) list.push(ENV_BASE);
   list.push("");
-  list.push(...FALLBACK_BASES);
+  if (IS_DEV) list.push(...FALLBACK_BASES);
   return [...new Set(list)];
 }
 
@@ -122,9 +124,11 @@ async function request(path, options = {}) {
     throw lastError;
   }
 
-  throw new Error(
-    `${lastError?.message || "Request failed"}\nCheck that API is running on ${FALLBACK_BASES.join(" / ")} or set VITE_API_BASE_URL.`
-  );
+  const hint = IS_DEV
+    ? `Check that API is running on ${LOCAL_FALLBACK_BASES.join(" / ")} or set VITE_API_BASE_URL.`
+    : "Set VITE_API_BASE_URL to your deployed API URL (for example https://atlas-api.up.railway.app).";
+
+  throw new Error(`${lastError?.message || "Request failed"}\n${hint}`);
 }
 
 export function getMarketStreamUrls({ asset, expiry, chainLimit = 80 }) {
