@@ -1,0 +1,14 @@
+.DS_Store
+.vscode/
+.idea/
+
+# Node
+frontend/node_modules/
+frontend/dist/
+npm-debug.log*
+
+# .NET
+**/bin/
+**/obj/
+*.user
+*.suo

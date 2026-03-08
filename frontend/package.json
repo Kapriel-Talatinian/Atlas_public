@@ -1,0 +1,20 @@
+{
+  "name": "atlas-frontend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "api": "dotnet run --project ../src/Atlas.Api --urls http://127.0.0.1:5000",
+    "dev": "vite",
+    "build": "vite build",
+    "serve": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.6.2"
+  },
+  "devDependencies": {
+    "vite": "^4.0.0",
+    "@vitejs/plugin-react": "^4.0.0"
+  }
+}
