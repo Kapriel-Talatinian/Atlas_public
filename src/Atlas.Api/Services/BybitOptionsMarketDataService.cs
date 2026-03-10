@@ -87,6 +87,7 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
         var active = results
             .Where(r => r.Quotes.Count > 0)
             .OrderBy(r => r.IsStale)
+            .ThenBy(r => r.Source.Equals("SYNTHETIC", StringComparison.OrdinalIgnoreCase) ? 1 : 0)
             .ThenByDescending(r => r.Quotes.Count)
             .ThenByDescending(r => r.SourceTimestamp)
             .FirstOrDefault();
@@ -189,27 +190,30 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
     private async Task<IReadOnlyList<SourceFetchResult>> FetchFromSourcesAsync(string asset, CancellationToken ct)
     {
         if (asset == "WTI")
-            return [GenerateSyntheticWtiResult(asset)];
+            return [GenerateSyntheticAssetResult(asset)];
 
         var tasks = new List<Task<SourceFetchResult>>
         {
-            FetchBybitAsync(asset, ct)
+            FetchBybitAsync(asset, ct),
+            // Always keep a synthetic leg available as a final fallback in restricted
+            // cloud egress / temporary exchange outages.
+            Task.FromResult(GenerateSyntheticAssetResult(asset))
         };
 
-        // Deribit has liquid BTC/ETH books; SOL fallback remains Bybit/cache; WTI is synthetic.
+        // Deribit has liquid BTC/ETH books; synthetic remains available as emergency fallback.
         if (asset is "BTC" or "ETH")
             tasks.Add(FetchDeribitAsync(asset, ct));
 
         return await Task.WhenAll(tasks);
     }
 
-    private SourceFetchResult GenerateSyntheticWtiResult(string asset)
+    private SourceFetchResult GenerateSyntheticAssetResult(string asset)
     {
         var sw = Stopwatch.StartNew();
         try
         {
             var now = DateTimeOffset.UtcNow;
-            var quotes = BuildSyntheticWtiChain(now);
+            var quotes = BuildSyntheticOptionChain(asset, now);
             return FinalizeSourceResult("SYNTHETIC", asset, quotes, now, sw.ElapsedMilliseconds, null);
         }
         catch (Exception ex)
@@ -220,10 +224,36 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
 
     private async Task<SourceFetchResult> FetchBybitAsync(string asset, CancellationToken ct)
     {
+        SourceFetchResult primary = await FetchBybitFamilyAsync("bybit-options", "BYBIT", asset, ct);
+        if (primary.Quotes.Count > 0)
+            return primary;
+
+        bool forbidden =
+            !string.IsNullOrWhiteSpace(primary.Error) &&
+            (primary.Error.Contains("403", StringComparison.OrdinalIgnoreCase) ||
+             primary.Error.Contains("forbidden", StringComparison.OrdinalIgnoreCase));
+        if (!forbidden)
+            return primary;
+
+        _monitoring.PublishAlert(
+            source: "marketdata",
+            severity: NotificationSeverity.Warning,
+            message: $"Bybit 403 on {asset}; trying BYTICK mirror.");
+
+        SourceFetchResult mirror = await FetchBybitFamilyAsync("bytick-options", "BYTICK", asset, ct);
+        return mirror.Quotes.Count > 0 ? mirror : primary;
+    }
+
+    private async Task<SourceFetchResult> FetchBybitFamilyAsync(
+        string clientName,
+        string sourceName,
+        string asset,
+        CancellationToken ct)
+    {
         var sw = Stopwatch.StartNew();
         try
         {
-            using var client = _httpClientFactory.CreateClient("bybit-options");
+            using var client = _httpClientFactory.CreateClient(clientName);
             using var response = await client.GetAsync($"/v5/market/tickers?category=option&baseCoin={asset}", ct);
             response.EnsureSuccessStatusCode();
 
@@ -243,7 +273,7 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
                 !resultElement.TryGetProperty("list", out var listElement) ||
                 listElement.ValueKind != JsonValueKind.Array)
             {
-                return FinalizeSourceResult("BYBIT", asset, [], sourceTimestamp, sw.ElapsedMilliseconds, null);
+                return FinalizeSourceResult(sourceName, asset, [], sourceTimestamp, sw.ElapsedMilliseconds, null);
             }
 
             var quotes = new List<LiveOptionQuote>();
@@ -291,16 +321,16 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
                     Turnover24h: ParseDouble(item, "turnover24h"),
                     UnderlyingPrice: underlyingPrice,
                     Timestamp: DateTimeOffset.UtcNow,
-                    Venue: "BYBIT",
+                    Venue: sourceName,
                     SourceTimestamp: sourceTimestamp,
                     IsStale: false));
             }
 
-            return FinalizeSourceResult("BYBIT", asset, quotes, sourceTimestamp, sw.ElapsedMilliseconds, null);
+            return FinalizeSourceResult(sourceName, asset, quotes, sourceTimestamp, sw.ElapsedMilliseconds, null);
         }
         catch (Exception ex)
         {
-            return FinalizeSourceResult("BYBIT", asset, [], DateTimeOffset.UtcNow, sw.ElapsedMilliseconds, ex.Message);
+            return FinalizeSourceResult(sourceName, asset, [], DateTimeOffset.UtcNow, sw.ElapsedMilliseconds, ex.Message);
         }
     }
 
@@ -467,12 +497,38 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
         return normalized;
     }
 
-    private static IReadOnlyList<LiveOptionQuote> BuildSyntheticWtiChain(DateTimeOffset now)
+    private static IReadOnlyList<LiveOptionQuote> BuildSyntheticOptionChain(string asset, DateTimeOffset now)
     {
-        // Synthetic fallback to keep analytics/trading flows alive for WTI when venue options are unavailable.
+        // Synthetic fallback to keep analytics/trading flows alive when venue options are unavailable.
+        string normalizedAsset = asset.Trim().ToUpperInvariant();
+
         double hours = now.ToUnixTimeSeconds() / 3600.0;
-        double spot = 78.0 + 2.4 * Math.Sin(hours * 0.11);
-        double rate = 0.03;
+        double baseSpot = normalizedAsset switch
+        {
+            "BTC" => 82_000,
+            "ETH" => 2_900,
+            "SOL" => 135,
+            "WTI" => 78,
+            _ => 100
+        };
+        double amp = normalizedAsset switch
+        {
+            "BTC" => 1_850,
+            "ETH" => 130,
+            "SOL" => 9.5,
+            "WTI" => 2.4,
+            _ => 4
+        };
+        double freq = normalizedAsset switch
+        {
+            "BTC" => 0.07,
+            "ETH" => 0.085,
+            "SOL" => 0.10,
+            "WTI" => 0.11,
+            _ => 0.08
+        };
+        double spot = baseSpot + amp * Math.Sin(hours * freq);
+        double rate = normalizedAsset == "WTI" ? 0.03 : 0.045;
 
         int[] expiryDays = [7, 14, 30, 60, 90];
         double[] moneyness = [0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20, 1.25];
@@ -483,22 +539,32 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
             var expiry = new DateTimeOffset(now.UtcDateTime.Date.AddDays(days).AddHours(14), TimeSpan.Zero);
             double t = Math.Max((expiry - now).TotalDays / 365.25, 1.0 / 365.25);
             double termBump = 0.02 * Math.Sqrt(days / 30.0);
+            double baseIv = normalizedAsset switch
+            {
+                "BTC" => 0.58,
+                "ETH" => 0.66,
+                "SOL" => 0.82,
+                "WTI" => 0.34,
+                _ => 0.55
+            };
 
             foreach (double m in moneyness)
             {
                 double strike = Math.Round(spot * m, 2, MidpointRounding.AwayFromZero);
                 double skewBump = 0.07 * (1.0 - m);
-                double iv = Math.Clamp(0.34 + termBump + skewBump, 0.18, 0.75);
+                double ivCap = normalizedAsset == "SOL" ? 1.60 : 1.25;
+                double ivFloor = normalizedAsset == "WTI" ? 0.18 : 0.22;
+                double iv = Math.Clamp(baseIv + termBump + skewBump, ivFloor, ivCap);
 
-                quotes.Add(BuildSyntheticWtiQuote("WTI", spot, strike, expiry, t, iv, rate, OptionRight.Call, now));
-                quotes.Add(BuildSyntheticWtiQuote("WTI", spot, strike, expiry, t, iv, rate, OptionRight.Put, now));
+                quotes.Add(BuildSyntheticOptionQuote(normalizedAsset, spot, strike, expiry, t, iv, rate, OptionRight.Call, now));
+                quotes.Add(BuildSyntheticOptionQuote(normalizedAsset, spot, strike, expiry, t, iv, rate, OptionRight.Put, now));
             }
         }
 
         return quotes;
     }
 
-    private static LiveOptionQuote BuildSyntheticWtiQuote(
+    private static LiveOptionQuote BuildSyntheticOptionQuote(
         string asset,
         double spot,
         double strike,

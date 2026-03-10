@@ -35,11 +35,22 @@ builder.Services.AddHttpClient("bybit-options", client =>
 {
     client.BaseAddress = new Uri("https://api.bybit.com");
     client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Atlas.Api/1.0 (+https://github.com/Kapriel-Talatinian/Atlas_public)");
+});
+builder.Services.AddHttpClient("bytick-options", client =>
+{
+    client.BaseAddress = new Uri("https://api.bytick.com");
+    client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Atlas.Api/1.0 (+https://github.com/Kapriel-Talatinian/Atlas_public)");
 });
 builder.Services.AddHttpClient("deribit-options", client =>
 {
     client.BaseAddress = new Uri("https://www.deribit.com");
     client.Timeout = TimeSpan.FromSeconds(10);
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Atlas.Api/1.0 (+https://github.com/Kapriel-Talatinian/Atlas_public)");
 });
 builder.Services.AddSingleton<ISystemMonitoringService, SystemMonitoringService>();
 builder.Services.AddSingleton<IOptionsMarketDataService, ResilientOptionsMarketDataService>();
