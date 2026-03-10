@@ -1,0 +1,2341 @@
+{
+  "config": {
+    "enabled": false,
+    "autoTrade": false,
+    "autoTune": true,
+    "evaluationIntervalSec": 20,
+    "basePositionSize": 1,
+    "maxOpenTrades": 4,
+    "minConfidence": 58,
+    "stopLossPct": 0.35,
+    "takeProfitPct": 0.55,
+    "maxHoldingHours": 72,
+    "auditTargetTrades": 100,
+    "startingCapitalUsd": 1000
+  },
+  "startedAt": "2026-03-10T16:48:18.723179+00:00",
+  "lastEvaluationAt": "2026-03-10T17:55:57.850338+00:00",
+  "lastSignal": {
+    "bias": "Bullish",
+    "score": 20.199649591597197,
+    "confidence": 68.0998247957986,
+    "strategyTemplate": "Directional call spread",
+    "summary": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread.",
+    "drivers": [
+      "VIX proxy: \u002B0,71",
+      "Vol regime: \u002B0,51",
+      "Term slope: \u002B0,18",
+      "Skew signal: -0,09"
+    ],
+    "features": {
+      "flowImbalance": 0.022548279038313048,
+      "skewSignal": -0.08744004202805021,
+      "vixProxy": 0.7111111111111111,
+      "futuresMomentum": 0.005063908805525648,
+      "orderbookPressure": 0.017852349745979823,
+      "restingPressure": 0,
+      "volRegime": 0.5116358613752344,
+      "termSlope": 0.17569219381653034
+    },
+    "timestamp": "2026-03-10T17:55:57.850338+00:00"
+  },
+  "openTrades": [],
+  "closedTrades": [],
+  "decisions": [
+    {
+      "timestamp": "2026-03-10T16:48:18.723708+00:00",
+      "bias": "Bullish",
+      "score": 20.088568088806554,
+      "confidence": 68.04428404440327,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:48:40.138612+00:00",
+      "bias": "Bullish",
+      "score": 20.08799637111116,
+      "confidence": 68.04399818555558,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:49:01.546652+00:00",
+      "bias": "Bullish",
+      "score": 20.08991379519379,
+      "confidence": 68.0449568975969,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:49:23.095352+00:00",
+      "bias": "Bullish",
+      "score": 20.087400375592697,
+      "confidence": 68.04370018779635,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:49:44.500476+00:00",
+      "bias": "Bullish",
+      "score": 20.08696037476625,
+      "confidence": 68.04348018738312,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:50:05.532279+00:00",
+      "bias": "Bullish",
+      "score": 20.08762148090749,
+      "confidence": 68.04381074045375,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:50:27.084916+00:00",
+      "bias": "Bullish",
+      "score": 20.088460300738515,
+      "confidence": 68.04423015036926,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:50:48.313388+00:00",
+      "bias": "Bullish",
+      "score": 20.087532858316333,
+      "confidence": 68.04376642915817,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:51:10.542938+00:00",
+      "bias": "Bullish",
+      "score": 20.09040716164012,
+      "confidence": 68.04520358082006,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:51:31.96916+00:00",
+      "bias": "Bullish",
+      "score": 20.08621718690663,
+      "confidence": 68.04310859345331,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:51:53.196799+00:00",
+      "bias": "Bullish",
+      "score": 20.088887210582303,
+      "confidence": 68.04444360529115,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:52:14.64797+00:00",
+      "bias": "Bullish",
+      "score": 20.086870766942862,
+      "confidence": 68.04343538347143,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:52:35.897379+00:00",
+      "bias": "Bullish",
+      "score": 20.089217785935137,
+      "confidence": 68.04460889296757,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:52:56.0146+00:00",
+      "bias": "Bullish",
+      "score": 20.086808294651245,
+      "confidence": 68.04340414732562,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:53:18.175119+00:00",
+      "bias": "Bullish",
+      "score": 20.088928048732843,
+      "confidence": 68.04446402436642,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:53:38.368764+00:00",
+      "bias": "Bullish",
+      "score": 20.102647634756927,
+      "confidence": 68.05132381737846,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:54:00.625369+00:00",
+      "bias": "Bullish",
+      "score": 20.103620462591664,
+      "confidence": 68.05181023129583,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:54:23.197478+00:00",
+      "bias": "Bullish",
+      "score": 20.1037045308404,
+      "confidence": 68.0518522654202,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:54:44.832303+00:00",
+      "bias": "Bullish",
+      "score": 20.103264624860824,
+      "confidence": 68.05163231243041,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:55:06.046504+00:00",
+      "bias": "Bullish",
+      "score": 20.103045379410442,
+      "confidence": 68.05152268970522,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:55:28.334656+00:00",
+      "bias": "Bullish",
+      "score": 20.102702609027585,
+      "confidence": 68.05135130451379,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:55:49.36947+00:00",
+      "bias": "Bullish",
+      "score": 20.104447209657206,
+      "confidence": 68.05222360482861,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:56:10.785824+00:00",
+      "bias": "Bullish",
+      "score": 20.101210014016615,
+      "confidence": 68.0506050070083,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:56:32.013999+00:00",
+      "bias": "Bullish",
+      "score": 20.10344275081055,
+      "confidence": 68.05172137540528,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:56:53.395285+00:00",
+      "bias": "Bullish",
+      "score": 20.102522621323345,
+      "confidence": 68.05126131066167,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:57:14.615536+00:00",
+      "bias": "Bullish",
+      "score": 20.103015218383412,
+      "confidence": 68.0515076091917,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:57:35.810312+00:00",
+      "bias": "Bullish",
+      "score": 20.104984566945824,
+      "confidence": 68.05249228347292,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:57:57.204452+00:00",
+      "bias": "Bullish",
+      "score": 20.10619611056007,
+      "confidence": 68.05309805528003,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:58:18.405787+00:00",
+      "bias": "Bullish",
+      "score": 20.099719056341286,
+      "confidence": 68.04985952817064,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:58:39.809739+00:00",
+      "bias": "Bullish",
+      "score": 20.102544621224652,
+      "confidence": 68.05127231061232,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:59:01.060658+00:00",
+      "bias": "Bullish",
+      "score": 20.10452282245376,
+      "confidence": 68.05226141122688,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:59:22.272355+00:00",
+      "bias": "Bullish",
+      "score": 20.101893629901003,
+      "confidence": 68.05094681495049,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:59:43.755932+00:00",
+      "bias": "Bullish",
+      "score": 20.103928682655265,
+      "confidence": 68.05196434132763,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:00:04.795866+00:00",
+      "bias": "Bullish",
+      "score": 20.106212153230405,
+      "confidence": 68.0531060766152,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:00:26.228784+00:00",
+      "bias": "Bullish",
+      "score": 20.102388495324103,
+      "confidence": 68.05119424766205,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:00:47.272062+00:00",
+      "bias": "Bullish",
+      "score": 20.101853157946362,
+      "confidence": 68.05092657897319,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:01:08.68889+00:00",
+      "bias": "Bullish",
+      "score": 20.105215901094166,
+      "confidence": 68.05260795054708,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:01:29.938657+00:00",
+      "bias": "Bullish",
+      "score": 20.103702245252226,
+      "confidence": 68.05185112262612,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:01:51.952237+00:00",
+      "bias": "Bullish",
+      "score": 20.10382221906739,
+      "confidence": 68.05191110953369,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:02:13.946227+00:00",
+      "bias": "Bullish",
+      "score": 20.10500042476744,
+      "confidence": 68.05250021238372,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:02:35.800379+00:00",
+      "bias": "Bullish",
+      "score": 20.106058931251894,
+      "confidence": 68.05302946562594,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:02:57.244993+00:00",
+      "bias": "Bullish",
+      "score": 20.10308480321921,
+      "confidence": 68.05154240160961,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:03:18.277567+00:00",
+      "bias": "Bullish",
+      "score": 20.102901315757038,
+      "confidence": 68.05145065787852,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:03:40.683262+00:00",
+      "bias": "Bullish",
+      "score": 20.102320676254863,
+      "confidence": 68.05116033812743,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:04:01.92121+00:00",
+      "bias": "Bullish",
+      "score": 20.104186891062913,
+      "confidence": 68.05209344553145,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:04:23.162787+00:00",
+      "bias": "Bullish",
+      "score": 20.104320610944942,
+      "confidence": 68.05216030547247,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:04:44.408202+00:00",
+      "bias": "Bullish",
+      "score": 20.103892048042823,
+      "confidence": 68.05194602402142,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:05:05.950409+00:00",
+      "bias": "Bullish",
+      "score": 20.101858990777483,
+      "confidence": 68.05092949538874,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:05:28.415451+00:00",
+      "bias": "Bullish",
+      "score": 20.104002780326446,
+      "confidence": 68.05200139016323,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:05:49.67791+00:00",
+      "bias": "Bullish",
+      "score": 20.101794352432464,
+      "confidence": 68.05089717621624,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:06:11.11956+00:00",
+      "bias": "Bullish",
+      "score": 20.103989259608152,
+      "confidence": 68.05199462980408,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:06:32.168936+00:00",
+      "bias": "Bullish",
+      "score": 20.102987237931433,
+      "confidence": 68.05149361896571,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:06:53.611974+00:00",
+      "bias": "Bullish",
+      "score": 20.104251799959755,
+      "confidence": 68.05212589997987,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:07:14.871025+00:00",
+      "bias": "Bullish",
+      "score": 20.101185246655703,
+      "confidence": 68.05059262332784,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:07:36.104352+00:00",
+      "bias": "Bullish",
+      "score": 20.102673894958347,
+      "confidence": 68.05133694747917,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:07:58.282736+00:00",
+      "bias": "Bullish",
+      "score": 20.102390914931597,
+      "confidence": 68.0511954574658,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:08:19.323452+00:00",
+      "bias": "Bullish",
+      "score": 20.101923521458563,
+      "confidence": 68.05096176072928,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:08:40.745677+00:00",
+      "bias": "Bullish",
+      "score": 20.103612142977557,
+      "confidence": 68.05180607148878,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:09:01.994485+00:00",
+      "bias": "Bullish",
+      "score": 20.10295026427088,
+      "confidence": 68.05147513213544,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:09:24.112753+00:00",
+      "bias": "Bullish",
+      "score": 20.105008226820388,
+      "confidence": 68.0525041134102,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:09:45.342216+00:00",
+      "bias": "Bullish",
+      "score": 20.102559874869904,
+      "confidence": 68.05127993743496,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:10:06.570648+00:00",
+      "bias": "Bullish",
+      "score": 20.10141815021002,
+      "confidence": 68.050709075105,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:10:27.991477+00:00",
+      "bias": "Bullish",
+      "score": 20.104896658266053,
+      "confidence": 68.05244832913303,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:10:49.042999+00:00",
+      "bias": "Bullish",
+      "score": 20.10254437517081,
+      "confidence": 68.0512721875854,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:11:10.50514+00:00",
+      "bias": "Bullish",
+      "score": 20.105040506546196,
+      "confidence": 68.0525202532731,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:11:32.424155+00:00",
+      "bias": "Bullish",
+      "score": 20.103646373112408,
+      "confidence": 68.0518231865562,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:11:54.067155+00:00",
+      "bias": "Bullish",
+      "score": 20.102038277580856,
+      "confidence": 68.05101913879042,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:12:16.225046+00:00",
+      "bias": "Bullish",
+      "score": 20.10412669698248,
+      "confidence": 68.05206334849123,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:12:37.449226+00:00",
+      "bias": "Bullish",
+      "score": 20.103090616349704,
+      "confidence": 68.05154530817485,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:12:58.893035+00:00",
+      "bias": "Bullish",
+      "score": 20.103586415622136,
+      "confidence": 68.05179320781107,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:13:20.12062+00:00",
+      "bias": "Bullish",
+      "score": 20.103582824298478,
+      "confidence": 68.05179141214924,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:13:41.571309+00:00",
+      "bias": "Bullish",
+      "score": 20.102942028493832,
+      "confidence": 68.05147101424691,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:14:02.894657+00:00",
+      "bias": "Bullish",
+      "score": 20.104895688525346,
+      "confidence": 68.05244784426267,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:14:24.922844+00:00",
+      "bias": "Bullish",
+      "score": 20.103241403607136,
+      "confidence": 68.05162070180357,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:14:46.194796+00:00",
+      "bias": "Bullish",
+      "score": 20.102945919982258,
+      "confidence": 68.05147295999113,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:15:07.431728+00:00",
+      "bias": "Bullish",
+      "score": 20.10310734148044,
+      "confidence": 68.05155367074022,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:15:28.977535+00:00",
+      "bias": "Bullish",
+      "score": 20.104325049027057,
+      "confidence": 68.05216252451353,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:15:50.432473+00:00",
+      "bias": "Bullish",
+      "score": 20.105137551283736,
+      "confidence": 68.05256877564187,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:16:12.028408+00:00",
+      "bias": "Bullish",
+      "score": 20.10465094866883,
+      "confidence": 68.05232547433442,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:16:33.054722+00:00",
+      "bias": "Bullish",
+      "score": 20.10183119429308,
+      "confidence": 68.05091559714654,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:16:54.48628+00:00",
+      "bias": "Bullish",
+      "score": 20.100280263890284,
+      "confidence": 68.05014013194514,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:17:16.296995+00:00",
+      "bias": "Bullish",
+      "score": 20.101634555667733,
+      "confidence": 68.05081727783386,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:17:38.182924+00:00",
+      "bias": "Bullish",
+      "score": 20.10485084711215,
+      "confidence": 68.05242542355607,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:17:59.83456+00:00",
+      "bias": "Bullish",
+      "score": 20.106838722288472,
+      "confidence": 68.05341936114424,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:18:21.072241+00:00",
+      "bias": "Bullish",
+      "score": 20.10629601871357,
+      "confidence": 68.05314800935679,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:18:42.523906+00:00",
+      "bias": "Bullish",
+      "score": 20.101531547741523,
+      "confidence": 68.05076577387076,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:19:03.567838+00:00",
+      "bias": "Bullish",
+      "score": 20.098865813361083,
+      "confidence": 68.04943290668055,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:19:25.258324+00:00",
+      "bias": "Bullish",
+      "score": 20.101319070541773,
+      "confidence": 68.05065953527088,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:19:46.510231+00:00",
+      "bias": "Bullish",
+      "score": 20.103185550153952,
+      "confidence": 68.05159277507698,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:20:07.762951+00:00",
+      "bias": "Bullish",
+      "score": 20.10573183099865,
+      "confidence": 68.05286591549932,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:20:29.181005+00:00",
+      "bias": "Bullish",
+      "score": 20.107959663488163,
+      "confidence": 68.05397983174407,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:20:50.850594+00:00",
+      "bias": "Bullish",
+      "score": 20.104911713146826,
+      "confidence": 68.05245585657342,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:21:12.493071+00:00",
+      "bias": "Bullish",
+      "score": 20.098041222058367,
+      "confidence": 68.04902061102919,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:21:33.543137+00:00",
+      "bias": "Bullish",
+      "score": 20.099743482919727,
+      "confidence": 68.04987174145987,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:21:54.966407+00:00",
+      "bias": "Bullish",
+      "score": 20.102509834480205,
+      "confidence": 68.0512549172401,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:22:16.569837+00:00",
+      "bias": "Bullish",
+      "score": 20.104526817736946,
+      "confidence": 68.05226340886847,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:22:38.599027+00:00",
+      "bias": "Bullish",
+      "score": 20.107177977073267,
+      "confidence": 68.05358898853663,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:22:59.8414+00:00",
+      "bias": "Bullish",
+      "score": 20.109498041754893,
+      "confidence": 68.05474902087744,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:23:21.061242+00:00",
+      "bias": "Bullish",
+      "score": 20.098063939320973,
+      "confidence": 68.04903196966049,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,0 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:23:42.514102+00:00",
+      "bias": "Bullish",
+      "score": 20.100422720624234,
+      "confidence": 68.05021136031212,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:24:03.953353+00:00",
+      "bias": "Bullish",
+      "score": 20.101084769905746,
+      "confidence": 68.05054238495288,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:24:25.410085+00:00",
+      "bias": "Bullish",
+      "score": 20.10395345087694,
+      "confidence": 68.05197672543846,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:24:46.653309+00:00",
+      "bias": "Bullish",
+      "score": 20.10586157603832,
+      "confidence": 68.05293078801915,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:25:07.879374+00:00",
+      "bias": "Bullish",
+      "score": 20.106244764263632,
+      "confidence": 68.05312238213182,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:25:29.50895+00:00",
+      "bias": "Bullish",
+      "score": 20.10142244437669,
+      "confidence": 68.05071122218834,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:25:50.754561+00:00",
+      "bias": "Bullish",
+      "score": 20.100258169077424,
+      "confidence": 68.05012908453871,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:26:12.177954+00:00",
+      "bias": "Bullish",
+      "score": 20.10158258103978,
+      "confidence": 68.0507912905199,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:26:33.223538+00:00",
+      "bias": "Bullish",
+      "score": 20.102901444621814,
+      "confidence": 68.0514507223109,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:26:54.691936+00:00",
+      "bias": "Bullish",
+      "score": 20.10666157286686,
+      "confidence": 68.05333078643343,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:27:17.202241+00:00",
+      "bias": "Bullish",
+      "score": 20.10502844149404,
+      "confidence": 68.05251422074701,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:27:39.425599+00:00",
+      "bias": "Bullish",
+      "score": 20.105204393316214,
+      "confidence": 68.05260219665811,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:28:00.683623+00:00",
+      "bias": "Bullish",
+      "score": 20.102752742542183,
+      "confidence": 68.05137637127109,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:28:21.917353+00:00",
+      "bias": "Bullish",
+      "score": 20.100605040868896,
+      "confidence": 68.05030252043446,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:28:43.504728+00:00",
+      "bias": "Bullish",
+      "score": 20.102177273313934,
+      "confidence": 68.05108863665697,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:29:04.538917+00:00",
+      "bias": "Bullish",
+      "score": 20.10305030635316,
+      "confidence": 68.05152515317658,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:29:26.145685+00:00",
+      "bias": "Bullish",
+      "score": 20.104288424490743,
+      "confidence": 68.05214421224537,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:29:47.39429+00:00",
+      "bias": "Bullish",
+      "score": 20.103721395597518,
+      "confidence": 68.05186069779876,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:30:09.318802+00:00",
+      "bias": "Bullish",
+      "score": 20.102156011198428,
+      "confidence": 68.05107800559921,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:30:30.579334+00:00",
+      "bias": "Bullish",
+      "score": 20.101702092695838,
+      "confidence": 68.05085104634792,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:30:51.806455+00:00",
+      "bias": "Bullish",
+      "score": 20.10419622051948,
+      "confidence": 68.05209811025975,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:31:13.248743+00:00",
+      "bias": "Bullish",
+      "score": 20.10384169548033,
+      "confidence": 68.05192084774016,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:31:35.392169+00:00",
+      "bias": "Bullish",
+      "score": 20.103761513914364,
+      "confidence": 68.05188075695719,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:31:56.802463+00:00",
+      "bias": "Bullish",
+      "score": 20.103109441588185,
+      "confidence": 68.05155472079409,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:32:17.847012+00:00",
+      "bias": "Bullish",
+      "score": 20.104922530101355,
+      "confidence": 68.05246126505068,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:32:39.282869+00:00",
+      "bias": "Bullish",
+      "score": 20.104548034660894,
+      "confidence": 68.05227401733045,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:33:01.390061+00:00",
+      "bias": "Bullish",
+      "score": 20.10235009621509,
+      "confidence": 68.05117504810755,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:33:23.536208+00:00",
+      "bias": "Bullish",
+      "score": 20.105103678523072,
+      "confidence": 68.05255183926154,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:33:44.792588+00:00",
+      "bias": "Bullish",
+      "score": 20.103409210804752,
+      "confidence": 68.05170460540238,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:34:06.019481+00:00",
+      "bias": "Bullish",
+      "score": 20.102794734194138,
+      "confidence": 68.05139736709707,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:34:28.346524+00:00",
+      "bias": "Bullish",
+      "score": 20.104826151458116,
+      "confidence": 68.05241307572905,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:34:49.754159+00:00",
+      "bias": "Bullish",
+      "score": 20.1028314247645,
+      "confidence": 68.05141571238225,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:35:11.198273+00:00",
+      "bias": "Bullish",
+      "score": 20.10421404464711,
+      "confidence": 68.05210702232355,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:35:32.245174+00:00",
+      "bias": "Bullish",
+      "score": 20.1033480091914,
+      "confidence": 68.0516740045957,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:35:53.670684+00:00",
+      "bias": "Bullish",
+      "score": 20.104912976380454,
+      "confidence": 68.05245648819023,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:36:14.932052+00:00",
+      "bias": "Bullish",
+      "score": 20.102281640499136,
+      "confidence": 68.05114082024957,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:36:36.171296+00:00",
+      "bias": "Bullish",
+      "score": 20.10476342807148,
+      "confidence": 68.05238171403573,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:36:57.628465+00:00",
+      "bias": "Bullish",
+      "score": 20.100884027953416,
+      "confidence": 68.0504420139767,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:37:18.668971+00:00",
+      "bias": "Bullish",
+      "score": 20.10253103552136,
+      "confidence": 68.05126551776068,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:37:40.196722+00:00",
+      "bias": "Bullish",
+      "score": 20.101379798677826,
+      "confidence": 68.05068989933892,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:38:01.811018+00:00",
+      "bias": "Bullish",
+      "score": 20.103154806726106,
+      "confidence": 68.05157740336305,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:38:23.846775+00:00",
+      "bias": "Bullish",
+      "score": 20.103173327235933,
+      "confidence": 68.05158666361797,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:38:45.12505+00:00",
+      "bias": "Bullish",
+      "score": 20.10326497216228,
+      "confidence": 68.05163248608113,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:39:06.35919+00:00",
+      "bias": "Bullish",
+      "score": 20.105334750497985,
+      "confidence": 68.052667375249,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:39:27.996102+00:00",
+      "bias": "Bullish",
+      "score": 20.1043773848886,
+      "confidence": 68.0521886924443,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:39:49.718428+00:00",
+      "bias": "Bullish",
+      "score": 20.104002958974842,
+      "confidence": 68.05200147948742,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:40:11.134443+00:00",
+      "bias": "Bullish",
+      "score": 20.10381465993773,
+      "confidence": 68.05190732996886,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:40:32.181368+00:00",
+      "bias": "Bullish",
+      "score": 20.10536645332683,
+      "confidence": 68.05268322666342,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:40:53.613728+00:00",
+      "bias": "Bullish",
+      "score": 20.105021128176677,
+      "confidence": 68.05251056408834,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:41:14.852022+00:00",
+      "bias": "Bullish",
+      "score": 20.105063211125213,
+      "confidence": 68.0525316055626,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:41:36.088357+00:00",
+      "bias": "Bullish",
+      "score": 20.103226282880218,
+      "confidence": 68.0516131414401,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:41:57.519007+00:00",
+      "bias": "Bullish",
+      "score": 20.103970577927818,
+      "confidence": 68.0519852889639,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:42:18.569842+00:00",
+      "bias": "Bullish",
+      "score": 20.104405229241312,
+      "confidence": 68.05220261462065,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:42:40.917564+00:00",
+      "bias": "Bullish",
+      "score": 20.10390380817363,
+      "confidence": 68.05195190408682,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:43:03.020289+00:00",
+      "bias": "Bullish",
+      "score": 20.102508686266564,
+      "confidence": 68.05125434313328,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:43:24.582088+00:00",
+      "bias": "Bullish",
+      "score": 20.105502837431114,
+      "confidence": 68.05275141871556,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:43:45.820741+00:00",
+      "bias": "Bullish",
+      "score": 20.10093475070131,
+      "confidence": 68.05046737535065,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:44:07.068574+00:00",
+      "bias": "Bullish",
+      "score": 20.101834585711742,
+      "confidence": 68.05091729285587,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:44:29.34975+00:00",
+      "bias": "Bullish",
+      "score": 20.10405721264038,
+      "confidence": 68.05202860632019,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:44:50.584706+00:00",
+      "bias": "Bullish",
+      "score": 20.106385137715957,
+      "confidence": 68.05319256885798,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:45:12.030282+00:00",
+      "bias": "Bullish",
+      "score": 20.10233760719678,
+      "confidence": 68.05116880359839,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:45:33.072267+00:00",
+      "bias": "Bullish",
+      "score": 20.103976723032602,
+      "confidence": 68.0519883615163,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:45:54.569354+00:00",
+      "bias": "Bullish",
+      "score": 20.105078569746038,
+      "confidence": 68.05253928487302,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:46:15.821548+00:00",
+      "bias": "Bullish",
+      "score": 20.100598043680847,
+      "confidence": 68.05029902184043,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:46:37.309532+00:00",
+      "bias": "Bullish",
+      "score": 20.10309988541275,
+      "confidence": 68.05154994270637,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:46:59.35546+00:00",
+      "bias": "Bullish",
+      "score": 20.104853969132645,
+      "confidence": 68.05242698456632,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:47:20.835329+00:00",
+      "bias": "Bullish",
+      "score": 20.102278448170452,
+      "confidence": 68.05113922408523,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:47:42.263504+00:00",
+      "bias": "Bullish",
+      "score": 20.1033372016517,
+      "confidence": 68.05166860082585,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:48:03.312869+00:00",
+      "bias": "Bullish",
+      "score": 20.105235245227036,
+      "confidence": 68.05261762261352,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,1) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:48:24.785485+00:00",
+      "bias": "Bullish",
+      "score": 20.198787159814145,
+      "confidence": 68.09939357990707,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:48:46.616441+00:00",
+      "bias": "Bullish",
+      "score": 20.198751648858103,
+      "confidence": 68.09937582442905,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:49:07.831213+00:00",
+      "bias": "Bullish",
+      "score": 20.20077556060398,
+      "confidence": 68.10038778030199,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:49:29.42492+00:00",
+      "bias": "Bullish",
+      "score": 20.200170548763797,
+      "confidence": 68.1000852743819,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:49:50.821457+00:00",
+      "bias": "Bullish",
+      "score": 20.19996636114966,
+      "confidence": 68.09998318057484,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:50:13.270788+00:00",
+      "bias": "Bullish",
+      "score": 20.2007655967342,
+      "confidence": 68.1003827983671,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:50:34.32173+00:00",
+      "bias": "Bullish",
+      "score": 20.201288324910752,
+      "confidence": 68.10064416245538,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:50:55.777984+00:00",
+      "bias": "Bullish",
+      "score": 20.199393910701744,
+      "confidence": 68.09969695535088,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:51:16.831594+00:00",
+      "bias": "Bullish",
+      "score": 20.20130771222239,
+      "confidence": 68.1006538561112,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:51:38.075894+00:00",
+      "bias": "Bullish",
+      "score": 20.19953059325452,
+      "confidence": 68.09976529662725,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:51:59.324664+00:00",
+      "bias": "Bullish",
+      "score": 20.202478941740264,
+      "confidence": 68.10123947087013,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:52:21.022897+00:00",
+      "bias": "Bullish",
+      "score": 20.199845467288483,
+      "confidence": 68.09992273364423,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:52:43.540726+00:00",
+      "bias": "Bullish",
+      "score": 20.202155154136488,
+      "confidence": 68.10107757706825,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:53:04.590682+00:00",
+      "bias": "Bullish",
+      "score": 20.198510525435186,
+      "confidence": 68.09925526271759,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:53:26.497411+00:00",
+      "bias": "Bullish",
+      "score": 20.20076414654613,
+      "confidence": 68.10038207327307,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:53:47.52938+00:00",
+      "bias": "Bullish",
+      "score": 20.199615261929726,
+      "confidence": 68.09980763096486,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:54:08.946396+00:00",
+      "bias": "Bullish",
+      "score": 20.20091350556621,
+      "confidence": 68.1004567527831,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:54:30.165821+00:00",
+      "bias": "Bullish",
+      "score": 20.20113523807666,
+      "confidence": 68.10056761903833,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:54:53.070172+00:00",
+      "bias": "Bullish",
+      "score": 20.200802509580036,
+      "confidence": 68.10040125479001,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:55:15.381594+00:00",
+      "bias": "Bullish",
+      "score": 20.19817214685698,
+      "confidence": 68.09908607342848,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:55:36.433832+00:00",
+      "bias": "Bullish",
+      "score": 20.201011621148776,
+      "confidence": 68.10050581057439,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:55:57.851192+00:00",
+      "bias": "Bullish",
+      "score": 20.199649591597197,
+      "confidence": 68.0998247957986,
+      "action": "Hold",
+      "reason": "Bullish WTI signal (\u002B20,2) | conf 68,1 | template: Directional call spread."
+    }
+  ],
+  "spotHistory": [
+    {
+      "time": "2026-03-10T16:48:18.723198+00:00",
+      "spot": 78.05158021875803
+    },
+    {
+      "time": "2026-03-10T16:48:40.13718+00:00",
+      "spot": 78.0535597436573
+    },
+    {
+      "time": "2026-03-10T16:49:01.545683+00:00",
+      "spot": 78.05487940672528
+    },
+    {
+      "time": "2026-03-10T16:49:23.094779+00:00",
+      "spot": 78.056712244515
+    },
+    {
+      "time": "2026-03-10T16:49:44.499311+00:00",
+      "spot": 78.05817849095362
+    },
+    {
+      "time": "2026-03-10T16:50:05.531035+00:00",
+      "spot": 78.05979133695334
+    },
+    {
+      "time": "2026-03-10T16:50:27.08267+00:00",
+      "spot": 78.06140415589948
+    },
+    {
+      "time": "2026-03-10T16:50:48.313173+00:00",
+      "spot": 78.06257709775124
+    },
+    {
+      "time": "2026-03-10T16:51:10.541909+00:00",
+      "spot": 78.06455640307911
+    },
+    {
+      "time": "2026-03-10T16:51:31.968761+00:00",
+      "spot": 78.06587591562548
+    },
+    {
+      "time": "2026-03-10T16:51:53.194462+00:00",
+      "spot": 78.06770853881477
+    },
+    {
+      "time": "2026-03-10T16:52:14.647692+00:00",
+      "spot": 78.06917460895309
+    },
+    {
+      "time": "2026-03-10T16:52:35.896427+00:00",
+      "spot": 78.07078725626192
+    },
+    {
+      "time": "2026-03-10T16:52:56.012438+00:00",
+      "spot": 78.07232657158389
+    },
+    {
+      "time": "2026-03-10T16:53:18.175004+00:00",
+      "spot": 78.0735726622106
+    },
+    {
+      "time": "2026-03-10T16:53:38.368464+00:00",
+      "spot": 78.07540511225567
+    },
+    {
+      "time": "2026-03-10T16:54:00.625088+00:00",
+      "spot": 78.07687104067641
+    },
+    {
+      "time": "2026-03-10T16:54:23.1967+00:00",
+      "spot": 78.07870341076753
+    },
+    {
+      "time": "2026-03-10T16:54:44.831347+00:00",
+      "spot": 78.08016927380794
+    },
+    {
+      "time": "2026-03-10T16:55:06.044588+00:00",
+      "spot": 78.08185497926364
+    },
+    {
+      "time": "2026-03-10T16:55:28.334001+00:00",
+      "spot": 78.08346735536945
+    },
+    {
+      "time": "2026-03-10T16:55:49.36933+00:00",
+      "spot": 78.08456668113581
+    },
+    {
+      "time": "2026-03-10T16:56:10.785403+00:00",
+      "spot": 78.0865454225891
+    },
+    {
+      "time": "2026-03-10T16:56:32.013872+00:00",
+      "spot": 78.08786455088702
+    },
+    {
+      "time": "2026-03-10T16:56:53.39491+00:00",
+      "spot": 78.089696629405
+    },
+    {
+      "time": "2026-03-10T16:57:14.615434+00:00",
+      "spot": 78.09116225455425
+    },
+    {
+      "time": "2026-03-10T16:57:35.809921+00:00",
+      "spot": 78.09277440289088
+    },
+    {
+      "time": "2026-03-10T16:57:57.201877+00:00",
+      "spot": 78.09438650928692
+    },
+    {
+      "time": "2026-03-10T16:58:18.405511+00:00",
+      "spot": 78.09555892355912
+    },
+    {
+      "time": "2026-03-10T16:58:39.809323+00:00",
+      "spot": 78.09746404792057
+    },
+    {
+      "time": "2026-03-10T16:59:01.060091+00:00",
+      "spot": 78.09885621535258
+    },
+    {
+      "time": "2026-03-10T16:59:22.270995+00:00",
+      "spot": 78.10061469495325
+    },
+    {
+      "time": "2026-03-10T16:59:43.755704+00:00",
+      "spot": 78.10215332026348
+    },
+    {
+      "time": "2026-03-10T17:00:04.794544+00:00",
+      "spot": 78.10369190349607
+    },
+    {
+      "time": "2026-03-10T17:00:26.226548+00:00",
+      "spot": 78.10530370678445
+    },
+    {
+      "time": "2026-03-10T17:00:47.271592+00:00",
+      "spot": 78.1065491586024
+    },
+    {
+      "time": "2026-03-10T17:01:08.687625+00:00",
+      "spot": 78.10838065307652
+    },
+    {
+      "time": "2026-03-10T17:01:29.938167+00:00",
+      "spot": 78.10984580315476
+    },
+    {
+      "time": "2026-03-10T17:01:51.951692+00:00",
+      "spot": 78.11153067500274
+    },
+    {
+      "time": "2026-03-10T17:02:13.945994+00:00",
+      "spot": 78.11314224004735
+    },
+    {
+      "time": "2026-03-10T17:02:35.798327+00:00",
+      "spot": 78.11475375393007
+    },
+    {
+      "time": "2026-03-10T17:02:57.243979+00:00",
+      "spot": 78.116365215975
+    },
+    {
+      "time": "2026-03-10T17:03:18.276945+00:00",
+      "spot": 78.11753715537735
+    },
+    {
+      "time": "2026-03-10T17:03:40.682849+00:00",
+      "spot": 78.11951473928474
+    },
+    {
+      "time": "2026-03-10T17:04:01.92032+00:00",
+      "spot": 78.12083308343628
+    },
+    {
+      "time": "2026-03-10T17:04:23.161305+00:00",
+      "spot": 78.12266405627574
+    },
+    {
+      "time": "2026-03-10T17:04:44.407414+00:00",
+      "spot": 78.12412878304521
+    },
+    {
+      "time": "2026-03-10T17:05:05.948954+00:00",
+      "spot": 78.12573992894423
+    },
+    {
+      "time": "2026-03-10T17:05:28.415025+00:00",
+      "spot": 78.12742424797318
+    },
+    {
+      "time": "2026-03-10T17:05:49.676433+00:00",
+      "spot": 78.12896204955514
+    },
+    {
+      "time": "2026-03-10T17:06:11.119058+00:00",
+      "spot": 78.1305730227936
+    },
+    {
+      "time": "2026-03-10T17:06:32.168647+00:00",
+      "spot": 78.13181782538837
+    },
+    {
+      "time": "2026-03-10T17:06:53.610236+00:00",
+      "spot": 78.13364835271942
+    },
+    {
+      "time": "2026-03-10T17:07:14.87024+00:00",
+      "spot": 78.1351127184986
+    },
+    {
+      "time": "2026-03-10T17:07:36.102221+00:00",
+      "spot": 78.13679667671727
+    },
+    {
+      "time": "2026-03-10T17:07:58.281617+00:00",
+      "spot": 78.13840735616138
+    },
+    {
+      "time": "2026-03-10T17:08:19.322824+00:00",
+      "spot": 78.13950551087873
+    },
+    {
+      "time": "2026-03-10T17:08:40.744495+00:00",
+      "spot": 78.14148211534331
+    },
+    {
+      "time": "2026-03-10T17:09:01.993709+00:00",
+      "spot": 78.14279979825558
+    },
+    {
+      "time": "2026-03-10T17:09:24.111585+00:00",
+      "spot": 78.14470304163675
+    },
+    {
+      "time": "2026-03-10T17:09:45.34198+00:00",
+      "spot": 78.1460938156516
+    },
+    {
+      "time": "2026-03-10T17:10:06.569747+00:00",
+      "spot": 78.14777731826551
+    },
+    {
+      "time": "2026-03-10T17:10:27.990906+00:00",
+      "spot": 78.14931436562846
+    },
+    {
+      "time": "2026-03-10T17:10:49.042485+00:00",
+      "spot": 78.15048540811797
+    },
+    {
+      "time": "2026-03-10T17:11:10.502795+00:00",
+      "spot": 78.15246146058098
+    },
+    {
+      "time": "2026-03-10T17:11:32.423639+00:00",
+      "spot": 78.15377877132318
+    },
+    {
+      "time": "2026-03-10T17:11:54.06662+00:00",
+      "spot": 78.15568147128731
+    },
+    {
+      "time": "2026-03-10T17:12:16.224487+00:00",
+      "spot": 78.15707184380787
+    },
+    {
+      "time": "2026-03-10T17:12:37.447179+00:00",
+      "spot": 78.15882802812351
+    },
+    {
+      "time": "2026-03-10T17:12:58.89271+00:00",
+      "spot": 78.16036461932865
+    },
+    {
+      "time": "2026-03-10T17:13:20.119726+00:00",
+      "spot": 78.16197431073944
+    },
+    {
+      "time": "2026-03-10T17:13:41.56918+00:00",
+      "spot": 78.16351076608346
+    },
+    {
+      "time": "2026-03-10T17:14:02.89377+00:00",
+      "spot": 78.16475451399175
+    },
+    {
+      "time": "2026-03-10T17:14:24.922217+00:00",
+      "spot": 78.16665663056902
+    },
+    {
+      "time": "2026-03-10T17:14:46.193859+00:00",
+      "spot": 78.16804657238784
+    },
+    {
+      "time": "2026-03-10T17:15:07.430467+00:00",
+      "spot": 78.16980220735462
+    },
+    {
+      "time": "2026-03-10T17:15:28.973691+00:00",
+      "spot": 78.17133831307092
+    },
+    {
+      "time": "2026-03-10T17:15:50.431656+00:00",
+      "spot": 78.17294749101002
+    },
+    {
+      "time": "2026-03-10T17:16:12.027199+00:00",
+      "spot": 78.17455659079714
+    },
+    {
+      "time": "2026-03-10T17:16:33.054139+00:00",
+      "spot": 78.17572679567746
+    },
+    {
+      "time": "2026-03-10T17:16:54.485001+00:00",
+      "spot": 78.17762828891027
+    },
+    {
+      "time": "2026-03-10T17:17:16.296753+00:00",
+      "spot": 78.17901777082898
+    },
+    {
+      "time": "2026-03-10T17:17:38.182193+00:00",
+      "spot": 78.18084594451938
+    },
+    {
+      "time": "2026-03-10T17:17:59.834088+00:00",
+      "spot": 78.18230840750768
+    },
+    {
+      "time": "2026-03-10T17:18:21.070592+00:00",
+      "spot": 78.18399015578474
+    },
+    {
+      "time": "2026-03-10T17:18:42.522898+00:00",
+      "spot": 78.18552558572581
+    },
+    {
+      "time": "2026-03-10T17:19:03.567143+00:00",
+      "spot": 78.1866953858692
+    },
+    {
+      "time": "2026-03-10T17:19:25.257856+00:00",
+      "spot": 78.188669322295
+    },
+    {
+      "time": "2026-03-10T17:19:46.509531+00:00",
+      "spot": 78.18998520864294
+    },
+    {
+      "time": "2026-03-10T17:20:07.761559+00:00",
+      "spot": 78.19173963433515
+    },
+    {
+      "time": "2026-03-10T17:20:29.18026+00:00",
+      "spot": 78.19327467224335
+    },
+    {
+      "time": "2026-03-10T17:20:50.849864+00:00",
+      "spot": 78.19488272183897
+    },
+    {
+      "time": "2026-03-10T17:21:12.490705+00:00",
+      "spot": 78.19649068335306
+    },
+    {
+      "time": "2026-03-10T17:21:33.542633+00:00",
+      "spot": 78.1976600541856
+    },
+    {
+      "time": "2026-03-10T17:21:54.965824+00:00",
+      "spot": 78.19956018090996
+    },
+    {
+      "time": "2026-03-10T17:22:16.569545+00:00",
+      "spot": 78.20094865547256
+    },
+    {
+      "time": "2026-03-10T17:22:38.596946+00:00",
+      "spot": 78.20277549243288
+    },
+    {
+      "time": "2026-03-10T17:22:59.840737+00:00",
+      "spot": 78.20423687685843
+    },
+    {
+      "time": "2026-03-10T17:23:21.059425+00:00",
+      "spot": 78.20591737460686
+    },
+    {
+      "time": "2026-03-10T17:23:42.513024+00:00",
+      "spot": 78.20745165331866
+    },
+    {
+      "time": "2026-03-10T17:24:03.953093+00:00",
+      "spot": 78.2086205702755
+    },
+    {
+      "time": "2026-03-10T17:24:25.408908+00:00",
+      "spot": 78.21059300444112
+    },
+    {
+      "time": "2026-03-10T17:24:46.652934+00:00",
+      "spot": 78.21190788099233
+    },
+    {
+      "time": "2026-03-10T17:25:07.878102+00:00",
+      "spot": 78.2136609499557
+    },
+    {
+      "time": "2026-03-10T17:25:29.508154+00:00",
+      "spot": 78.21519479107089
+    },
+    {
+      "time": "2026-03-10T17:25:50.752602+00:00",
+      "spot": 78.21680157720314
+    },
+    {
+      "time": "2026-03-10T17:26:12.177445+00:00",
+      "spot": 78.21840826534913
+    },
+    {
+      "time": "2026-03-10T17:26:33.222991+00:00",
+      "spot": 78.21957670387494
+    },
+    {
+      "time": "2026-03-10T17:26:54.690303+00:00",
+      "spot": 78.22147530442852
+    },
+    {
+      "time": "2026-03-10T17:27:17.201993+00:00",
+      "spot": 78.2228626549828
+    },
+    {
+      "time": "2026-03-10T17:27:39.423209+00:00",
+      "spot": 78.22476101284765
+    },
+    {
+      "time": "2026-03-10T17:28:00.683441+00:00",
+      "spot": 78.22614818472364
+    },
+    {
+      "time": "2026-03-10T17:28:21.916344+00:00",
+      "spot": 78.22782729075334
+    },
+    {
+      "time": "2026-03-10T17:28:43.503707+00:00",
+      "spot": 78.22943328690313
+    },
+    {
+      "time": "2026-03-10T17:29:04.538281+00:00",
+      "spot": 78.23052822486423
+    },
+    {
+      "time": "2026-03-10T17:29:26.1444+00:00",
+      "spot": 78.23257197934747
+    },
+    {
+      "time": "2026-03-10T17:29:47.393649+00:00",
+      "spot": 78.23381274731805
+    },
+    {
+      "time": "2026-03-10T17:30:09.317394+00:00",
+      "spot": 78.23571027030192
+    },
+    {
+      "time": "2026-03-10T17:30:30.578733+00:00",
+      "spot": 78.23709682770235
+    },
+    {
+      "time": "2026-03-10T17:30:51.805988+00:00",
+      "spot": 78.23877518495595
+    },
+    {
+      "time": "2026-03-10T17:31:13.246762+00:00",
+      "spot": 78.24038045982552
+    },
+    {
+      "time": "2026-03-10T17:31:35.391487+00:00",
+      "spot": 78.24198562605393
+    },
+    {
+      "time": "2026-03-10T17:31:56.801937+00:00",
+      "spot": 78.2435177282117
+    },
+    {
+      "time": "2026-03-10T17:32:17.845558+00:00",
+      "spot": 78.24475792797051
+    },
+    {
+      "time": "2026-03-10T17:32:39.281476+00:00",
+      "spot": 78.24665457621231
+    },
+    {
+      "time": "2026-03-10T17:33:01.389762+00:00",
+      "spot": 78.24804048999252
+    },
+    {
+      "time": "2026-03-10T17:33:23.534631+00:00",
+      "spot": 78.24986393334349
+    },
+    {
+      "time": "2026-03-10T17:33:44.792101+00:00",
+      "spot": 78.25132258308041
+    },
+    {
+      "time": "2026-03-10T17:34:06.017867+00:00",
+      "spot": 78.25299991423555
+    },
+    {
+      "time": "2026-03-10T17:34:28.345726+00:00",
+      "spot": 78.25460420101163
+    },
+    {
+      "time": "2026-03-10T17:34:49.753551+00:00",
+      "spot": 78.25613545837291
+    },
+    {
+      "time": "2026-03-10T17:35:11.197102+00:00",
+      "spot": 78.25773951959991
+    },
+    {
+      "time": "2026-03-10T17:35:32.244518+00:00",
+      "spot": 78.25897894173639
+    },
+    {
+      "time": "2026-03-10T17:35:53.669693+00:00",
+      "spot": 78.26080149429967
+    },
+    {
+      "time": "2026-03-10T17:36:14.931002+00:00",
+      "spot": 78.26225942684238
+    },
+    {
+      "time": "2026-03-10T17:36:36.170048+00:00",
+      "spot": 78.26393592813747
+    },
+    {
+      "time": "2026-03-10T17:36:57.627803+00:00",
+      "spot": 78.26546653290502
+    },
+    {
+      "time": "2026-03-10T17:37:18.668451+00:00",
+      "spot": 78.26663263462008
+    },
+    {
+      "time": "2026-03-10T17:37:40.194411+00:00",
+      "spot": 78.26860028662418
+    },
+    {
+      "time": "2026-03-10T17:38:01.810718+00:00",
+      "spot": 78.26991195313353
+    },
+    {
+      "time": "2026-03-10T17:38:23.846321+00:00",
+      "spot": 78.2717335766403
+    },
+    {
+      "time": "2026-03-10T17:38:45.124208+00:00",
+      "spot": 78.27319076134478
+    },
+    {
+      "time": "2026-03-10T17:39:06.356763+00:00",
+      "spot": 78.27486639757907
+    },
+    {
+      "time": "2026-03-10T17:39:27.995434+00:00",
+      "spot": 78.27639620777637
+    },
+    {
+      "time": "2026-03-10T17:39:49.717751+00:00",
+      "spot": 78.27799874401495
+    },
+    {
+      "time": "2026-03-10T17:40:11.133149+00:00",
+      "spot": 78.27960115461337
+    },
+    {
+      "time": "2026-03-10T17:40:32.181143+00:00",
+      "spot": 78.28083929449785
+    },
+    {
+      "time": "2026-03-10T17:40:53.612497+00:00",
+      "spot": 78.28265995069877
+    },
+    {
+      "time": "2026-03-10T17:41:14.851119+00:00",
+      "spot": 78.28411635693674
+    },
+    {
+      "time": "2026-03-10T17:41:36.085597+00:00",
+      "spot": 78.28579109292764
+    },
+    {
+      "time": "2026-03-10T17:41:57.518045+00:00",
+      "spot": 78.28732007643545
+    },
+    {
+      "time": "2026-03-10T17:42:18.569339+00:00",
+      "spot": 78.28848493687877
+    },
+    {
+      "time": "2026-03-10T17:42:40.915508+00:00",
+      "spot": 78.29045048239348
+    },
+    {
+      "time": "2026-03-10T17:43:03.020085+00:00",
+      "spot": 78.29176073631439
+    },
+    {
+      "time": "2026-03-10T17:43:24.581588+00:00",
+      "spot": 78.2936531694044
+    },
+    {
+      "time": "2026-03-10T17:43:45.820236+00:00",
+      "spot": 78.29503598413994
+    },
+    {
+      "time": "2026-03-10T17:44:07.067845+00:00",
+      "spot": 78.2967825552972
+    },
+    {
+      "time": "2026-03-10T17:44:29.349279+00:00",
+      "spot": 78.29831067418051
+    },
+    {
+      "time": "2026-03-10T17:44:50.582991+00:00",
+      "spot": 78.29991142885316
+    },
+    {
+      "time": "2026-03-10T17:45:12.027996+00:00",
+      "spot": 78.30151204801837
+    },
+    {
+      "time": "2026-03-10T17:45:33.071418+00:00",
+      "spot": 78.30267604914008
+    },
+    {
+      "time": "2026-03-10T17:45:54.568264+00:00",
+      "spot": 78.30456739655104
+    },
+    {
+      "time": "2026-03-10T17:46:15.820788+00:00",
+      "spot": 78.30594941354948
+    },
+    {
+      "time": "2026-03-10T17:46:37.309037+00:00",
+      "spot": 78.30769497178122
+    },
+    {
+      "time": "2026-03-10T17:46:59.355148+00:00",
+      "spot": 78.30922219952338
+    },
+    {
+      "time": "2026-03-10T17:47:20.834021+00:00",
+      "spot": 78.31082201583641
+    },
+    {
+      "time": "2026-03-10T17:47:42.261393+00:00",
+      "spot": 78.31242169167703
+    },
+    {
+      "time": "2026-03-10T17:48:03.312466+00:00",
+      "spot": 78.31358500366062
+    },
+    {
+      "time": "2026-03-10T17:48:24.784343+00:00",
+      "spot": 78.31547522566117
+    },
+    {
+      "time": "2026-03-10T17:48:46.615828+00:00",
+      "spot": 78.31685641590794
+    },
+    {
+      "time": "2026-03-10T17:49:07.829948+00:00",
+      "spot": 78.31860092452804
+    },
+    {
+      "time": "2026-03-10T17:49:29.424363+00:00",
+      "spot": 78.32012722908136
+    },
+    {
+      "time": "2026-03-10T17:49:50.820158+00:00",
+      "spot": 78.32172607339294
+    },
+    {
+      "time": "2026-03-10T17:50:13.269863+00:00",
+      "spot": 78.32339743701435
+    },
+    {
+      "time": "2026-03-10T17:50:34.321331+00:00",
+      "spot": 78.32448737074728
+    },
+    {
+      "time": "2026-03-10T17:50:55.777351+00:00",
+      "spot": 78.32644907956488
+    },
+    {
+      "time": "2026-03-10T17:51:16.831096+00:00",
+      "spot": 78.3277567620929
+    },
+    {
+      "time": "2026-03-10T17:51:38.074772+00:00",
+      "spot": 78.3295728232401
+    },
+    {
+      "time": "2026-03-10T17:51:59.324337+00:00",
+      "spot": 78.3310255337562
+    },
+    {
+      "time": "2026-03-10T17:52:21.021884+00:00",
+      "spot": 78.33269599797252
+    },
+    {
+      "time": "2026-03-10T17:52:43.540554+00:00",
+      "spot": 78.33429367955716
+    },
+    {
+      "time": "2026-03-10T17:53:04.588443+00:00",
+      "spot": 78.33581859837058
+    },
+    {
+      "time": "2026-03-10T17:53:26.495662+00:00",
+      "spot": 78.33741598404247
+    },
+    {
+      "time": "2026-03-10T17:53:47.529012+00:00",
+      "spot": 78.33865022312183
+    },
+    {
+      "time": "2026-03-10T17:54:08.944868+00:00",
+      "spot": 78.34046511449091
+    },
+    {
+      "time": "2026-03-10T17:54:30.165231+00:00",
+      "spot": 78.34191688459093
+    },
+    {
+      "time": "2026-03-10T17:54:53.06977+00:00",
+      "spot": 78.34373141759102
+    },
+    {
+      "time": "2026-03-10T17:55:15.381384+00:00",
+      "spot": 78.3451828996408
+    },
+    {
+      "time": "2026-03-10T17:55:36.432638+00:00",
+      "spot": 78.34685194460192
+    },
+    {
+      "time": "2026-03-10T17:55:57.850338+00:00",
+      "spot": 78.34837570561392
+    }
+  ],
+  "weights": {
+    "flow_imbalance": 1.2,
+    "skew_signal": 0.92,
+    "vix_proxy": 0.78,
+    "futures_momentum": 1.05,
+    "orderbook_pressure": 0.88,
+    "resting_pressure": 0.72,
+    "vol_regime": 0.66,
+    "term_slope": 0.58
+  },
+  "audits": [],
+  "peakEquity": 1000,
+  "maxDrawdown": 0
+}

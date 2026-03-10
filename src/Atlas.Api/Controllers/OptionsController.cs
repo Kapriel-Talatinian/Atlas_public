@@ -1,5 +1,6 @@
 using Atlas.Api.Models;
 using Atlas.Api.Services;
+using System.IO;
 using Microsoft.AspNetCore.Mvc;
 using System.Globalization;
 using System.Text.Json;
@@ -27,7 +28,7 @@ public class OptionsController : ControllerBase
 
     [HttpGet("assets")]
     public async Task<ActionResult<IReadOnlyList<AssetMarketOverview>>> GetAssetOverview(
-        [FromQuery] string assets = "BTC,ETH,SOL",
+        [FromQuery] string assets = "BTC,ETH,SOL,WTI",
         CancellationToken ct = default)
     {
         var selectedAssets = NormalizeAssets(assets);
@@ -118,6 +119,43 @@ public class OptionsController : ControllerBase
     {
         var regime = await _analytics.GetRegimeAsync(asset, ct);
         return Ok(regime);
+    }
+
+    [HttpGet("macro-bias")]
+    public async Task<ActionResult<MacroBiasSnapshot>> GetMacroBias(
+        [FromQuery] string asset = "BTC",
+        [FromQuery] int horizonDays = 30,
+        [FromQuery] double growthMomentum = 0,
+        [FromQuery] double inflationShock = 0,
+        [FromQuery] double policyTightening = 0,
+        [FromQuery] double usdStrength = 0,
+        [FromQuery] double liquidityStress = 0,
+        [FromQuery] double supplyShock = 0,
+        [FromQuery] double riskAversion = 0,
+        CancellationToken ct = default)
+    {
+        var request = new MacroBiasRequest(
+            Asset: asset,
+            HorizonDays: horizonDays,
+            GrowthMomentum: growthMomentum,
+            InflationShock: inflationShock,
+            PolicyTightening: policyTightening,
+            UsdStrength: usdStrength,
+            LiquidityStress: liquidityStress,
+            SupplyShock: supplyShock,
+            RiskAversion: riskAversion);
+        var snapshot = await _analytics.GetMacroBiasAsync(asset, request, ct);
+        return Ok(snapshot);
+    }
+
+    [HttpGet("live-bias")]
+    public async Task<ActionResult<MacroBiasSnapshot>> GetLiveBias(
+        [FromQuery] string asset = "BTC",
+        [FromQuery] int horizonDays = 30,
+        CancellationToken ct = default)
+    {
+        var snapshot = await _analytics.GetLiveBiasAsync(asset, horizonDays, ct);
+        return Ok(snapshot);
     }
 
     [HttpGet("recommendations")]
@@ -216,25 +254,61 @@ public class OptionsController : ControllerBase
         int safeLimit = Math.Clamp(chainLimit, 10, 300);
         Response.StatusCode = StatusCodes.Status200OK;
         Response.Headers.CacheControl = "no-cache";
+        Response.Headers.Append("Connection", "keep-alive");
         Response.Headers.Append("X-Accel-Buffering", "no");
         Response.Headers.ContentType = "text/event-stream";
+        await Response.WriteAsync("retry: 1500\n\n", ct);
+        await Response.Body.FlushAsync(ct);
 
         while (!ct.IsCancellationRequested)
         {
-            var overviewTask = _analytics.GetOverviewAsync(asset, ct);
-            var chainTask = _analytics.GetChainAsync(asset, parsedExpiry, "all", safeLimit, ct);
-            await Task.WhenAll(overviewTask, chainTask);
-
-            string payload = JsonSerializer.Serialize(new
+            try
             {
-                overview = overviewTask.Result,
-                chain = chainTask.Result,
-                timestamp = DateTimeOffset.UtcNow
-            }, StreamJsonOptions);
+                var overviewTask = _analytics.GetOverviewAsync(asset, ct);
+                var chainTask = _analytics.GetChainAsync(asset, parsedExpiry, "all", safeLimit, ct);
+                await Task.WhenAll(overviewTask, chainTask);
 
-            await Response.WriteAsync("event: market\n", ct);
-            await Response.WriteAsync($"data: {payload}\n\n", ct);
-            await Response.Body.FlushAsync(ct);
+                string payload = JsonSerializer.Serialize(new
+                {
+                    overview = overviewTask.Result,
+                    chain = chainTask.Result,
+                    timestamp = DateTimeOffset.UtcNow
+                }, StreamJsonOptions);
+
+                await Response.WriteAsync("event: market\n", ct);
+                await Response.WriteAsync($"data: {payload}\n\n", ct);
+                await Response.Body.FlushAsync(ct);
+            }
+            catch (OperationCanceledException)
+            {
+                break;
+            }
+            catch (Exception ex)
+            {
+                if (ct.IsCancellationRequested || HttpContext.RequestAborted.IsCancellationRequested)
+                    break;
+
+                string errorPayload = JsonSerializer.Serialize(new
+                {
+                    asset,
+                    message = ex.Message,
+                    timestamp = DateTimeOffset.UtcNow
+                }, StreamJsonOptions);
+                try
+                {
+                    await Response.WriteAsync("event: status\n", ct);
+                    await Response.WriteAsync($"data: {errorPayload}\n\n", ct);
+                    await Response.Body.FlushAsync(ct);
+                }
+                catch (OperationCanceledException)
+                {
+                    break;
+                }
+                catch (IOException)
+                {
+                    break;
+                }
+            }
 
             await Task.Delay(TimeSpan.FromSeconds(2), ct);
         }

@@ -59,12 +59,34 @@ public interface IOptionsAnalyticsService
         DateTimeOffset? expiry = null,
         int limit = 120,
         CancellationToken ct = default);
+    Task<MacroBiasSnapshot> GetMacroBiasAsync(
+        string asset,
+        MacroBiasRequest request,
+        CancellationToken ct = default);
+    Task<MacroBiasSnapshot> GetLiveBiasAsync(string asset, int horizonDays = 30, CancellationToken ct = default);
 }
 
 public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
 {
     private const double DefaultRiskFreeRate = 0.03;
     private readonly IOptionsMarketDataService _marketData;
+    private sealed record MacroWeightSet(
+        double GrowthMomentum,
+        double InflationShock,
+        double PolicyTightening,
+        double UsdStrength,
+        double LiquidityStress,
+        double SupplyShock,
+        double RiskAversion);
+    private sealed record MarketMicroFactors(
+        double FlowImbalance,
+        double FlowPressure,
+        double OrderbookPressure,
+        double SkewConvexity,
+        double BasisProxy,
+        double TermForwardSlope,
+        double VolOfVol,
+        double LiquidityRegime);
     private sealed record AssetModelCalibration(
         string Asset,
         DateTimeOffset? Expiry,
@@ -207,94 +229,176 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
         double size = 1,
         CancellationToken ct = default)
     {
-        var chain = await _marketData.GetOptionChainAsync(asset, ct);
-        if (chain.Count == 0) return [];
-
-        double qty = Math.Max(0.01, size);
-        var expiries = chain.Select(q => q.Expiry).Distinct().OrderBy(e => e).ToList();
-        DateTime targetDate = expiry?.UtcDateTime.Date ?? expiries.FirstOrDefault(e => e >= DateTimeOffset.UtcNow).UtcDateTime.Date;
-        if (targetDate == default) targetDate = expiries[0].UtcDateTime.Date;
-
-        DateTimeOffset frontExpiry = expiries.First(e => e.UtcDateTime.Date == targetDate);
-        var front = chain.Where(q => q.Expiry.Date == frontExpiry.Date).ToList();
-        if (front.Count == 0) return [];
-
-        double spot = ReferenceSpot(front);
-        var calls = front.Where(q => q.Right == OptionRight.Call).OrderBy(q => q.Strike).ToList();
-        var puts = front.Where(q => q.Right == OptionRight.Put).OrderBy(q => q.Strike).ToList();
-        if (calls.Count == 0 || puts.Count == 0) return [];
-
-        LiveOptionQuote? callAtm = ClosestByStrike(calls, spot);
-        LiveOptionQuote? putAtm = ClosestByStrike(puts, spot);
-        LiveOptionQuote? callUp1 = ClosestByStrike(calls, spot * 1.05);
-        LiveOptionQuote? callUp2 = ClosestByStrike(calls, spot * 1.10);
-        LiveOptionQuote? callDn1 = ClosestByStrike(calls, spot * 0.95);
-        LiveOptionQuote? putDn1 = ClosestByStrike(puts, spot * 0.95);
-        LiveOptionQuote? putDn2 = ClosestByStrike(puts, spot * 0.90);
-
-        var results = new List<StrategyAnalysisResult>();
-        TryAddPreset(results, "Long Straddle", asset, chain, [
-            new StrategyLegDefinition(callAtm?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
-            new StrategyLegDefinition(putAtm?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
-        ]);
-
-        TryAddPreset(results, "Long Strangle", asset, chain, [
-            new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
-            new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
-        ]);
-
-        TryAddPreset(results, "Bull Call Spread", asset, chain, [
-            new StrategyLegDefinition(callAtm?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
-            new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Sell, qty)
-        ]);
-
-        TryAddPreset(results, "Bear Put Spread", asset, chain, [
-            new StrategyLegDefinition(putAtm?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
-            new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Sell, qty)
-        ]);
-
-        TryAddPreset(results, "Risk Reversal (Long)", asset, chain, [
-            new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
-            new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Sell, qty)
-        ]);
-
-        TryAddPreset(results, "Iron Condor", asset, chain, [
-            new StrategyLegDefinition(putDn2?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
-            new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
-            new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
-            new StrategyLegDefinition(callUp2?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
-        ]);
-
-        TryAddPreset(results, "Call Butterfly", asset, chain, [
-            new StrategyLegDefinition(callDn1?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
-            new StrategyLegDefinition(callAtm?.Symbol ?? string.Empty, TradeDirection.Sell, qty * 2),
-            new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
-        ]);
-
-        if (expiries.Count >= 2 && callAtm is not null)
+        try
         {
-            DateTimeOffset near = frontExpiry;
-            DateTimeOffset far = expiries.FirstOrDefault(e => e > near);
-            if (far == default) far = expiries.Last();
-            var nearCall = chain
-                .Where(q => q.Expiry == near && q.Right == OptionRight.Call)
-                .OrderBy(q => Math.Abs(q.Strike - callAtm.Strike))
-                .FirstOrDefault();
-            var farCall = chain
-                .Where(q => q.Expiry == far && q.Right == OptionRight.Call)
-                .OrderBy(q => Math.Abs(q.Strike - callAtm.Strike))
-                .FirstOrDefault();
+            var chain = await _marketData.GetOptionChainAsync(asset, ct);
+            if (chain.Count == 0) return [];
 
-            TryAddPreset(results, "Call Calendar", asset, chain, [
-                new StrategyLegDefinition(nearCall?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
-                new StrategyLegDefinition(farCall?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
+            double qty = Math.Max(0.01, size);
+            var expiries = chain.Select(q => q.Expiry).Distinct().OrderBy(e => e).ToList();
+            if (expiries.Count == 0) return [];
+
+            DateTimeOffset frontExpiry;
+            if (expiry.HasValue)
+            {
+                DateTime requestedDate = expiry.Value.UtcDateTime.Date;
+                frontExpiry = expiries.FirstOrDefault(e => e.UtcDateTime.Date == requestedDate);
+                if (frontExpiry == default)
+                {
+                    frontExpiry = expiries
+                        .OrderBy(e => Math.Abs((e.UtcDateTime.Date - requestedDate).TotalDays))
+                        .ThenBy(e => e)
+                        .FirstOrDefault();
+                }
+            }
+            else
+            {
+                frontExpiry = expiries.FirstOrDefault(e => e >= DateTimeOffset.UtcNow);
+                if (frontExpiry == default) frontExpiry = expiries[0];
+            }
+
+            if (frontExpiry == default) return [];
+
+            var front = chain.Where(q => q.Expiry.Date == frontExpiry.Date).ToList();
+            if (front.Count == 0) return [];
+
+            double spot = ReferenceSpot(front);
+            var calls = front.Where(q => q.Right == OptionRight.Call).OrderBy(q => q.Strike).ToList();
+            var puts = front.Where(q => q.Right == OptionRight.Put).OrderBy(q => q.Strike).ToList();
+            if (calls.Count == 0 || puts.Count == 0) return [];
+
+            LiveOptionQuote? callAtm = ClosestByStrike(calls, spot);
+            LiveOptionQuote? putAtm = ClosestByStrike(puts, spot);
+            LiveOptionQuote? callUp1 = ClosestByStrike(calls, spot * 1.05);
+            LiveOptionQuote? callUp2 = ClosestByStrike(calls, spot * 1.10);
+            LiveOptionQuote? callUp3 = ClosestByStrike(calls, spot * 1.15);
+            LiveOptionQuote? callDn1 = ClosestByStrike(calls, spot * 0.95);
+            LiveOptionQuote? putDn1 = ClosestByStrike(puts, spot * 0.95);
+            LiveOptionQuote? putDn2 = ClosestByStrike(puts, spot * 0.90);
+
+            var results = new List<StrategyAnalysisResult>();
+            TryAddPreset(results, "Long Straddle", asset, chain, [
+                new StrategyLegDefinition(callAtm?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
+                new StrategyLegDefinition(putAtm?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
             ]);
-        }
 
-        return results
-            .OrderByDescending(r => Math.Abs(r.AggregateGreeks.Vega))
-            .Take(8)
-            .ToList();
+            TryAddPreset(results, "Long Strangle", asset, chain, [
+                new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
+                new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
+            ]);
+
+            TryAddPreset(results, "Bull Call Spread", asset, chain, [
+                new StrategyLegDefinition(callAtm?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
+                new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Sell, qty)
+            ]);
+
+            TryAddPreset(results, "Bear Put Spread", asset, chain, [
+                new StrategyLegDefinition(putAtm?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
+                new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Sell, qty)
+            ]);
+
+            TryAddPreset(results, "Bear Call Spread", asset, chain, [
+                new StrategyLegDefinition(callAtm?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
+                new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
+            ]);
+
+            TryAddPreset(results, "Risk Reversal (Long)", asset, chain, [
+                new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
+                new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Sell, qty)
+            ]);
+
+            TryAddPreset(results, "Iron Condor", asset, chain, [
+                new StrategyLegDefinition(putDn2?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
+                new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
+                new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
+                new StrategyLegDefinition(callUp2?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
+            ]);
+
+            TryAddPreset(results, "Call Butterfly", asset, chain, [
+                new StrategyLegDefinition(callDn1?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
+                new StrategyLegDefinition(callAtm?.Symbol ?? string.Empty, TradeDirection.Sell, qty * 2),
+                new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
+            ]);
+
+            TryAddPreset(results, "Iron Butterfly", asset, chain, [
+                new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
+                new StrategyLegDefinition(putAtm?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
+                new StrategyLegDefinition(callAtm?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
+                new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
+            ]);
+
+            TryAddPreset(results, "Put Ratio Backspread", asset, chain, [
+                new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
+                new StrategyLegDefinition(putDn2?.Symbol ?? string.Empty, TradeDirection.Buy, qty * 2)
+            ]);
+
+            TryAddPreset(results, "Broken Wing Call Butterfly", asset, chain, [
+                new StrategyLegDefinition(callAtm?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
+                new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Sell, qty * 2),
+                new StrategyLegDefinition(callUp3?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
+            ]);
+
+            TryAddPreset(results, "Jade Lizard", asset, chain, [
+                new StrategyLegDefinition(callUp1?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
+                new StrategyLegDefinition(callUp2?.Symbol ?? string.Empty, TradeDirection.Buy, qty),
+                new StrategyLegDefinition(putDn1?.Symbol ?? string.Empty, TradeDirection.Sell, qty)
+            ]);
+
+            if (expiries.Count >= 2 && callAtm is not null)
+            {
+                DateTimeOffset near = frontExpiry;
+                DateTimeOffset far = expiries.FirstOrDefault(e => e > near);
+                if (far == default) far = expiries.Last();
+                var nearCall = chain
+                    .Where(q => q.Expiry == near && q.Right == OptionRight.Call)
+                    .OrderBy(q => Math.Abs(q.Strike - callAtm.Strike))
+                    .FirstOrDefault();
+                var farCall = chain
+                    .Where(q => q.Expiry == far && q.Right == OptionRight.Call)
+                    .OrderBy(q => Math.Abs(q.Strike - callAtm.Strike))
+                    .FirstOrDefault();
+
+                TryAddPreset(results, "Call Calendar", asset, chain, [
+                    new StrategyLegDefinition(nearCall?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
+                    new StrategyLegDefinition(farCall?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
+                ]);
+
+                var nearPut = chain
+                    .Where(q => q.Expiry == near && q.Right == OptionRight.Put)
+                    .OrderBy(q => Math.Abs(q.Strike - (putAtm?.Strike ?? spot)))
+                    .FirstOrDefault();
+                var farPut = chain
+                    .Where(q => q.Expiry == far && q.Right == OptionRight.Put)
+                    .OrderBy(q => Math.Abs(q.Strike - (putAtm?.Strike ?? spot)))
+                    .FirstOrDefault();
+                TryAddPreset(results, "Put Calendar", asset, chain, [
+                    new StrategyLegDefinition(nearPut?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
+                    new StrategyLegDefinition(farPut?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
+                ]);
+
+                var nearCallUp = chain
+                    .Where(q => q.Expiry == near && q.Right == OptionRight.Call)
+                    .OrderBy(q => Math.Abs(q.Strike - (callUp1?.Strike ?? callAtm?.Strike ?? spot)))
+                    .FirstOrDefault();
+                var farCallAtm = chain
+                    .Where(q => q.Expiry == far && q.Right == OptionRight.Call)
+                    .OrderBy(q => Math.Abs(q.Strike - (callAtm?.Strike ?? spot)))
+                    .FirstOrDefault();
+                TryAddPreset(results, "Call Diagonal", asset, chain, [
+                    new StrategyLegDefinition(nearCallUp?.Symbol ?? string.Empty, TradeDirection.Sell, qty),
+                    new StrategyLegDefinition(farCallAtm?.Symbol ?? string.Empty, TradeDirection.Buy, qty)
+                ]);
+            }
+
+            return results
+                .OrderByDescending(r => Math.Abs(r.ExpectedValue) + Math.Abs(r.AggregateGreeks.Vega) * 0.35)
+                .Take(14)
+                .ToList();
+        }
+        catch
+        {
+            return [];
+        }
     }
 
     public async Task<StrategyAnalysisResult> AnalyzeAsync(StrategyAnalyzeRequest request, CancellationToken ct = default)
@@ -526,7 +630,15 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
         }
 
         double fallbackSpot = ReferenceSpot(chain);
-        var byQuote = chain.ToDictionary(q => q.Symbol, StringComparer.OrdinalIgnoreCase);
+        var byQuote = chain
+            .GroupBy(q => q.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    .OrderByDescending(x => x.Turnover24h)
+                    .ThenByDescending(x => x.SourceTimestamp ?? x.Timestamp)
+                    .First(),
+                StringComparer.OrdinalIgnoreCase);
         var byModel = new Dictionary<string, OptionModelSnapshot>(StringComparer.OrdinalIgnoreCase);
         var recommendations = new List<StrategyRecommendation>();
 
@@ -590,6 +702,255 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
             RiskProfile: normalizedRisk,
             Regime: regime,
             Recommendations: ordered,
+            Timestamp: DateTimeOffset.UtcNow);
+    }
+
+    public async Task<MacroBiasSnapshot> GetMacroBiasAsync(
+        string asset,
+        MacroBiasRequest request,
+        CancellationToken ct = default)
+    {
+        string normalizedAsset = string.IsNullOrWhiteSpace(asset)
+            ? request.Asset.ToUpperInvariant()
+            : asset.ToUpperInvariant();
+        int horizonDays = Math.Clamp(request.HorizonDays, 3, 180);
+        double horizonFactor = MathUtils.Clamp(Math.Sqrt(horizonDays / 30.0), 0.65, 1.8);
+        var weights = ResolveMacroWeights(normalizedAsset);
+
+        var overviewTask = GetOverviewAsync(normalizedAsset, ct);
+        var regimeTask = GetRegimeAsync(normalizedAsset, ct);
+        var chainTask = _marketData.GetOptionChainAsync(normalizedAsset, ct);
+        await Task.WhenAll(overviewTask, regimeTask, chainTask);
+        var overview = overviewTask.Result;
+        var regime = regimeTask.Result;
+        var chain = chainTask.Result;
+        double spot = overview.UnderlyingPrice > 0 ? overview.UnderlyingPrice : ReferenceSpot(chain);
+        var micro = ComputeMarketMicroFactors(chain, spot);
+
+        double growth = ClampMacroInput(request.GrowthMomentum);
+        double inflation = ClampMacroInput(request.InflationShock);
+        double policy = ClampMacroInput(request.PolicyTightening);
+        double usd = ClampMacroInput(request.UsdStrength);
+        double liquidity = ClampMacroInput(request.LiquidityStress);
+        double supply = ClampMacroInput(request.SupplyShock);
+        double riskOff = ClampMacroInput(request.RiskAversion);
+
+        var macroDrivers = new List<MacroBiasDriver>
+        {
+            BuildMacroDriver("Growth momentum", growth, weights.GrowthMomentum, horizonFactor),
+            BuildMacroDriver("Inflation shock", inflation, weights.InflationShock, horizonFactor),
+            BuildMacroDriver("Policy tightening", policy, weights.PolicyTightening, horizonFactor),
+            BuildMacroDriver("USD strength", usd, weights.UsdStrength, horizonFactor),
+            BuildMacroDriver("Liquidity stress", liquidity, weights.LiquidityStress, horizonFactor),
+            BuildMacroDriver("Supply shock", supply, weights.SupplyShock, horizonFactor),
+            BuildMacroDriver("Risk aversion", riskOff, weights.RiskAversion, horizonFactor)
+        };
+
+        double macroScore = MathUtils.Clamp(macroDrivers.Sum(d => d.ContributionScore), -100, 100);
+
+        var marketDrivers = new List<MacroBiasDriver>
+        {
+            BuildMarketDriver(
+                "Put/Call positioning",
+                regime.PutCallOpenInterestRatio,
+                -1.0,
+                MathUtils.Clamp((1.0 - regime.PutCallOpenInterestRatio) * 34, -20, 20),
+                "Call-side positioning",
+                "Put-side hedging"),
+            BuildMarketDriver(
+                "Skew",
+                regime.Skew25D,
+                1.0,
+                MathUtils.Clamp(regime.Skew25D * 620, -18, 18),
+                "Upside skew support",
+                "Downside crash hedge demand"),
+            BuildMarketDriver(
+                "Skew convexity",
+                micro.SkewConvexity,
+                1.0,
+                MathUtils.Clamp(micro.SkewConvexity * 11, -8, 8),
+                "Balanced smile convexity",
+                "Distorted smile / jump-risk pricing"),
+            BuildMarketDriver(
+                "Flow imbalance",
+                micro.FlowImbalance,
+                1.0,
+                MathUtils.Clamp(micro.FlowImbalance * 26, -18, 18),
+                "Call flow dominant",
+                "Put flow dominant"),
+            BuildMarketDriver(
+                "Flow pressure",
+                micro.FlowPressure,
+                1.0,
+                MathUtils.Clamp(micro.FlowPressure * 20, -15, 15),
+                "Aggressive upside flow",
+                "Aggressive downside flow"),
+            BuildMarketDriver(
+                "Orderbook pressure",
+                micro.OrderbookPressure,
+                1.0,
+                MathUtils.Clamp(micro.OrderbookPressure * 16, -12, 12),
+                "Bid-side depth support",
+                "Offer-side pressure"),
+            BuildMarketDriver(
+                "Forward basis proxy",
+                micro.BasisProxy,
+                1.0,
+                MathUtils.Clamp(micro.BasisProxy * 34, -12, 12),
+                "Positive carry / contango",
+                "Negative basis / stress"),
+            BuildMarketDriver(
+                "Forward term slope",
+                micro.TermForwardSlope,
+                1.0,
+                MathUtils.Clamp(micro.TermForwardSlope * 22, -10, 10),
+                "Healthy term premium",
+                "Backwardation warning"),
+            BuildMarketDriver(
+                "Vol-of-vol",
+                micro.VolOfVol,
+                -1.0,
+                MathUtils.Clamp((0.40 - micro.VolOfVol) * 20, -10, 10),
+                "Stable vol regime",
+                "Unstable vol regime"),
+            BuildMarketDriver(
+                "Liquidity regime",
+                micro.LiquidityRegime,
+                1.0,
+                MathUtils.Clamp(micro.LiquidityRegime * 14, -8, 8),
+                "Deep liquidity",
+                "Thin liquidity")
+        };
+
+        double signalScore = regime.Signal switch
+        {
+            var s when s.Contains("Downside fear", StringComparison.OrdinalIgnoreCase) => -6,
+            var s when s.Contains("Upside skew", StringComparison.OrdinalIgnoreCase) => 6,
+            var s when s.Contains("Long gamma", StringComparison.OrdinalIgnoreCase) => 3,
+            _ => 0
+        };
+        marketDrivers.Add(BuildMarketDriver(
+            "Regime signal",
+            signalScore,
+            1.0,
+            signalScore,
+            "Supportive signal",
+            "Cautious signal"));
+
+        double marketMicroScore = MathUtils.Clamp(marketDrivers.Sum(d => d.ContributionScore), -45, 45);
+        double biasScore = MathUtils.Clamp(macroScore * 0.70 + marketMicroScore * 0.30, -100, 100);
+        string bias = biasScore switch
+        {
+            >= 12 => "Bullish",
+            <= -12 => "Bearish",
+            _ => "Neutral"
+        };
+
+        double confidence = MathUtils.Clamp(
+            32 + Math.Abs(biasScore) * 0.44 + regime.ConfidenceScore * 0.24 + Math.Log(1 + Math.Max(1, overview.OpenInterest)) * 2.0,
+            5,
+            99);
+
+        var allDrivers = macroDrivers.Concat(marketDrivers).ToList();
+        var dominant = allDrivers
+            .OrderByDescending(d => Math.Abs(d.ContributionScore))
+            .Take(3)
+            .Select(d => $"{d.Name} ({FormatSignedScore(d.ContributionScore)})")
+            .ToList();
+
+        string summary =
+            $"{bias} bias on {normalizedAsset} ({FormatSignedScore(biasScore)}) over {horizonDays}D; " +
+            $"macro={FormatSignedScore(macroScore)}, market={FormatSignedScore(marketMicroScore)}; " +
+            $"top drivers: {string.Join(", ", dominant)}.";
+
+        return new MacroBiasSnapshot(
+            Asset: normalizedAsset,
+            HorizonDays: horizonDays,
+            Bias: bias,
+            BiasScore: biasScore,
+            ConfidenceScore: confidence,
+            Summary: summary,
+            MacroScore: macroScore,
+            MarketMicroScore: marketMicroScore,
+            Drivers: allDrivers.OrderByDescending(d => Math.Abs(d.ContributionScore)).ToList(),
+            Timestamp: DateTimeOffset.UtcNow);
+    }
+
+    public async Task<MacroBiasSnapshot> GetLiveBiasAsync(string asset, int horizonDays = 30, CancellationToken ct = default)
+    {
+        string normalizedAsset = asset.ToUpperInvariant();
+        int safeHorizon = Math.Clamp(horizonDays, 3, 180);
+        var regimeTask = GetRegimeAsync(normalizedAsset, ct);
+        var overviewTask = GetOverviewAsync(normalizedAsset, ct);
+        var chainTask = _marketData.GetOptionChainAsync(normalizedAsset, ct);
+        await Task.WhenAll(regimeTask, overviewTask, chainTask);
+
+        var regime = regimeTask.Result;
+        var overview = overviewTask.Result;
+        var chain = chainTask.Result;
+        double spot = overview.UnderlyingPrice > 0 ? overview.UnderlyingPrice : ReferenceSpot(chain);
+        var micro = ComputeMarketMicroFactors(chain, spot);
+        double h = MathUtils.Clamp(Math.Sqrt(safeHorizon / 30.0), 0.7, 1.9);
+
+        double pcrContribution = MathUtils.Clamp((1 - regime.PutCallOpenInterestRatio) * 40 * h, -22, 22);
+        double skewContribution = MathUtils.Clamp(regime.Skew25D * 320 * h, -18, 18);
+        double termContribution = MathUtils.Clamp(regime.TermSlope30To90 * 180 * h, -14, 14);
+        double volContribution = MathUtils.Clamp((0.60 - regime.AtmIv30D) * 34 * h, -12, 12);
+        double liquidityContribution = MathUtils.Clamp(Math.Log(1 + Math.Max(0, overview.Turnover24h)) * 1.1 - 7, -8, 8);
+        double flowContribution = MathUtils.Clamp(micro.FlowImbalance * 24 * h, -16, 16);
+        double pressureContribution = MathUtils.Clamp(micro.FlowPressure * 20 * h, -14, 14);
+        double orderbookContribution = MathUtils.Clamp(micro.OrderbookPressure * 16 * h, -10, 10);
+        double convexityContribution = MathUtils.Clamp(micro.SkewConvexity * 10 * h, -8, 8);
+        double basisContribution = MathUtils.Clamp(micro.BasisProxy * 28 * h, -10, 10);
+        double volOfVolContribution = MathUtils.Clamp((0.42 - micro.VolOfVol) * 14 * h, -8, 8);
+
+        var drivers = new List<MacroBiasDriver>
+        {
+            new("Put/Call positioning", regime.PutCallOpenInterestRatio, -1.0, pcrContribution, pcrContribution >= 0 ? "Bullish positioning" : "Bearish positioning"),
+            new("Skew signal", regime.Skew25D, 1.0, skewContribution, skewContribution >= 0 ? "Upside skew" : "Downside hedge demand"),
+            new("Term slope", regime.TermSlope30To90, 1.0, termContribution, termContribution >= 0 ? "Contango / growth tone" : "Backwardation / stress tone"),
+            new("Volatility regime", regime.AtmIv30D, -1.0, volContribution, volContribution >= 0 ? "Vol not stressed" : "High vol stress"),
+            new("Market liquidity", overview.Turnover24h, 1.0, liquidityContribution, liquidityContribution >= 0 ? "Healthy liquidity" : "Thin liquidity"),
+            new("Flow imbalance", micro.FlowImbalance, 1.0, flowContribution, flowContribution >= 0 ? "Call flow dominant" : "Put flow dominant"),
+            new("Flow pressure", micro.FlowPressure, 1.0, pressureContribution, pressureContribution >= 0 ? "Aggressive upside demand" : "Aggressive downside demand"),
+            new("Orderbook pressure", micro.OrderbookPressure, 1.0, orderbookContribution, orderbookContribution >= 0 ? "Bid-side strength" : "Offer-side pressure"),
+            new("Skew convexity", micro.SkewConvexity, 1.0, convexityContribution, convexityContribution >= 0 ? "Smile balanced" : "Jump-risk skewed"),
+            new("Forward basis proxy", micro.BasisProxy, 1.0, basisContribution, basisContribution >= 0 ? "Positive carry" : "Negative basis"),
+            new("Vol-of-vol stability", micro.VolOfVol, -1.0, volOfVolContribution, volOfVolContribution >= 0 ? "Vol stable" : "Vol unstable")
+        };
+
+        double biasScore = MathUtils.Clamp(drivers.Sum(d => d.ContributionScore), -100, 100);
+        string bias = biasScore switch
+        {
+            >= 8 => "Bullish",
+            <= -8 => "Bearish",
+            _ => "Neutral"
+        };
+        double confidence = MathUtils.Clamp(
+            34 + Math.Abs(biasScore) * 0.50 + regime.ConfidenceScore * 0.20 + Math.Log(1 + Math.Max(1, overview.OpenInterest)) * 1.8,
+            5,
+            99);
+
+        var topDrivers = drivers
+            .OrderByDescending(d => Math.Abs(d.ContributionScore))
+            .Take(4)
+            .Select(d => $"{d.Name} ({FormatSignedScore(d.ContributionScore)})")
+            .ToList();
+
+        string summary =
+            $"{bias} live bias on {normalizedAsset} ({FormatSignedScore(biasScore)}) over {safeHorizon}D; " +
+            $"drivers: {string.Join(", ", topDrivers)}.";
+
+        return new MacroBiasSnapshot(
+            Asset: normalizedAsset,
+            HorizonDays: safeHorizon,
+            Bias: bias,
+            BiasScore: biasScore,
+            ConfidenceScore: confidence,
+            Summary: summary,
+            MacroScore: 0,
+            MarketMicroScore: biasScore,
+            Drivers: drivers.OrderByDescending(d => Math.Abs(d.ContributionScore)).ToList(),
             Timestamp: DateTimeOffset.UtcNow);
     }
 
@@ -805,7 +1166,15 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
         }
 
         double spot = ReferenceSpot(chain);
-        var bySymbol = chain.ToDictionary(q => q.Symbol, StringComparer.OrdinalIgnoreCase);
+        var bySymbol = chain
+            .GroupBy(q => q.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    .OrderByDescending(x => x.Turnover24h)
+                    .ThenByDescending(x => x.SourceTimestamp ?? x.Timestamp)
+                    .First(),
+                StringComparer.OrdinalIgnoreCase);
         var anomalies = new List<ArbitrageAnomaly>();
         const double parityThreshold = 0.05;
         const double convexityThreshold = 0.03;
@@ -1053,7 +1422,15 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
         if (legs.Count == 0) throw new ArgumentException("At least one leg is required.");
         if (chain.Count == 0) throw new InvalidOperationException("No option quotes available.");
 
-        var bySymbol = chain.ToDictionary(q => q.Symbol, StringComparer.OrdinalIgnoreCase);
+        var bySymbol = chain
+            .GroupBy(q => q.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    .OrderByDescending(x => x.Turnover24h)
+                    .ThenByDescending(x => x.SourceTimestamp ?? x.Timestamp)
+                    .First(),
+                StringComparer.OrdinalIgnoreCase);
         var analyzedLegs = new List<StrategyLegAnalysis>();
 
         double netPremium = 0;
@@ -1132,6 +1509,14 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
         double maxProfit = payoff.Max(p => p.Pnl);
         double maxLoss = payoff.Min(p => p.Pnl);
         var breakevens = ComputeBreakevens(payoff);
+        double popApprox = payoff.Count > 0
+            ? payoff.Count(p => p.Pnl > 0) / (double)payoff.Count
+            : 0;
+        double expectedValue = payoff.Count > 0 ? payoff.Average(p => p.Pnl) : 0;
+        double rewardRiskRatio = maxLoss < 0
+            ? MathUtils.Clamp(Math.Abs(maxProfit) / Math.Max(Math.Abs(maxLoss), 1e-9), 0, 100)
+            : 100;
+        double premiumAtRisk = Math.Abs(Math.Min(netPremium, 0));
 
         return new StrategyAnalysisResult(
             Name: name,
@@ -1144,7 +1529,11 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
             AggregateGreeks: aggregateGreeks,
             Legs: analyzedLegs,
             PayoffCurve: payoff,
-            Timestamp: DateTimeOffset.UtcNow);
+            Timestamp: DateTimeOffset.UtcNow,
+            RewardRiskRatio: rewardRiskRatio,
+            ProbabilityOfProfitApprox: popApprox,
+            ExpectedValue: expectedValue,
+            PremiumAtRisk: premiumAtRisk);
     }
 
     private static void TryAddPreset(
@@ -1467,6 +1856,290 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
         return "Neutral carry with selective edges";
     }
 
+    private static MacroWeightSet ResolveMacroWeights(string asset)
+    {
+        return asset.ToUpperInvariant() switch
+        {
+            "ETH" => new MacroWeightSet(1.05, 0.25, -1.10, -0.85, -1.05, -0.20, -0.95),
+            "SOL" => new MacroWeightSet(1.20, 0.10, -1.25, -0.95, -1.20, -0.25, -1.10),
+            "WTI" => new MacroWeightSet(1.10, 0.65, -0.55, -0.85, -0.50, 1.25, -0.70),
+            _ => new MacroWeightSet(0.95, 0.35, -1.05, -0.80, -1.00, -0.15, -0.85)
+        };
+    }
+
+    private static double ClampMacroInput(double value) => MathUtils.Clamp(value, -3, 3);
+
+    private static MacroBiasDriver BuildMacroDriver(
+        string name,
+        double input,
+        double weight,
+        double horizonFactor)
+    {
+        double contribution = MathUtils.Clamp(input * weight * 18 * horizonFactor, -55, 55);
+        return new MacroBiasDriver(
+            Name: name,
+            Input: input,
+            Weight: weight,
+            ContributionScore: contribution,
+            Effect: contribution > 1
+                ? "Supports bullish bias"
+                : contribution < -1
+                    ? "Supports bearish bias"
+                    : "Neutral impact");
+    }
+
+    private static MacroBiasDriver BuildMarketDriver(
+        string name,
+        double input,
+        double weight,
+        double contribution,
+        string bullishEffect,
+        string bearishEffect)
+    {
+        string effect = contribution > 1
+            ? bullishEffect
+            : contribution < -1
+                ? bearishEffect
+                : "Neutral / mixed";
+
+        return new MacroBiasDriver(
+            Name: name,
+            Input: input,
+            Weight: weight,
+            ContributionScore: contribution,
+            Effect: effect);
+    }
+
+    private static MarketMicroFactors ComputeMarketMicroFactors(IReadOnlyList<LiveOptionQuote> chain, double spot)
+    {
+        if (chain.Count == 0)
+        {
+            return new MarketMicroFactors(
+                FlowImbalance: 0,
+                FlowPressure: 0,
+                OrderbookPressure: 0,
+                SkewConvexity: 0,
+                BasisProxy: 0,
+                TermForwardSlope: 0,
+                VolOfVol: 0.45,
+                LiquidityRegime: -0.15);
+        }
+
+        var sample = chain
+            .Where(q => q.Strike > 0 && q.Expiry > DateTimeOffset.UtcNow.AddHours(-6))
+            .Where(q => EffectiveMid(q) > 0 || q.Mark > 0 || q.Bid > 0 || q.Ask > 0)
+            .ToList();
+        if (sample.Count == 0)
+        {
+            return new MarketMicroFactors(
+                FlowImbalance: 0,
+                FlowPressure: 0,
+                OrderbookPressure: 0,
+                SkewConvexity: 0,
+                BasisProxy: 0,
+                TermForwardSlope: 0,
+                VolOfVol: 0.45,
+                LiquidityRegime: -0.15);
+        }
+
+        double safeSpot = spot > 0 ? spot : ReferenceSpot(sample);
+        if (safeSpot <= 0) safeSpot = 1;
+
+        double callFlow = 0;
+        double putFlow = 0;
+        double signedFlowPressure = 0;
+        double flowPressureWeight = 0;
+        double callBookPressure = 0;
+        double putBookPressure = 0;
+
+        var spreadSamples = new List<double>(sample.Count);
+        double totalTurnover = 0;
+        double totalOpenInterest = 0;
+
+        foreach (var q in sample)
+        {
+            double mid = EffectiveMid(q);
+            double turnover = Math.Max(0, q.Turnover24h);
+            double notionalFromVolume = Math.Max(0, q.Volume24h) * Math.Max(mid, q.Mark);
+            double liquidity = Math.Max(1e-9, Math.Max(turnover, notionalFromVolume));
+
+            double spread = q.Bid > 0 && q.Ask > 0
+                ? MathUtils.Clamp((q.Ask - q.Bid) / Math.Max((q.Ask + q.Bid) / 2.0, 1e-9), 0, 2.5)
+                : 1.25;
+            spreadSamples.Add(spread);
+
+            totalTurnover += turnover;
+            totalOpenInterest += Math.Max(0, q.OpenInterest);
+
+            bool isCall = q.Right == OptionRight.Call;
+            if (isCall) callFlow += liquidity;
+            else putFlow += liquidity;
+
+            double moneyness = Math.Log(Math.Max(q.Strike, 1e-9) / safeSpot);
+            double wingBias = isCall
+                ? MathUtils.Clamp(moneyness * 2.4, -0.9, 1.2)
+                : MathUtils.Clamp(-moneyness * 2.4, -0.9, 1.2);
+            double bookQuality = MathUtils.Clamp(1.15 - spread, -0.5, 1.1);
+            double sign = isCall ? 1.0 : -1.0;
+            double pressureCoeff = (1 + wingBias * 0.55) * (0.72 + 0.28 * bookQuality);
+            signedFlowPressure += sign * liquidity * pressureCoeff;
+            flowPressureWeight += liquidity;
+
+            double microTilt = q.Mark > 0 ? MathUtils.Clamp((mid - q.Mark) / q.Mark, -1.0, 1.0) : 0;
+            double depthWeight = Math.Log(1 + Math.Max(0, q.OpenInterest) + Math.Max(0, q.Volume24h));
+            double bookPressure = ((0.85 - spread) * 0.55 + microTilt * 1.75) * depthWeight;
+            if (isCall) callBookPressure += bookPressure;
+            else putBookPressure += bookPressure;
+        }
+
+        double flowImbalance = MathUtils.Clamp((callFlow - putFlow) / Math.Max(callFlow + putFlow, 1e-9), -1, 1);
+        double flowPressure = MathUtils.Clamp(signedFlowPressure / Math.Max(flowPressureWeight, 1e-9), -1, 1);
+        double orderbookPressure = MathUtils.Clamp(
+            (callBookPressure - putBookPressure) / Math.Max(Math.Abs(callBookPressure) + Math.Abs(putBookPressure), 1e-9),
+            -1,
+            1);
+
+        var byExpiry = sample
+            .GroupBy(q => q.Expiry.Date)
+            .Select(g =>
+            {
+                var list = g.ToList();
+                var representative = list[0];
+                double days = Math.Max(1, (representative.Expiry - DateTimeOffset.UtcNow).TotalDays);
+                double t = Math.Max(days / 365.25, 1.0 / 365.25);
+                double atmIv = ComputeAtmIv(list, safeSpot);
+                return new
+                {
+                    list,
+                    representative.Expiry,
+                    Days = days,
+                    T = t,
+                    AtmIv = atmIv
+                };
+            })
+            .Where(x => x.Days > 0)
+            .OrderBy(x => x.Days)
+            .ToList();
+
+        double skewConvexity = 0;
+        var front = byExpiry.OrderBy(x => Math.Abs(x.Days - 30)).FirstOrDefault();
+        if (front is not null && front.AtmIv > 0)
+        {
+            double callWing = front.list
+                .Where(q => q.Right == OptionRight.Call && q.Strike >= safeSpot * 1.06 && q.MarkIv > 0)
+                .Select(q => q.MarkIv)
+                .DefaultIfEmpty(front.AtmIv)
+                .Average();
+            double putWing = front.list
+                .Where(q => q.Right == OptionRight.Put && q.Strike <= safeSpot * 0.94 && q.MarkIv > 0)
+                .Select(q => q.MarkIv)
+                .DefaultIfEmpty(front.AtmIv)
+                .Average();
+            skewConvexity = MathUtils.Clamp((callWing + putWing - 2 * front.AtmIv) / Math.Max(front.AtmIv, 1e-9), -1, 1);
+        }
+
+        var basisPerExpiry = new List<(double Days, double Basis, double Weight)>();
+        foreach (var bucket in byExpiry)
+        {
+            var paritySamples = new List<(double Basis, double Weight)>();
+            var strikes = bucket.list
+                .Where(q => EffectiveMid(q) > 0)
+                .GroupBy(q => Math.Round(q.Strike, 8));
+
+            foreach (var strikeGroup in strikes)
+            {
+                var strikeQuotes = strikeGroup.ToList();
+                var call = strikeQuotes
+                    .Where(q => q.Right == OptionRight.Call)
+                    .OrderByDescending(q => q.Turnover24h)
+                    .ThenByDescending(q => q.Volume24h)
+                    .FirstOrDefault();
+                var put = strikeQuotes
+                    .Where(q => q.Right == OptionRight.Put)
+                    .OrderByDescending(q => q.Turnover24h)
+                    .ThenByDescending(q => q.Volume24h)
+                    .FirstOrDefault();
+                if (call is null || put is null) continue;
+
+                double callMid = EffectiveMid(call);
+                double putMid = EffectiveMid(put);
+                if (callMid <= 0 || putMid <= 0) continue;
+
+                double forward = (callMid - putMid) * Math.Exp(DefaultRiskFreeRate * bucket.T) + call.Strike;
+                if (!double.IsFinite(forward) || forward <= 0) continue;
+
+                double basis = (forward - safeSpot) / Math.Max(safeSpot, 1e-9);
+                double weight = Math.Log(1 + Math.Max(0, call.Turnover24h) + Math.Max(0, put.Turnover24h) + Math.Max(0, call.OpenInterest + put.OpenInterest));
+                if (weight <= 0) weight = 0.25;
+
+                paritySamples.Add((basis, weight));
+            }
+
+            if (paritySamples.Count == 0) continue;
+            double weightSum = paritySamples.Sum(x => x.Weight);
+            double basisAvg = paritySamples.Sum(x => x.Basis * x.Weight) / Math.Max(weightSum, 1e-9);
+            basisPerExpiry.Add((bucket.Days, MathUtils.Clamp(basisAvg, -1.2, 1.2), Math.Max(weightSum, 0.25)));
+        }
+
+        double basisProxy = 0;
+        double termForwardSlope = 0;
+        if (basisPerExpiry.Count > 0)
+        {
+            double totalWeight = basisPerExpiry.Sum(x => x.Weight);
+            basisProxy = basisPerExpiry.Sum(x => x.Basis * x.Weight) / Math.Max(totalWeight, 1e-9);
+
+            var near = basisPerExpiry.OrderBy(x => x.Days).First();
+            var far = basisPerExpiry.OrderByDescending(x => x.Days).First();
+            if (far.Days - near.Days > 3)
+            {
+                termForwardSlope = (far.Basis - near.Basis) / Math.Max((far.Days - near.Days) / 30.0, 1e-9);
+            }
+        }
+
+        var ivTerm = byExpiry
+            .Where(x => x.AtmIv > 0)
+            .Select(x => x.AtmIv)
+            .ToList();
+        double volOfVol = 0.45;
+        if (ivTerm.Count >= 2)
+        {
+            double meanIv = ivTerm.Average();
+            double stdIv = ComputeStdDev(ivTerm, meanIv);
+            volOfVol = MathUtils.Clamp(stdIv / Math.Max(meanIv, 1e-9), 0, 2);
+        }
+        else if (ivTerm.Count == 1)
+        {
+            volOfVol = MathUtils.Clamp(0.16 + ivTerm[0] * 0.10, 0.08, 1.2);
+        }
+
+        double avgSpread = spreadSamples.Count > 0 ? spreadSamples.Average() : 1.0;
+        double depthRaw = Math.Log(1 + totalTurnover + totalOpenInterest * Math.Max(safeSpot * 0.004, 1));
+        double liquidityRegime = Math.Tanh((depthRaw - 12.0 - avgSpread * 1.6) / 2.8);
+
+        return new MarketMicroFactors(
+            FlowImbalance: flowImbalance,
+            FlowPressure: flowPressure,
+            OrderbookPressure: orderbookPressure,
+            SkewConvexity: skewConvexity,
+            BasisProxy: MathUtils.Clamp(basisProxy, -1, 1),
+            TermForwardSlope: MathUtils.Clamp(termForwardSlope, -1, 1),
+            VolOfVol: volOfVol,
+            LiquidityRegime: MathUtils.Clamp(liquidityRegime, -1, 1));
+    }
+
+    private static double ComputeStdDev(IReadOnlyList<double> values, double mean)
+    {
+        if (values.Count <= 1) return 0;
+        double variance = values.Sum(v => Math.Pow(v - mean, 2)) / values.Count;
+        return variance > 0 ? Math.Sqrt(variance) : 0;
+    }
+
+    private static string FormatSignedScore(double value)
+    {
+        string prefix = value > 0 ? "+" : string.Empty;
+        return $"{prefix}{value:F1}";
+    }
+
     private static string NormalizeRiskProfile(string riskProfile)
     {
         string normalized = (riskProfile ?? string.Empty).Trim().ToLowerInvariant();
@@ -1630,6 +2303,7 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
         {
             "ETH" => HestonParams.CryptoEth,
             "SOL" => HestonParams.CryptoSol,
+            "WTI" => new HestonParams(1.45, 0.18, 0.52, -0.30),
             _ => HestonParams.CryptoBtc
         };
     }
@@ -1640,6 +2314,7 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
         {
             "ETH" => SabrParams.CryptoEth,
             "SOL" => new SabrParams(0.70, 0.5, -0.22, 0.90),
+            "WTI" => new SabrParams(0.22, 0.7, -0.15, 0.45),
             _ => SabrParams.CryptoBtc
         };
     }

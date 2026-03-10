@@ -30,9 +30,16 @@ public sealed class RequestObservabilityMiddleware
         {
             await _next(context);
         }
+        catch (OperationCanceledException) when (context.RequestAborted.IsCancellationRequested)
+        {
+            activity?.SetTag("http.aborted", true);
+            _logger.LogDebug("Request aborted by client {Method} {Path}", method, path);
+        }
         catch (Exception ex)
         {
-            context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+            if (!context.Response.HasStarted)
+                context.Response.StatusCode = StatusCodes.Status500InternalServerError;
+
             monitoring.PublishAlert("api", Models.NotificationSeverity.Critical, $"Unhandled exception on {method} {path}: {ex.GetType().Name}");
             _logger.LogError(ex, "Unhandled exception on {Method} {Path}", method, path);
             throw;

@@ -80,6 +80,9 @@ export default function StrategyOptimizerPanel({
                 <div>Vega*: {formatSigned(entry.projectedGreeks?.vega || 0, 3)}</div>
                 <div>Theta*: {formatSigned(entry.projectedGreeks?.theta || 0, 3)}</div>
                 <div>Premium: {formatUsd(entry.analysis?.netPremium || 0, 2)}</div>
+                <div>R/R: {fmt(entry.analysis?.rewardRiskRatio || 0, 2)}</div>
+                <div>PoP: {fmt((entry.analysis?.probabilityOfProfitApprox || 0) * 100, 1)}%</div>
+                <div>EV: {formatUsd(entry.analysis?.expectedValue || 0, 2)}</div>
               </div>
               <div className="subtle" style={{ marginTop: 6 }}>{entry.thesis}</div>
             </div>

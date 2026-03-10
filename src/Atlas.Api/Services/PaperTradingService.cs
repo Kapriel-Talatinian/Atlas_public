@@ -1,3 +1,4 @@
+using System.Globalization;
 using Atlas.Api.Models;
 using Atlas.Core.Common;
 
@@ -146,7 +147,7 @@ public sealed class PaperTradingService : IPaperTradingService
         var state = new WorkingOrderState
         {
             OrderId = orderId,
-            Symbol = normalizedRequest.Symbol,
+            Symbol = quote.Symbol,
             Asset = quote.Asset,
             Side = normalizedRequest.Side,
             Type = normalizedRequest.Type,
@@ -786,43 +787,45 @@ public sealed class PaperTradingService : IPaperTradingService
         LiveOptionQuote quote,
         CancellationToken ct)
     {
+        var canonicalRequest = request with { Symbol = quote.Symbol };
+
         if (request.Type == OrderType.Limit && (!request.LimitPrice.HasValue || request.LimitPrice <= 0))
             return BuildRejectedSimulation("limit price must be set for limit order", request.LimitPrice ?? 0);
 
-        if (!TryComputeExecutablePrice(request, quote, out double requestedPrice, out double executablePrice, out string? rejectReason))
+        if (!TryComputeExecutablePrice(canonicalRequest, quote, out double requestedPrice, out double executablePrice, out string? rejectReason))
             return BuildRejectedSimulation(rejectReason ?? "no executable price", requestedPrice);
 
-        double estFillRatio = EstimateFillRatio(request, quote);
-        if (!request.AllowPartialFill && estFillRatio < 0.999)
+        double estFillRatio = EstimateFillRatio(canonicalRequest, quote);
+        if (!canonicalRequest.AllowPartialFill && estFillRatio < 0.999)
             return BuildRejectedSimulation("insufficient liquidity for full fill", requestedPrice);
 
-        double estimatedFilledQty = request.Quantity * estFillRatio;
-        double estimatedRemainingQty = Math.Max(0, request.Quantity - estimatedFilledQty);
-        double simulatedNotional = executablePrice * request.Quantity;
+        double estimatedFilledQty = canonicalRequest.Quantity * estFillRatio;
+        double estimatedRemainingQty = Math.Max(0, canonicalRequest.Quantity - estimatedFilledQty);
+        double simulatedNotional = executablePrice * canonicalRequest.Quantity;
 
         if (simulatedNotional > Limits.MaxOrderNotional)
             return BuildRejectedSimulation($"order notional exceeds limit ({Limits.MaxOrderNotional:F0})", requestedPrice);
 
         var states = SnapshotStates();
-        double signedQty = request.Side == TradeDirection.Buy ? request.Quantity : -request.Quantity;
-        double currentSymbolQty = states.FirstOrDefault(s => s.Symbol.Equals(request.Symbol, StringComparison.OrdinalIgnoreCase))?.NetQuantity ?? 0;
+        double signedQty = canonicalRequest.Side == TradeDirection.Buy ? canonicalRequest.Quantity : -canonicalRequest.Quantity;
+        double currentSymbolQty = states.FirstOrDefault(s => s.Symbol.Equals(canonicalRequest.Symbol, StringComparison.OrdinalIgnoreCase))?.NetQuantity ?? 0;
         double projectedSymbolQty = Math.Abs(currentSymbolQty + signedQty);
         if (projectedSymbolQty > Limits.MaxSymbolAbsQuantity)
             return BuildRejectedSimulation($"symbol quantity limit breached ({Limits.MaxSymbolAbsQuantity:F0})", requestedPrice);
 
-        var projectedPositions = await SimulateProjectedPositionsAsync(states, quote, request, executablePrice, request.Quantity, ct);
+        var projectedPositions = await SimulateProjectedPositionsAsync(states, quote, canonicalRequest, executablePrice, canonicalRequest.Quantity, ct);
         var risk = BuildRiskSnapshot(projectedPositions);
         if (risk.Breached)
             return BuildRejectedSimulation($"risk breach: {string.Join(", ", risk.Flags)}", requestedPrice);
 
-        double slippagePct = ComputeAggregateSlippagePct(request.Side, requestedPrice, executablePrice);
-        double maxSlippage = request.MaxSlippagePct ?? Limits.MaxSlippagePct;
+        double slippagePct = ComputeAggregateSlippagePct(canonicalRequest.Side, requestedPrice, executablePrice);
+        double maxSlippage = canonicalRequest.MaxSlippagePct ?? Limits.MaxSlippagePct;
         if (slippagePct > maxSlippage)
             return BuildRejectedSimulation($"slippage estimate {slippagePct:P2} exceeds max {maxSlippage:P2}", requestedPrice);
 
-        double feeRate = request.Type == OrderType.Limit ? Limits.MakerFeeRate : Limits.TakerFeeRate;
+        double feeRate = canonicalRequest.Type == OrderType.Limit ? Limits.MakerFeeRate : Limits.TakerFeeRate;
         double fees = simulatedNotional * feeRate;
-        double quality = ComputeExecutionQualityScore(slippagePct, feeRate, estimatedFilledQty, request.Quantity, request.MaxRetries);
+        double quality = ComputeExecutionQualityScore(slippagePct, feeRate, estimatedFilledQty, canonicalRequest.Quantity, canonicalRequest.MaxRetries);
 
         return new OrderSimulationResult(
             Accepted: true,
@@ -1308,7 +1311,36 @@ public sealed class PaperTradingService : IPaperTradingService
     {
         string asset = ExtractAsset(symbol);
         var chain = await _marketData.GetOptionChainAsync(asset, ct);
-        return chain.FirstOrDefault(q => q.Symbol.Equals(symbol, StringComparison.OrdinalIgnoreCase));
+        if (chain.Count == 0)
+            return null;
+
+        string normalizedInput = NormalizeOptionSymbol(symbol);
+        var exact = chain.FirstOrDefault(q =>
+            NormalizeOptionSymbol(q.Symbol).Equals(normalizedInput, StringComparison.OrdinalIgnoreCase));
+        if (exact is not null)
+            return exact;
+
+        if (!TryParseLooseOptionSymbol(normalizedInput, out var parsedAsset, out var parsedExpiry, out var parsedStrike, out var parsedRight))
+            return null;
+
+        if (!parsedAsset.Equals(asset, StringComparison.OrdinalIgnoreCase))
+            return null;
+
+        var nearest = chain
+            .Where(q => q.Right == parsedRight && q.Expiry.Date == parsedExpiry.Date)
+            .Select(q => new
+            {
+                Quote = q,
+                StrikeDiff = Math.Abs(q.Strike - parsedStrike)
+            })
+            .OrderBy(x => x.StrikeDiff)
+            .FirstOrDefault();
+
+        if (nearest is null)
+            return null;
+
+        double absTolerance = Math.Max(0.02, parsedStrike * 0.015);
+        return nearest.StrikeDiff <= absTolerance ? nearest.Quote : null;
     }
 
     private static string ExtractAsset(string symbol)
@@ -1316,6 +1348,64 @@ public sealed class PaperTradingService : IPaperTradingService
         string[] parts = symbol.Split('-', StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length == 0) throw new ArgumentException("invalid option symbol");
         return parts[0].Trim().ToUpperInvariant();
+    }
+
+    private static string NormalizeOptionSymbol(string symbol)
+    {
+        var tokens = (symbol ?? string.Empty)
+            .Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(token => token.Trim().ToUpperInvariant())
+            .ToList();
+
+        if (tokens.Count >= 5 && (tokens[^1] is "USD" or "USDT" or "USDC"))
+            tokens.RemoveAt(tokens.Count - 1);
+
+        return string.Join("-", tokens);
+    }
+
+    private static bool TryParseLooseOptionSymbol(
+        string symbol,
+        out string asset,
+        out DateTimeOffset expiry,
+        out double strike,
+        out OptionRight right)
+    {
+        asset = string.Empty;
+        expiry = default;
+        strike = 0;
+        right = OptionRight.Call;
+
+        string[] parts = NormalizeOptionSymbol(symbol)
+            .Split('-', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        if (parts.Length < 4)
+            return false;
+
+        asset = parts[0].Trim().ToUpperInvariant();
+
+        if (!DateTime.TryParseExact(
+                parts[1].Trim().ToUpperInvariant(),
+                "ddMMMyy",
+                CultureInfo.InvariantCulture,
+                DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+                out var expiryDate))
+        {
+            return false;
+        }
+
+        expiry = new DateTimeOffset(expiryDate, TimeSpan.Zero);
+
+        if (!double.TryParse(parts[2], NumberStyles.Float, CultureInfo.InvariantCulture, out strike))
+            return false;
+
+        string rightToken = parts[3].Trim().ToUpperInvariant();
+        right = rightToken switch
+        {
+            "C" or "CALL" => OptionRight.Call,
+            "P" or "PUT" => OptionRight.Put,
+            _ => OptionRight.Call
+        };
+
+        return rightToken is "C" or "CALL" or "P" or "PUT";
     }
 
     private List<PositionState> SnapshotStates()

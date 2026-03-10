@@ -583,6 +583,69 @@ body {
   gap: 8px;
 }
 
+.macro-wrap {
+  display: grid;
+  gap: 8px;
+}
+
+.macro-controls {
+  display: grid;
+  gap: 6px;
+}
+
+.macro-row {
+  display: grid;
+  grid-template-columns: 1.3fr 1fr 68px;
+  gap: 8px;
+  align-items: center;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px;
+}
+
+.macro-label {
+  display: grid;
+  gap: 2px;
+}
+
+.macro-label strong {
+  font-size: 0.75rem;
+  color: var(--ink-1);
+}
+
+.macro-label span {
+  font-size: 0.67rem;
+  color: var(--ink-3);
+}
+
+.macro-slider {
+  width: 100%;
+}
+
+.macro-value {
+  text-align: right;
+  font-size: 0.76rem;
+  font-family: "IBM Plex Mono", monospace;
+  color: var(--ink-1);
+}
+
+.macro-drivers {
+  display: grid;
+  gap: 6px;
+}
+
+.macro-driver {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  padding: 8px 10px;
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  align-items: center;
+}
+
 .exposure-table-wrap {
   max-height: 380px;
   overflow: auto;
@@ -894,6 +957,29 @@ body {
   background: linear-gradient(90deg, #dc2626, #f43f5e);
 }
 
+.bot-lab {
+  display: grid;
+  gap: 8px;
+}
+
+.decision-feed {
+  display: grid;
+  gap: 6px;
+  max-height: 300px;
+  overflow: auto;
+}
+
+.decision-item {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #fff;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
 .subtle {
   margin-top: 2px;
   color: var(--ink-3);
@@ -994,5 +1080,17 @@ body {
   .ticket-grid,
   .risk-grid {
     grid-template-columns: 1fr;
+  }
+
+  .macro-row {
+    grid-template-columns: 1fr;
+  }
+
+  .macro-value {
+    text-align: left;
+  }
+
+  .decision-item {
+    flex-direction: column;
   }
 }

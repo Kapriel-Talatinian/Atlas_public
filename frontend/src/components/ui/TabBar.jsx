@@ -3,6 +3,7 @@ const TABS = [
   { id: "execution", label: "Execution" },
   { id: "strategy", label: "Strategy Lab" },
   { id: "alpha", label: "Alpha Lab" },
+  { id: "experimental", label: "Experimental Bot" },
 ];
 
 export default function TabBar({ activeTab, onChange }) {

@@ -31,11 +31,16 @@ import {
   getStrategyOptimizer,
   getStrategyRecommendations,
   getPresetStrategies,
+  getExperimentalBotSnapshot,
+  configureExperimentalBot,
+  runExperimentalBotCycles,
+  resetExperimentalBot,
   getKillSwitchState,
   retryOpenOrders,
   setKillSwitchState,
   getTradingBook,
   getVolRegime,
+  getLiveBias,
   getVolSurface,
   previewPaperOrder,
   placePaperOrder,
@@ -58,11 +63,13 @@ import SignalBoard from "./components/market/SignalBoard";
 import StrategyRecommendationPanel from "./components/market/StrategyRecommendationPanel";
 import StrategyOptimizerPanel from "./components/market/StrategyOptimizerPanel";
 import VolRegimePanel from "./components/market/VolRegimePanel";
+import LiveBiasPanel from "./components/market/LiveBiasPanel";
 import ArbitrageScannerPanel from "./components/market/ArbitrageScannerPanel";
 import GreeksExposureHeatmapPanel from "./components/market/GreeksExposureHeatmapPanel";
 import ModelCalibrationPanel from "./components/market/ModelCalibrationPanel";
 import MarketStatsStrip from "./components/market/MarketStatsStrip";
 import OverviewMetrics from "./components/market/OverviewMetrics";
+import ExperimentalBotPanel from "./components/experimental/ExperimentalBotPanel";
 import BookSummaryCards from "./components/trading/BookSummaryCards";
 import OrderLadder from "./components/trading/OrderLadder";
 import OrderTicket from "./components/trading/OrderTicket";
@@ -74,7 +81,7 @@ import SectionCard from "./components/ui/SectionCard";
 import TabBar from "./components/ui/TabBar";
 import "./App.css";
 
-const ASSETS = ["BTC", "ETH", "SOL"];
+const ASSETS = ["BTC", "ETH", "SOL", "WTI"];
 const OPTION_TYPE_FILTERS = ["all", "call", "put"];
 
 function normalizeDirection(direction) {
@@ -114,10 +121,12 @@ function App() {
   const [loadingSignals, setLoadingSignals] = useState(false);
   const [loadingCalibration, setLoadingCalibration] = useState(false);
   const [loadingRegime, setLoadingRegime] = useState(false);
+  const [loadingLiveBias, setLoadingLiveBias] = useState(false);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [loadingOptimizer, setLoadingOptimizer] = useState(false);
   const [loadingExposure, setLoadingExposure] = useState(false);
   const [loadingArbitrage, setLoadingArbitrage] = useState(false);
+  const [loadingBot, setLoadingBot] = useState(false);
   const [loadingBook, setLoadingBook] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -125,6 +134,9 @@ function App() {
   const [retryingOpenOrders, setRetryingOpenOrders] = useState(false);
   const [togglingKillSwitch, setTogglingKillSwitch] = useState(false);
   const [runningTwap, setRunningTwap] = useState(false);
+  const [runningBotCycle, setRunningBotCycle] = useState(false);
+  const [applyingBotConfig, setApplyingBotConfig] = useState(false);
+  const [resettingBot, setResettingBot] = useState(false);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState(null);
   const [stress, setStress] = useState(null);
@@ -133,11 +145,14 @@ function App() {
   const [signalBoard, setSignalBoard] = useState(null);
   const [loadingModelSnapshot, setLoadingModelSnapshot] = useState(false);
   const [regime, setRegime] = useState(null);
+  const [liveBias, setLiveBias] = useState(null);
   const [recommendationBoard, setRecommendationBoard] = useState(null);
   const [optimizerBoard, setOptimizerBoard] = useState(null);
   const [exposureGrid, setExposureGrid] = useState(null);
   const [exposureMetric, setExposureMetric] = useState("gamma");
   const [arbitrageScan, setArbitrageScan] = useState(null);
+  const [botSnapshot, setBotSnapshot] = useState(null);
+  const [botConfigDraft, setBotConfigDraft] = useState(null);
   const [riskProfile, setRiskProfile] = useState("balanced");
   const [optimizerTargets, setOptimizerTargets] = useState({
     targetDelta: 0,
@@ -415,6 +430,84 @@ function App() {
     optimizerTargets.targetTheta,
   ]);
 
+  const refreshExperimentalBot = useCallback(async () => {
+    setLoadingBot(true);
+    try {
+      const snapshot = await getExperimentalBotSnapshot(asset);
+      setBotSnapshot(snapshot);
+      setBotConfigDraft((prev) => prev || snapshot?.config || null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingBot(false);
+    }
+  }, [asset]);
+
+  const runExperimentalCycle = useCallback(async () => {
+    setRunningBotCycle(true);
+    try {
+      setError("");
+      const snapshot = await runExperimentalBotCycles(asset, 1);
+      setBotSnapshot(snapshot);
+      setBotConfigDraft(snapshot?.config || null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRunningBotCycle(false);
+    }
+  }, [asset]);
+
+  const applyExperimentalConfig = useCallback(async () => {
+    if (!botConfigDraft) return;
+    setApplyingBotConfig(true);
+    try {
+      setError("");
+      const snapshot = await configureExperimentalBot(asset, botConfigDraft);
+      setBotSnapshot(snapshot);
+      setBotConfigDraft(snapshot?.config || botConfigDraft);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setApplyingBotConfig(false);
+    }
+  }, [asset, botConfigDraft]);
+
+  const resetExperimentalState = useCallback(async () => {
+    setResettingBot(true);
+    try {
+      setError("");
+      const snapshot = await resetExperimentalBot(asset);
+      setBotSnapshot(snapshot);
+      setBotConfigDraft(snapshot?.config || null);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setResettingBot(false);
+    }
+  }, [asset]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const refresh = async () => {
+      try {
+        setLoadingLiveBias(true);
+        const snapshot = await getLiveBias({ asset, horizonDays: 30 });
+        if (!cancelled) setLiveBias(snapshot);
+      } catch (err) {
+        if (!cancelled) setError(err.message);
+      } finally {
+        if (!cancelled) setLoadingLiveBias(false);
+      }
+    };
+
+    refresh().catch(() => null);
+    const id = setInterval(() => refresh().catch(() => null), 15000);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [asset]);
+
   useEffect(() => {
     refreshOverview().catch((err) => setError(err.message));
     refreshTradingBook().catch((err) => setError(err.message));
@@ -444,6 +537,19 @@ function App() {
   }, [refreshAlphaData, selectedExpiry]);
 
   useEffect(() => {
+    setBotConfigDraft(null);
+    refreshExperimentalBot().catch(() => null);
+  }, [asset, refreshExperimentalBot]);
+
+  useEffect(() => {
+    if (activeTab !== "experimental") return undefined;
+    const id = setInterval(() => {
+      refreshExperimentalBot().catch(() => null);
+    }, 9000);
+    return () => clearInterval(id);
+  }, [activeTab, refreshExperimentalBot]);
+
+  useEffect(() => {
     let mounted = true;
     const ping = async () => {
       try {
@@ -463,11 +569,17 @@ function App() {
 
   useEffect(() => {
     if (!streamEnabled || !selectedExpiry) return undefined;
-    const streamUrls = getMarketStreamUrls({ asset, expiry: selectedExpiry, chainLimit: 120 });
+    const streamUrls = getMarketStreamUrls({
+      asset,
+      expiry: selectedExpiry,
+      chainLimit: asset === "WTI" ? 60 : 120,
+    });
     let disposed = false;
     let source = null;
     let reconnectTimer = null;
     let urlIndex = 0;
+    let retriesOnUrl = 0;
+    let reconnectDelayMs = 900;
 
     const onMarket = (event) => {
       try {
@@ -498,22 +610,39 @@ function App() {
       }
     };
 
+    const onStatus = () => {
+      setStreamStatus("degraded");
+    };
+
     const connect = () => {
       if (disposed || streamUrls.length === 0) return;
       const activeUrl = streamUrls[urlIndex % streamUrls.length];
-      setStreamStatus(urlIndex === 0 ? "connecting" : "fallback");
+      if (urlIndex > 0 && retriesOnUrl === 0) setStreamStatus("fallback");
+      else setStreamStatus("connecting");
       source = createMarketStream(activeUrl);
-      source.onopen = () => setStreamStatus("live");
+      source.onopen = () => {
+        retriesOnUrl = 0;
+        reconnectDelayMs = 900;
+        setStreamStatus("live");
+      };
 
       source.addEventListener("market", onMarket);
+      source.addEventListener("status", onStatus);
       source.onmessage = onMarket;
       source.onerror = () => {
         source?.close();
         if (disposed) return;
-        urlIndex += 1;
-        if (urlIndex > streamUrls.length * 2) urlIndex = 0;
-        setStreamStatus("reconnecting");
-        reconnectTimer = setTimeout(connect, 900);
+        retriesOnUrl += 1;
+        if (retriesOnUrl >= 3 && streamUrls.length > 1) {
+          urlIndex = (urlIndex + 1) % streamUrls.length;
+          retriesOnUrl = 0;
+          setStreamStatus("fallback");
+        } else {
+          setStreamStatus("reconnecting");
+        }
+        const delay = reconnectDelayMs;
+        reconnectDelayMs = Math.min(Math.round(reconnectDelayMs * 1.6), 6000);
+        reconnectTimer = setTimeout(connect, delay);
       };
     };
 
@@ -844,7 +973,7 @@ function App() {
           <div>
             <h1 className="hero-title">Atlas Institutional Options Desk</h1>
             <p className="hero-subtitle">
-              Live options chain (BTC/ETH/SOL), institutional paper execution, pre-trade risk guard,
+              Live options chain (BTC/ETH/SOL/WTI), institutional paper execution, pre-trade risk guard,
               portfolio greeks and strategy analytics in one terminal-grade interface.
             </p>
             <div className="asset-switch">
@@ -1002,7 +1131,11 @@ function App() {
             </div>
           </div>
           <div>
-            <SectionCard title="Quant Signal Board">
+            <SectionCard title="Macro Bias Engine">
+              <LiveBiasPanel snapshot={liveBias} loading={loadingLiveBias} />
+            </SectionCard>
+
+            <SectionCard title="Quant Signal Board" className="mt12">
               <SignalBoard
                 board={signalBoard}
                 loading={loadingSignals}
@@ -1040,6 +1173,9 @@ function App() {
                       <div>Premium: {formatUsd(preset.netPremium, 2)}</div>
                       <div>MaxP: {formatUsd(preset.maxProfit, 2)}</div>
                       <div>MaxL: {formatUsd(preset.maxLoss, 2)}</div>
+                      <div>R/R: {formatRatio(preset.rewardRiskRatio || 0, 2)}</div>
+                      <div>PoP: {formatRatio((preset.probabilityOfProfitApprox || 0) * 100, 1)}%</div>
+                      <div>EV: {formatUsd(preset.expectedValue || 0, 2)}</div>
                     </div>
                   </div>
                 ))}
@@ -1216,6 +1352,10 @@ function App() {
                     <div>Premium: {formatUsd(analysis.netPremium, 2)}</div>
                     <div>MaxP: {formatUsd(analysis.maxProfit, 2)}</div>
                     <div>MaxL: {formatUsd(analysis.maxLoss, 2)}</div>
+                    <div>R/R: {formatRatio(analysis.rewardRiskRatio || 0, 2)}</div>
+                    <div>PoP: {formatRatio((analysis.probabilityOfProfitApprox || 0) * 100, 1)}%</div>
+                    <div>EV: {formatUsd(analysis.expectedValue || 0, 2)}</div>
+                    <div>Premium at Risk: {formatUsd(analysis.premiumAtRisk || 0, 2)}</div>
                   </div>
 
                   <div style={{ width: "100%", height: 260, marginTop: 8 }}>
@@ -1306,6 +1446,34 @@ function App() {
                   setOptimizerTargets((prev) => ({ ...prev, ...patch }))
                 }
                 onLoad={loadRecommendedStrategy}
+              />
+            </SectionCard>
+          </div>
+        </section>
+      )}
+
+      {activeTab === "experimental" && (
+        <section className="desk-grid">
+          <div style={{ gridColumn: "1 / -1" }}>
+            <SectionCard title="Experimental Auto Trader (Paper)">
+              <ExperimentalBotPanel
+                asset={asset}
+                snapshot={botSnapshot}
+                loading={loadingBot}
+                configDraft={botConfigDraft}
+                onConfigChange={(patch) =>
+                  setBotConfigDraft((prev) => ({
+                    ...(prev || botSnapshot?.config || {}),
+                    ...patch,
+                  }))
+                }
+                onApplyConfig={applyExperimentalConfig}
+                applyingConfig={applyingBotConfig}
+                onRunCycle={runExperimentalCycle}
+                runningCycle={runningBotCycle}
+                onReset={resetExperimentalState}
+                resetting={resettingBot}
+                onRefresh={() => refreshExperimentalBot()}
               />
             </SectionCard>
           </div>

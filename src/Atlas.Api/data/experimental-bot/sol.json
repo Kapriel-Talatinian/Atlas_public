@@ -1,0 +1,2581 @@
+{
+  "config": {
+    "enabled": false,
+    "autoTrade": false,
+    "autoTune": true,
+    "evaluationIntervalSec": 20,
+    "basePositionSize": 1,
+    "maxOpenTrades": 4,
+    "minConfidence": 58,
+    "stopLossPct": 0.35,
+    "takeProfitPct": 0.55,
+    "maxHoldingHours": 72,
+    "auditTargetTrades": 100,
+    "startingCapitalUsd": 1000
+  },
+  "startedAt": "2026-03-10T16:41:12.0231+00:00",
+  "lastEvaluationAt": "2026-03-10T17:56:00.888159+00:00",
+  "lastSignal": {
+    "bias": "Bearish",
+    "score": -12.534240356643739,
+    "confidence": 64.26712017832187,
+    "strategyTemplate": "Bear put spread",
+    "summary": "Bearish SOL signal (-12,5) | conf 64,3 | template: Bear put spread.",
+    "drivers": [
+      "Vol regime: -0,34",
+      "VIX proxy: -0,19",
+      "Resting pressure: -0,18",
+      "Term slope: -0,09"
+    ],
+    "features": {
+      "flowImbalance": 0.010649117273388228,
+      "skewSignal": -0.06813731888787368,
+      "vixProxy": -0.19133333333333322,
+      "futuresMomentum": -0.007240363829980773,
+      "orderbookPressure": 0.021986141127583937,
+      "restingPressure": -0.17947280268558655,
+      "volRegime": -0.3444700000000002,
+      "termSlope": -0.09120000000000061
+    },
+    "timestamp": "2026-03-10T17:56:00.888159+00:00"
+  },
+  "openTrades": [],
+  "closedTrades": [],
+  "decisions": [
+    {
+      "timestamp": "2026-03-10T16:41:12.025281+00:00",
+      "bias": "Neutral",
+      "score": -8.72382506066666,
+      "confidence": 62.36191253033333,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,7) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:41:33.041044+00:00",
+      "bias": "Neutral",
+      "score": -8.94188585522608,
+      "confidence": 62.47094292761304,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,9) | conf 62,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:41:55.566452+00:00",
+      "bias": "Neutral",
+      "score": -7.582263989843718,
+      "confidence": 61.79113199492186,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,6) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:42:16.581425+00:00",
+      "bias": "Neutral",
+      "score": -8.259904948267886,
+      "confidence": 62.129952474133944,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,3) | conf 62,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:42:38.192131+00:00",
+      "bias": "Neutral",
+      "score": -8.660346191675199,
+      "confidence": 62.3301730958376,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,7) | conf 62,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:42:59.215139+00:00",
+      "bias": "Neutral",
+      "score": -8.209066536728017,
+      "confidence": 62.10453326836401,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,2) | conf 62,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:43:20.820195+00:00",
+      "bias": "Bearish",
+      "score": -10.029550246510796,
+      "confidence": 63.0147751232554,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,0) | conf 63,0 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:43:42.449377+00:00",
+      "bias": "Neutral",
+      "score": -9.746061664741891,
+      "confidence": 62.873030832370944,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:44:03.469637+00:00",
+      "bias": "Neutral",
+      "score": -9.82670744911977,
+      "confidence": 62.91335372455988,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,8) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:44:25.114117+00:00",
+      "bias": "Bearish",
+      "score": -10.402716235766155,
+      "confidence": 63.201358117883075,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,4) | conf 63,2 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:44:46.138462+00:00",
+      "bias": "Bearish",
+      "score": -11.129853978080646,
+      "confidence": 63.56492698904032,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,1) | conf 63,6 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:45:08.267913+00:00",
+      "bias": "Bearish",
+      "score": -10.207371917105078,
+      "confidence": 63.10368595855254,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,2) | conf 63,1 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:45:29.29167+00:00",
+      "bias": "Neutral",
+      "score": -8.337006771488207,
+      "confidence": 62.1685033857441,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,3) | conf 62,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:45:50.885219+00:00",
+      "bias": "Neutral",
+      "score": -8.20164139799754,
+      "confidence": 62.10082069899877,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,2) | conf 62,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:46:14.247373+00:00",
+      "bias": "Neutral",
+      "score": -9.62048771751544,
+      "confidence": 62.81024385875772,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,6) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:46:35.654249+00:00",
+      "bias": "Bearish",
+      "score": -10.333553155058029,
+      "confidence": 63.16677657752901,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,3) | conf 63,2 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:46:57.267035+00:00",
+      "bias": "Neutral",
+      "score": -9.577826486436534,
+      "confidence": 62.78891324321827,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,6) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:47:18.286515+00:00",
+      "bias": "Neutral",
+      "score": -8.908168097175947,
+      "confidence": 62.45408404858797,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,9) | conf 62,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:47:39.695709+00:00",
+      "bias": "Neutral",
+      "score": -8.743966517665308,
+      "confidence": 62.37198325883266,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,7) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:48:00.723431+00:00",
+      "bias": "Neutral",
+      "score": -9.572551756361923,
+      "confidence": 62.78627587818096,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,6) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:48:22.123464+00:00",
+      "bias": "Neutral",
+      "score": -8.820399418041674,
+      "confidence": 62.41019970902084,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,8) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:48:43.53514+00:00",
+      "bias": "Bearish",
+      "score": -10.49843875574097,
+      "confidence": 63.24921937787049,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,5) | conf 63,2 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:49:04.556561+00:00",
+      "bias": "Neutral",
+      "score": -9.056981599252875,
+      "confidence": 62.52849079962644,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,1) | conf 62,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:49:26.474441+00:00",
+      "bias": "Neutral",
+      "score": -9.98438880883841,
+      "confidence": 62.99219440441921,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-10,0) | conf 63,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:49:47.510218+00:00",
+      "bias": "Neutral",
+      "score": -9.164622466461708,
+      "confidence": 62.582311233230854,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,2) | conf 62,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:50:09.061247+00:00",
+      "bias": "Neutral",
+      "score": -9.405650123116471,
+      "confidence": 62.70282506155824,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,4) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:50:30.094708+00:00",
+      "bias": "Neutral",
+      "score": -8.42634654372919,
+      "confidence": 62.2131732718646,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,4) | conf 62,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:50:51.877712+00:00",
+      "bias": "Neutral",
+      "score": -8.741609049943811,
+      "confidence": 62.3708045249719,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,7) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:51:13.943987+00:00",
+      "bias": "Neutral",
+      "score": -8.133670319422787,
+      "confidence": 62.066835159711395,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,1) | conf 62,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:51:35.172873+00:00",
+      "bias": "Neutral",
+      "score": -8.280668598495062,
+      "confidence": 62.14033429924753,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,3) | conf 62,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:51:56.62788+00:00",
+      "bias": "Neutral",
+      "score": -8.415263366046037,
+      "confidence": 62.20763168302302,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,4) | conf 62,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:52:17.656194+00:00",
+      "bias": "Neutral",
+      "score": -7.908879138926643,
+      "confidence": 61.95443956946332,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,9) | conf 62,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:52:39.975052+00:00",
+      "bias": "Neutral",
+      "score": -8.177368994405645,
+      "confidence": 62.08868449720282,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,2) | conf 62,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:53:02.378719+00:00",
+      "bias": "Neutral",
+      "score": -9.625554429193189,
+      "confidence": 62.81277721459659,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,6) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:53:25.24279+00:00",
+      "bias": "Neutral",
+      "score": -9.06910369175495,
+      "confidence": 62.53455184587747,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,1) | conf 62,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:53:45.259063+00:00",
+      "bias": "Neutral",
+      "score": -9.444447357034058,
+      "confidence": 62.722223678517025,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,4) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:54:07.356093+00:00",
+      "bias": "Neutral",
+      "score": -9.226789008330567,
+      "confidence": 62.613394504165285,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,2) | conf 62,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:54:29.808477+00:00",
+      "bias": "Neutral",
+      "score": -9.417123184986243,
+      "confidence": 62.70856159249312,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,4) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:54:51.020654+00:00",
+      "bias": "Neutral",
+      "score": -9.746243365804272,
+      "confidence": 62.87312168290214,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:55:13.315163+00:00",
+      "bias": "Neutral",
+      "score": -9.472385074251315,
+      "confidence": 62.73619253712566,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,5) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:55:34.347068+00:00",
+      "bias": "Neutral",
+      "score": -7.587610660065067,
+      "confidence": 61.793805330032534,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,6) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:55:55.770678+00:00",
+      "bias": "Neutral",
+      "score": -6.815261771882062,
+      "confidence": 61.40763088594103,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-6,8) | conf 61,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:56:16.990683+00:00",
+      "bias": "Neutral",
+      "score": -7.353928181739426,
+      "confidence": 61.67696409086971,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,4) | conf 61,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:56:38.389245+00:00",
+      "bias": "Neutral",
+      "score": -8.856184597815489,
+      "confidence": 62.42809229890774,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,9) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:56:59.60831+00:00",
+      "bias": "Neutral",
+      "score": -8.416169998953015,
+      "confidence": 62.208084999476505,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,4) | conf 62,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:57:20.800442+00:00",
+      "bias": "Neutral",
+      "score": -8.085773902446293,
+      "confidence": 62.042886951223146,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,1) | conf 62,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:57:42.191575+00:00",
+      "bias": "Neutral",
+      "score": -8.565092887880416,
+      "confidence": 62.282546443940205,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,6) | conf 62,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:58:03.213551+00:00",
+      "bias": "Neutral",
+      "score": -9.31771368685871,
+      "confidence": 62.658856843429355,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,3) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:58:24.791589+00:00",
+      "bias": "Bearish",
+      "score": -10.044436961462964,
+      "confidence": 63.02221848073148,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,0) | conf 63,0 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T16:58:46.043158+00:00",
+      "bias": "Neutral",
+      "score": -9.69545725815357,
+      "confidence": 62.847728629076784,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:59:07.244674+00:00",
+      "bias": "Neutral",
+      "score": -9.677336535546054,
+      "confidence": 62.83866826777303,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:59:28.736569+00:00",
+      "bias": "Neutral",
+      "score": -9.416309483839022,
+      "confidence": 62.708154741919515,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,4) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:59:49.770897+00:00",
+      "bias": "Neutral",
+      "score": -9.661570589568337,
+      "confidence": 62.83078529478417,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:00:11.206729+00:00",
+      "bias": "Neutral",
+      "score": -9.178485777170387,
+      "confidence": 62.58924288858519,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,2) | conf 62,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:00:32.24615+00:00",
+      "bias": "Neutral",
+      "score": -9.533048207657771,
+      "confidence": 62.766524103828885,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,5) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:00:53.672818+00:00",
+      "bias": "Neutral",
+      "score": -9.841185964203452,
+      "confidence": 62.920592982101724,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,8) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:01:14.913452+00:00",
+      "bias": "Neutral",
+      "score": -9.707277166526598,
+      "confidence": 62.8536385832633,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:01:36.130192+00:00",
+      "bias": "Neutral",
+      "score": -9.253395709188576,
+      "confidence": 62.62669785459429,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,3) | conf 62,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:01:58.50364+00:00",
+      "bias": "Neutral",
+      "score": -8.109978454596487,
+      "confidence": 62.05498922729824,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,1) | conf 62,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:02:20.345923+00:00",
+      "bias": "Neutral",
+      "score": -7.738142981820062,
+      "confidence": 61.86907149091003,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,7) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:02:42.219876+00:00",
+      "bias": "Neutral",
+      "score": -8.056390685247715,
+      "confidence": 62.02819534262386,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,1) | conf 62,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:03:03.256947+00:00",
+      "bias": "Neutral",
+      "score": -7.863254645284896,
+      "confidence": 61.93162732264245,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,9) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:03:24.691327+00:00",
+      "bias": "Neutral",
+      "score": -7.495442548294819,
+      "confidence": 61.74772127414741,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,5) | conf 61,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:03:46.896469+00:00",
+      "bias": "Neutral",
+      "score": -9.440480020382676,
+      "confidence": 62.72024001019134,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,4) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:04:08.13216+00:00",
+      "bias": "Neutral",
+      "score": -8.475651510575146,
+      "confidence": 62.237825755287574,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,5) | conf 62,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:04:29.388861+00:00",
+      "bias": "Neutral",
+      "score": -9.356427366880606,
+      "confidence": 62.678213683440305,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,4) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:04:50.923156+00:00",
+      "bias": "Neutral",
+      "score": -9.146517480238959,
+      "confidence": 62.57325874011948,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,1) | conf 62,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:05:13.393267+00:00",
+      "bias": "Bearish",
+      "score": -10.035861024704332,
+      "confidence": 63.017930512352166,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,0) | conf 63,0 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:05:34.432793+00:00",
+      "bias": "Neutral",
+      "score": -9.165540671493034,
+      "confidence": 62.58277033574652,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,2) | conf 62,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:05:56.097505+00:00",
+      "bias": "Neutral",
+      "score": -7.660148669664313,
+      "confidence": 61.830074334832155,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,7) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:06:17.1365+00:00",
+      "bias": "Neutral",
+      "score": -9.801989610577854,
+      "confidence": 62.900994805288924,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,8) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:06:38.589177+00:00",
+      "bias": "Neutral",
+      "score": -9.617037876413903,
+      "confidence": 62.80851893820695,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,6) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:06:59.841644+00:00",
+      "bias": "Bearish",
+      "score": -10.524413939586381,
+      "confidence": 63.26220696979319,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,5) | conf 63,3 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:07:21.08028+00:00",
+      "bias": "Bearish",
+      "score": -10.72623694298065,
+      "confidence": 63.363118471490324,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,7) | conf 63,4 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:07:43.250995+00:00",
+      "bias": "Neutral",
+      "score": -8.403468745146984,
+      "confidence": 62.20173437257349,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,4) | conf 62,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:08:04.300357+00:00",
+      "bias": "Neutral",
+      "score": -9.0069157085338,
+      "confidence": 62.5034578542669,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,0) | conf 62,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:08:25.716658+00:00",
+      "bias": "Neutral",
+      "score": -7.179073885346005,
+      "confidence": 61.589536942673,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,2) | conf 61,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:08:46.969724+00:00",
+      "bias": "Neutral",
+      "score": -9.063098216417007,
+      "confidence": 62.5315491082085,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,1) | conf 62,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:09:09.084639+00:00",
+      "bias": "Neutral",
+      "score": -9.317993434375747,
+      "confidence": 62.658996717187875,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,3) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:09:30.318331+00:00",
+      "bias": "Neutral",
+      "score": -8.48809027919107,
+      "confidence": 62.244045139595535,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,5) | conf 62,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:09:51.543313+00:00",
+      "bias": "Neutral",
+      "score": -8.07902140970256,
+      "confidence": 62.03951070485128,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,1) | conf 62,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:10:12.965775+00:00",
+      "bias": "Neutral",
+      "score": -8.412721356283855,
+      "confidence": 62.20636067814193,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,4) | conf 62,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:10:34.007647+00:00",
+      "bias": "Neutral",
+      "score": -8.00701417860838,
+      "confidence": 62.00350708930419,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,0) | conf 62,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:10:55.475585+00:00",
+      "bias": "Bearish",
+      "score": -10.091471781163953,
+      "confidence": 63.04573589058198,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,1) | conf 63,0 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:11:17.398803+00:00",
+      "bias": "Neutral",
+      "score": -9.22744828520903,
+      "confidence": 62.61372414260452,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,2) | conf 62,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:11:38.843065+00:00",
+      "bias": "Neutral",
+      "score": -7.91949025744513,
+      "confidence": 61.95974512872257,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,9) | conf 62,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:12:01.196911+00:00",
+      "bias": "Neutral",
+      "score": -7.889123536154061,
+      "confidence": 61.94456176807703,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,9) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:12:22.424938+00:00",
+      "bias": "Neutral",
+      "score": -7.386430822585378,
+      "confidence": 61.69321541129269,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,4) | conf 61,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:12:43.868846+00:00",
+      "bias": "Neutral",
+      "score": -7.5938206745824814,
+      "confidence": 61.79691033729124,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,6) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:13:05.09448+00:00",
+      "bias": "Neutral",
+      "score": -7.763281067572748,
+      "confidence": 61.881640533786374,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,8) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:13:26.540707+00:00",
+      "bias": "Neutral",
+      "score": -4.765612290979345,
+      "confidence": 60.382806145489674,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-4,8) | conf 60,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:13:47.589826+00:00",
+      "bias": "Neutral",
+      "score": -8.849350656958942,
+      "confidence": 62.42467532847947,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,8) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:14:09.900909+00:00",
+      "bias": "Neutral",
+      "score": -9.625627212425089,
+      "confidence": 62.81281360621254,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,6) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:14:31.163639+00:00",
+      "bias": "Neutral",
+      "score": -9.158563150228051,
+      "confidence": 62.579281575114024,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,2) | conf 62,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:14:52.395362+00:00",
+      "bias": "Neutral",
+      "score": -8.897470591024172,
+      "confidence": 62.44873529551209,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,9) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:15:13.954066+00:00",
+      "bias": "Neutral",
+      "score": -9.363922788261224,
+      "confidence": 62.68196139413061,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,4) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:15:35.405803+00:00",
+      "bias": "Neutral",
+      "score": -7.854230755359164,
+      "confidence": 61.927115377679584,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,9) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:15:57.003382+00:00",
+      "bias": "Neutral",
+      "score": -8.207955978757893,
+      "confidence": 62.10397798937895,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,2) | conf 62,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:16:18.036055+00:00",
+      "bias": "Bearish",
+      "score": -10.158848658447445,
+      "confidence": 63.07942432922372,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,2) | conf 63,1 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:16:39.463682+00:00",
+      "bias": "Neutral",
+      "score": -8.56497748520722,
+      "confidence": 62.28248874260361,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,6) | conf 62,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:17:00.707223+00:00",
+      "bias": "Neutral",
+      "score": -7.59184266400375,
+      "confidence": 61.795921332001875,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,6) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:17:22.71544+00:00",
+      "bias": "Neutral",
+      "score": -9.599406281053815,
+      "confidence": 62.79970314052691,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,6) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:17:44.596232+00:00",
+      "bias": "Neutral",
+      "score": -7.654013600797022,
+      "confidence": 61.82700680039851,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,7) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:18:06.052536+00:00",
+      "bias": "Neutral",
+      "score": -9.709139897784647,
+      "confidence": 62.854569948892326,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:18:27.489351+00:00",
+      "bias": "Neutral",
+      "score": -9.745733831255478,
+      "confidence": 62.87286691562774,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:18:48.54426+00:00",
+      "bias": "Neutral",
+      "score": -9.716240793736144,
+      "confidence": 62.858120396868074,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:19:10.225968+00:00",
+      "bias": "Neutral",
+      "score": -8.475171919186144,
+      "confidence": 62.23758595959307,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,5) | conf 62,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:19:31.482017+00:00",
+      "bias": "Neutral",
+      "score": -7.4924854705033965,
+      "confidence": 61.7462427352517,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,5) | conf 61,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:19:52.729634+00:00",
+      "bias": "Neutral",
+      "score": -7.644410060593746,
+      "confidence": 61.82220503029687,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,6) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:20:14.152299+00:00",
+      "bias": "Neutral",
+      "score": -7.554119201212894,
+      "confidence": 61.77705960060645,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,6) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:20:35.388237+00:00",
+      "bias": "Neutral",
+      "score": -7.68625351259732,
+      "confidence": 61.84312675629866,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,7) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:20:57.470638+00:00",
+      "bias": "Neutral",
+      "score": -7.864579347493871,
+      "confidence": 61.932289673746936,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,9) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:21:18.506895+00:00",
+      "bias": "Neutral",
+      "score": -8.082104675666287,
+      "confidence": 62.04105233783314,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,1) | conf 62,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:21:39.933408+00:00",
+      "bias": "Neutral",
+      "score": -8.890742232868766,
+      "confidence": 62.44537111643438,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,9) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:22:01.308499+00:00",
+      "bias": "Neutral",
+      "score": -7.563580678494284,
+      "confidence": 61.781790339247145,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,6) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:22:22.995412+00:00",
+      "bias": "Neutral",
+      "score": -7.861513203563698,
+      "confidence": 61.93075660178185,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,9) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:22:44.812084+00:00",
+      "bias": "Neutral",
+      "score": -7.857168703436269,
+      "confidence": 61.928584351718136,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,9) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:23:06.04029+00:00",
+      "bias": "Neutral",
+      "score": -7.673810361258542,
+      "confidence": 61.83690518062927,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,7) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:23:27.485827+00:00",
+      "bias": "Neutral",
+      "score": -7.562808108610922,
+      "confidence": 61.78140405430546,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,6) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:23:48.729708+00:00",
+      "bias": "Neutral",
+      "score": -9.558573088404636,
+      "confidence": 62.77928654420232,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,6) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:24:10.380431+00:00",
+      "bias": "Neutral",
+      "score": -8.644496223928606,
+      "confidence": 62.3222481119643,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,6) | conf 62,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:24:31.626535+00:00",
+      "bias": "Neutral",
+      "score": -9.501826478828365,
+      "confidence": 62.75091323941418,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,5) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:24:52.845529+00:00",
+      "bias": "Neutral",
+      "score": -9.714465099472818,
+      "confidence": 62.85723254973641,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:25:14.10524+00:00",
+      "bias": "Neutral",
+      "score": -7.593228596557908,
+      "confidence": 61.79661429827895,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,6) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:25:35.726214+00:00",
+      "bias": "Neutral",
+      "score": -7.125559014520381,
+      "confidence": 61.56277950726019,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,1) | conf 61,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:25:57.162517+00:00",
+      "bias": "Neutral",
+      "score": -7.957270255523576,
+      "confidence": 61.97863512776179,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,0) | conf 62,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:26:18.195437+00:00",
+      "bias": "Neutral",
+      "score": -8.125314525099377,
+      "confidence": 62.06265726254969,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,1) | conf 62,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:26:39.668093+00:00",
+      "bias": "Bearish",
+      "score": -14.92489640945827,
+      "confidence": 65.46244820472913,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-14,9) | conf 65,5 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:27:00.917485+00:00",
+      "bias": "Neutral",
+      "score": -8.71459844827875,
+      "confidence": 62.357299224139375,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,7) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:27:24.406095+00:00",
+      "bias": "Neutral",
+      "score": -6.339434801902673,
+      "confidence": 61.169717400951335,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-6,3) | conf 61,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:27:45.652706+00:00",
+      "bias": "Neutral",
+      "score": -7.284147035948966,
+      "confidence": 61.64207351797448,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,3) | conf 61,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:28:06.890116+00:00",
+      "bias": "Neutral",
+      "score": -6.284835591244445,
+      "confidence": 61.14241779562222,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-6,3) | conf 61,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:28:28.469058+00:00",
+      "bias": "Bearish",
+      "score": -10.473949409222515,
+      "confidence": 63.23697470461126,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,5) | conf 63,2 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:28:49.51968+00:00",
+      "bias": "Bearish",
+      "score": -10.224799124878402,
+      "confidence": 63.1123995624392,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,2) | conf 63,1 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:29:11.109859+00:00",
+      "bias": "Bearish",
+      "score": -15.578932625058814,
+      "confidence": 65.78946631252941,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-15,6) | conf 65,8 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:29:32.361138+00:00",
+      "bias": "Bearish",
+      "score": -15.053561621872461,
+      "confidence": 65.52678081093623,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-15,1) | conf 65,5 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:29:54.082115+00:00",
+      "bias": "Neutral",
+      "score": -6.487826668025041,
+      "confidence": 61.24391333401252,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-6,5) | conf 61,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:30:15.548563+00:00",
+      "bias": "Neutral",
+      "score": -6.525532770675277,
+      "confidence": 61.26276638533764,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-6,5) | conf 61,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:30:36.77791+00:00",
+      "bias": "Neutral",
+      "score": -5.09903600675344,
+      "confidence": 60.54951800337672,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-5,1) | conf 60,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:30:58.224209+00:00",
+      "bias": "Bearish",
+      "score": -10.922663687589967,
+      "confidence": 63.46133184379498,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,9) | conf 63,5 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:31:19.267443+00:00",
+      "bias": "Bearish",
+      "score": -14.520895133993712,
+      "confidence": 65.26044756699686,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-14,5) | conf 65,3 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:31:41.774133+00:00",
+      "bias": "Neutral",
+      "score": -7.735163544089581,
+      "confidence": 61.867581772044794,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,7) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:32:02.815306+00:00",
+      "bias": "Neutral",
+      "score": -8.72320025964179,
+      "confidence": 62.36160012982089,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,7) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:32:24.26318+00:00",
+      "bias": "Neutral",
+      "score": -7.43237411794343,
+      "confidence": 61.71618705897171,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,4) | conf 61,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:32:45.726892+00:00",
+      "bias": "Neutral",
+      "score": -7.532954439891973,
+      "confidence": 61.76647721994598,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,5) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:33:08.091574+00:00",
+      "bias": "Neutral",
+      "score": -7.539014701377032,
+      "confidence": 61.769507350688514,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,5) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:33:29.764469+00:00",
+      "bias": "Neutral",
+      "score": -9.1252688186145,
+      "confidence": 62.56263440930725,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,1) | conf 62,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:33:51.00037+00:00",
+      "bias": "Neutral",
+      "score": -9.459088979255734,
+      "confidence": 62.72954448962787,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,5) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:34:12.496524+00:00",
+      "bias": "Neutral",
+      "score": -8.375457841393654,
+      "confidence": 62.18772892069683,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,4) | conf 62,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:34:34.719475+00:00",
+      "bias": "Neutral",
+      "score": -7.803615427658705,
+      "confidence": 61.90180771382935,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,8) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:34:56.158051+00:00",
+      "bias": "Neutral",
+      "score": -7.520392229013345,
+      "confidence": 61.76019611450667,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,5) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:35:17.220867+00:00",
+      "bias": "Bearish",
+      "score": -10.435157950124692,
+      "confidence": 63.217578975062345,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,4) | conf 63,2 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:35:38.64255+00:00",
+      "bias": "Neutral",
+      "score": -7.669485449348536,
+      "confidence": 61.83474272467427,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,7) | conf 61,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:35:59.914011+00:00",
+      "bias": "Neutral",
+      "score": -9.322284151033298,
+      "confidence": 62.66114207551665,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,3) | conf 62,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:36:21.141888+00:00",
+      "bias": "Neutral",
+      "score": -6.666110745271719,
+      "confidence": 61.33305537263586,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-6,7) | conf 61,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:36:42.59997+00:00",
+      "bias": "Neutral",
+      "score": -8.787366292866592,
+      "confidence": 62.3936831464333,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-8,8) | conf 62,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:37:03.642527+00:00",
+      "bias": "Neutral",
+      "score": -7.855450683641111,
+      "confidence": 61.927725341820555,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-7,9) | conf 61,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:37:25.163233+00:00",
+      "bias": "Bearish",
+      "score": -12.291578654440272,
+      "confidence": 64.14578932722014,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,3) | conf 64,1 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:37:46.574658+00:00",
+      "bias": "Bearish",
+      "score": -12.561735791989138,
+      "confidence": 64.28086789599456,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,6) | conf 64,3 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:38:08.237537+00:00",
+      "bias": "Bearish",
+      "score": -11.589837550531637,
+      "confidence": 63.79491877526582,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,6) | conf 63,8 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:38:30.103198+00:00",
+      "bias": "Neutral",
+      "score": -9.744866764497116,
+      "confidence": 62.87243338224856,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:38:51.332743+00:00",
+      "bias": "Bearish",
+      "score": -11.507831648105187,
+      "confidence": 63.75391582405259,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,5) | conf 63,8 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:39:12.756156+00:00",
+      "bias": "Bearish",
+      "score": -10.201889658148183,
+      "confidence": 63.100944829074095,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,2) | conf 63,1 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:39:34.24088+00:00",
+      "bias": "Neutral",
+      "score": -9.928732623379943,
+      "confidence": 62.96436631168997,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,9) | conf 63,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:39:56.092549+00:00",
+      "bias": "Neutral",
+      "score": -9.724377085547616,
+      "confidence": 62.86218854277381,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,7) | conf 62,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:40:17.152485+00:00",
+      "bias": "Bearish",
+      "score": -10.391952680139926,
+      "confidence": 63.19597634006996,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,4) | conf 63,2 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:40:38.579496+00:00",
+      "bias": "Bearish",
+      "score": -10.69626954585729,
+      "confidence": 63.348134772928645,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,7) | conf 63,3 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:40:59.822228+00:00",
+      "bias": "Bearish",
+      "score": -10.00453968009362,
+      "confidence": 63.00226984004681,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,0) | conf 63,0 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:41:21.056893+00:00",
+      "bias": "Bearish",
+      "score": -11.697694020297343,
+      "confidence": 63.848847010148674,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,7) | conf 63,8 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:41:42.488683+00:00",
+      "bias": "Bearish",
+      "score": -11.744041060329312,
+      "confidence": 63.872020530164654,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,7) | conf 63,9 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:42:03.539744+00:00",
+      "bias": "Bearish",
+      "score": -10.60306530141896,
+      "confidence": 63.30153265070948,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,6) | conf 63,3 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:42:25.083842+00:00",
+      "bias": "Bearish",
+      "score": -11.794664270354524,
+      "confidence": 63.897332135177265,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,8) | conf 63,9 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:42:47.482434+00:00",
+      "bias": "Bearish",
+      "score": -11.755126380015344,
+      "confidence": 63.87756319000767,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,8) | conf 63,9 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:43:09.560328+00:00",
+      "bias": "Bearish",
+      "score": -10.337534913627255,
+      "confidence": 63.168767456813626,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,3) | conf 63,2 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:43:30.793479+00:00",
+      "bias": "Bearish",
+      "score": -10.416604560857355,
+      "confidence": 63.208302280428676,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,4) | conf 63,2 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:43:52.041708+00:00",
+      "bias": "Bearish",
+      "score": -10.600748782465578,
+      "confidence": 63.300374391232786,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,6) | conf 63,3 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:44:14.304694+00:00",
+      "bias": "Bearish",
+      "score": -10.764902976234017,
+      "confidence": 63.382451488117006,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,8) | conf 63,4 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:44:35.554128+00:00",
+      "bias": "Bearish",
+      "score": -10.627436553368963,
+      "confidence": 63.31371827668448,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,6) | conf 63,3 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:44:56.999019+00:00",
+      "bias": "Bearish",
+      "score": -11.478540259846108,
+      "confidence": 63.73927012992306,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,5) | conf 63,7 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:45:18.053281+00:00",
+      "bias": "Bearish",
+      "score": -10.956106275049278,
+      "confidence": 63.47805313752464,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,0) | conf 63,5 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:45:39.529633+00:00",
+      "bias": "Bearish",
+      "score": -10.13877152484487,
+      "confidence": 63.069385762422435,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,1) | conf 63,1 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:46:00.798363+00:00",
+      "bias": "Bearish",
+      "score": -10.203524833033576,
+      "confidence": 63.10176241651679,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,2) | conf 63,1 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:46:22.073822+00:00",
+      "bias": "Bearish",
+      "score": -10.645255026272979,
+      "confidence": 63.32262751313649,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,6) | conf 63,3 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:46:43.91991+00:00",
+      "bias": "Bearish",
+      "score": -10.871966301920398,
+      "confidence": 63.4359831509602,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,9) | conf 63,4 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:47:05.794188+00:00",
+      "bias": "Bearish",
+      "score": -12.029618874985683,
+      "confidence": 64.01480943749284,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,0) | conf 64,0 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:47:27.230781+00:00",
+      "bias": "Neutral",
+      "score": -9.621620987359869,
+      "confidence": 62.81081049367994,
+      "action": "Hold",
+      "reason": "Neutral SOL signal (-9,6) | conf 62,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:47:48.278845+00:00",
+      "bias": "Bearish",
+      "score": -10.070487444680253,
+      "confidence": 63.03524372234013,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,1) | conf 63,0 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:48:09.749664+00:00",
+      "bias": "Bearish",
+      "score": -10.902914472874613,
+      "confidence": 63.45145723643731,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-10,9) | conf 63,5 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:48:31.031665+00:00",
+      "bias": "Bearish",
+      "score": -11.702804495956828,
+      "confidence": 63.85140224797841,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,7) | conf 63,9 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:48:52.805838+00:00",
+      "bias": "Bearish",
+      "score": -11.88658956412002,
+      "confidence": 63.94329478206001,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,9) | conf 63,9 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:49:14.397332+00:00",
+      "bias": "Bearish",
+      "score": -11.628199909880879,
+      "confidence": 63.81409995494044,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,6) | conf 63,8 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:49:35.804317+00:00",
+      "bias": "Bearish",
+      "score": -12.016676605958533,
+      "confidence": 64.00833830297927,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,0) | conf 64,0 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:49:58.245935+00:00",
+      "bias": "Bearish",
+      "score": -11.015403216819921,
+      "confidence": 63.50770160840996,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,0) | conf 63,5 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:50:19.291476+00:00",
+      "bias": "Bearish",
+      "score": -12.115867666544123,
+      "confidence": 64.05793383327206,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,1) | conf 64,1 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:50:40.746504+00:00",
+      "bias": "Bearish",
+      "score": -12.262146360897583,
+      "confidence": 64.1310731804488,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,3) | conf 64,1 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:51:01.796964+00:00",
+      "bias": "Bearish",
+      "score": -11.378953727791268,
+      "confidence": 63.689476863895635,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,4) | conf 63,7 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:51:23.045926+00:00",
+      "bias": "Bearish",
+      "score": -10.971456696458514,
+      "confidence": 63.48572834822926,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,0) | conf 63,5 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:51:44.295457+00:00",
+      "bias": "Bearish",
+      "score": -11.96023652165978,
+      "confidence": 63.98011826082989,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,0) | conf 64,0 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:52:05.994623+00:00",
+      "bias": "Bearish",
+      "score": -11.814421325202659,
+      "confidence": 63.90721066260133,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,8) | conf 63,9 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:52:27.427466+00:00",
+      "bias": "Bearish",
+      "score": -11.279034372388114,
+      "confidence": 63.639517186194055,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-11,3) | conf 63,6 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:52:49.56279+00:00",
+      "bias": "Bearish",
+      "score": -12.400903421214633,
+      "confidence": 64.20045171060733,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,4) | conf 64,2 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:53:11.472519+00:00",
+      "bias": "Bearish",
+      "score": -12.825107865119644,
+      "confidence": 64.41255393255983,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,8) | conf 64,4 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:53:32.516832+00:00",
+      "bias": "Bearish",
+      "score": -12.714095511487015,
+      "confidence": 64.35704775574351,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,7) | conf 64,4 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:53:53.921068+00:00",
+      "bias": "Bearish",
+      "score": -12.561833731752872,
+      "confidence": 64.28091686587643,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,6) | conf 64,3 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:54:15.15137+00:00",
+      "bias": "Bearish",
+      "score": -12.765459633320699,
+      "confidence": 64.38272981666034,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,8) | conf 64,4 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:54:36.382832+00:00",
+      "bias": "Bearish",
+      "score": -12.84022396430191,
+      "confidence": 64.42011198215096,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,8) | conf 64,4 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:54:56.641215+00:00",
+      "bias": "Bearish",
+      "score": -13.249251028500435,
+      "confidence": 64.62462551425023,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-13,2) | conf 64,6 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:55:18.394238+00:00",
+      "bias": "Bearish",
+      "score": -13.231006341486477,
+      "confidence": 64.61550317074324,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-13,2) | conf 64,6 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:55:39.823696+00:00",
+      "bias": "Bearish",
+      "score": -13.148793497461204,
+      "confidence": 64.5743967487306,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-13,1) | conf 64,6 | template: Bear put spread."
+    },
+    {
+      "timestamp": "2026-03-10T17:56:00.888466+00:00",
+      "bias": "Bearish",
+      "score": -12.534240356643739,
+      "confidence": 64.26712017832187,
+      "action": "Hold",
+      "reason": "Bearish SOL signal (-12,5) | conf 64,3 | template: Bear put spread."
+    }
+  ],
+  "spotHistory": [
+    {
+      "time": "2026-03-10T16:41:12.023121+00:00",
+      "spot": 88.33
+    },
+    {
+      "time": "2026-03-10T16:41:33.040528+00:00",
+      "spot": 88.3
+    },
+    {
+      "time": "2026-03-10T16:41:55.392843+00:00",
+      "spot": 88.41
+    },
+    {
+      "time": "2026-03-10T16:42:16.58044+00:00",
+      "spot": 88.39
+    },
+    {
+      "time": "2026-03-10T16:42:38.021255+00:00",
+      "spot": 88.42
+    },
+    {
+      "time": "2026-03-10T16:42:59.214385+00:00",
+      "spot": 88.41
+    },
+    {
+      "time": "2026-03-10T16:43:20.634236+00:00",
+      "spot": 88.45
+    },
+    {
+      "time": "2026-03-10T16:43:42.260769+00:00",
+      "spot": 88.48
+    },
+    {
+      "time": "2026-03-10T16:44:03.468989+00:00",
+      "spot": 88.54
+    },
+    {
+      "time": "2026-03-10T16:44:24.929462+00:00",
+      "spot": 88.56
+    },
+    {
+      "time": "2026-03-10T16:44:46.137671+00:00",
+      "spot": 88.57
+    },
+    {
+      "time": "2026-03-10T16:45:07.569229+00:00",
+      "spot": 88.54
+    },
+    {
+      "time": "2026-03-10T16:45:29.290676+00:00",
+      "spot": 88.5
+    },
+    {
+      "time": "2026-03-10T16:45:50.709636+00:00",
+      "spot": 88.39
+    },
+    {
+      "time": "2026-03-10T16:46:14.246606+00:00",
+      "spot": 88.31
+    },
+    {
+      "time": "2026-03-10T16:46:35.479037+00:00",
+      "spot": 88.36
+    },
+    {
+      "time": "2026-03-10T16:46:57.084607+00:00",
+      "spot": 88.36
+    },
+    {
+      "time": "2026-03-10T16:47:18.285956+00:00",
+      "spot": 88.27
+    },
+    {
+      "time": "2026-03-10T16:47:39.508829+00:00",
+      "spot": 88.27
+    },
+    {
+      "time": "2026-03-10T16:48:00.722355+00:00",
+      "spot": 88.29
+    },
+    {
+      "time": "2026-03-10T16:48:21.941378+00:00",
+      "spot": 88.32
+    },
+    {
+      "time": "2026-03-10T16:48:43.328117+00:00",
+      "spot": 88.26
+    },
+    {
+      "time": "2026-03-10T16:49:04.555809+00:00",
+      "spot": 88.29
+    },
+    {
+      "time": "2026-03-10T16:49:26.300728+00:00",
+      "spot": 88.38
+    },
+    {
+      "time": "2026-03-10T16:49:47.50959+00:00",
+      "spot": 88.32
+    },
+    {
+      "time": "2026-03-10T16:50:08.890001+00:00",
+      "spot": 88.31
+    },
+    {
+      "time": "2026-03-10T16:50:30.094131+00:00",
+      "spot": 88.26
+    },
+    {
+      "time": "2026-03-10T16:50:51.678218+00:00",
+      "spot": 88.34
+    },
+    {
+      "time": "2026-03-10T16:51:13.943563+00:00",
+      "spot": 88.43
+    },
+    {
+      "time": "2026-03-10T16:51:34.976206+00:00",
+      "spot": 88.5
+    },
+    {
+      "time": "2026-03-10T16:51:56.433372+00:00",
+      "spot": 88.52
+    },
+    {
+      "time": "2026-03-10T16:52:17.65538+00:00",
+      "spot": 88.51
+    },
+    {
+      "time": "2026-03-10T16:52:39.790702+00:00",
+      "spot": 88.49
+    },
+    {
+      "time": "2026-03-10T16:53:02.376966+00:00",
+      "spot": 88.53
+    },
+    {
+      "time": "2026-03-10T16:53:25.047199+00:00",
+      "spot": 88.59
+    },
+    {
+      "time": "2026-03-10T16:53:45.258435+00:00",
+      "spot": 88.61
+    },
+    {
+      "time": "2026-03-10T16:54:07.146044+00:00",
+      "spot": 88.57
+    },
+    {
+      "time": "2026-03-10T16:54:29.807739+00:00",
+      "spot": 88.62
+    },
+    {
+      "time": "2026-03-10T16:54:50.840258+00:00",
+      "spot": 88.61
+    },
+    {
+      "time": "2026-03-10T16:55:13.111548+00:00",
+      "spot": 88.61
+    },
+    {
+      "time": "2026-03-10T16:55:34.346677+00:00",
+      "spot": 88.5
+    },
+    {
+      "time": "2026-03-10T16:55:55.572328+00:00",
+      "spot": 88.49
+    },
+    {
+      "time": "2026-03-10T16:56:16.989104+00:00",
+      "spot": 88.47
+    },
+    {
+      "time": "2026-03-10T16:56:38.206878+00:00",
+      "spot": 88.38
+    },
+    {
+      "time": "2026-03-10T16:56:59.607981+00:00",
+      "spot": 88.39
+    },
+    {
+      "time": "2026-03-10T16:57:20.618849+00:00",
+      "spot": 88.4
+    },
+    {
+      "time": "2026-03-10T16:57:42.012903+00:00",
+      "spot": 88.4
+    },
+    {
+      "time": "2026-03-10T16:58:03.213328+00:00",
+      "spot": 88.35
+    },
+    {
+      "time": "2026-03-10T16:58:24.614685+00:00",
+      "spot": 88.39
+    },
+    {
+      "time": "2026-03-10T16:58:46.042195+00:00",
+      "spot": 88.38
+    },
+    {
+      "time": "2026-03-10T16:59:07.076533+00:00",
+      "spot": 88.34
+    },
+    {
+      "time": "2026-03-10T16:59:28.551535+00:00",
+      "spot": 88.34
+    },
+    {
+      "time": "2026-03-10T16:59:49.769651+00:00",
+      "spot": 88.36
+    },
+    {
+      "time": "2026-03-10T17:00:11.006122+00:00",
+      "spot": 88.34
+    },
+    {
+      "time": "2026-03-10T17:00:32.244538+00:00",
+      "spot": 88.33
+    },
+    {
+      "time": "2026-03-10T17:00:53.481524+00:00",
+      "spot": 88.32
+    },
+    {
+      "time": "2026-03-10T17:01:14.913033+00:00",
+      "spot": 88.36
+    },
+    {
+      "time": "2026-03-10T17:01:35.950105+00:00",
+      "spot": 88.37
+    },
+    {
+      "time": "2026-03-10T17:01:58.326846+00:00",
+      "spot": 88.42
+    },
+    {
+      "time": "2026-03-10T17:02:20.165075+00:00",
+      "spot": 88.36
+    },
+    {
+      "time": "2026-03-10T17:02:42.017219+00:00",
+      "spot": 88.38
+    },
+    {
+      "time": "2026-03-10T17:03:03.255595+00:00",
+      "spot": 88.39
+    },
+    {
+      "time": "2026-03-10T17:03:24.498729+00:00",
+      "spot": 88.39
+    },
+    {
+      "time": "2026-03-10T17:03:46.895918+00:00",
+      "spot": 88.31
+    },
+    {
+      "time": "2026-03-10T17:04:07.94042+00:00",
+      "spot": 88.37
+    },
+    {
+      "time": "2026-03-10T17:04:29.38784+00:00",
+      "spot": 88.34
+    },
+    {
+      "time": "2026-03-10T17:04:50.426714+00:00",
+      "spot": 88.32
+    },
+    {
+      "time": "2026-03-10T17:05:12.78651+00:00",
+      "spot": 88.37
+    },
+    {
+      "time": "2026-03-10T17:05:34.431491+00:00",
+      "spot": 88.42
+    },
+    {
+      "time": "2026-03-10T17:05:55.904314+00:00",
+      "spot": 88.5
+    },
+    {
+      "time": "2026-03-10T17:06:17.135354+00:00",
+      "spot": 88.54
+    },
+    {
+      "time": "2026-03-10T17:06:38.381159+00:00",
+      "spot": 88.6
+    },
+    {
+      "time": "2026-03-10T17:06:59.840365+00:00",
+      "spot": 88.68
+    },
+    {
+      "time": "2026-03-10T17:07:20.888653+00:00",
+      "spot": 88.65
+    },
+    {
+      "time": "2026-03-10T17:07:43.068109+00:00",
+      "spot": 88.54
+    },
+    {
+      "time": "2026-03-10T17:08:04.299232+00:00",
+      "spot": 88.49
+    },
+    {
+      "time": "2026-03-10T17:08:25.526011+00:00",
+      "spot": 88.44
+    },
+    {
+      "time": "2026-03-10T17:08:46.968544+00:00",
+      "spot": 88.52
+    },
+    {
+      "time": "2026-03-10T17:09:08.892329+00:00",
+      "spot": 88.57
+    },
+    {
+      "time": "2026-03-10T17:09:30.317119+00:00",
+      "spot": 88.49
+    },
+    {
+      "time": "2026-03-10T17:09:51.351801+00:00",
+      "spot": 88.53
+    },
+    {
+      "time": "2026-03-10T17:10:12.776271+00:00",
+      "spot": 88.53
+    },
+    {
+      "time": "2026-03-10T17:10:34.006322+00:00",
+      "spot": 88.46
+    },
+    {
+      "time": "2026-03-10T17:10:55.265871+00:00",
+      "spot": 88.52
+    },
+    {
+      "time": "2026-03-10T17:11:17.397722+00:00",
+      "spot": 88.53
+    },
+    {
+      "time": "2026-03-10T17:11:38.647351+00:00",
+      "spot": 88.46
+    },
+    {
+      "time": "2026-03-10T17:12:01.195463+00:00",
+      "spot": 88.45
+    },
+    {
+      "time": "2026-03-10T17:12:22.247595+00:00",
+      "spot": 88.42
+    },
+    {
+      "time": "2026-03-10T17:12:43.676042+00:00",
+      "spot": 88.44
+    },
+    {
+      "time": "2026-03-10T17:13:04.911246+00:00",
+      "spot": 88.41
+    },
+    {
+      "time": "2026-03-10T17:13:26.339267+00:00",
+      "spot": 88.38
+    },
+    {
+      "time": "2026-03-10T17:13:47.589098+00:00",
+      "spot": 88.37
+    },
+    {
+      "time": "2026-03-10T17:14:09.28919+00:00",
+      "spot": 88.34
+    },
+    {
+      "time": "2026-03-10T17:14:31.158954+00:00",
+      "spot": 88.39
+    },
+    {
+      "time": "2026-03-10T17:14:52.212466+00:00",
+      "spot": 88.36
+    },
+    {
+      "time": "2026-03-10T17:15:13.783088+00:00",
+      "spot": 88.37
+    },
+    {
+      "time": "2026-03-10T17:15:35.032179+00:00",
+      "spot": 88.38
+    },
+    {
+      "time": "2026-03-10T17:15:56.798491+00:00",
+      "spot": 88.44
+    },
+    {
+      "time": "2026-03-10T17:16:18.034913+00:00",
+      "spot": 88.54
+    },
+    {
+      "time": "2026-03-10T17:16:39.268409+00:00",
+      "spot": 88.44
+    },
+    {
+      "time": "2026-03-10T17:17:00.70627+00:00",
+      "spot": 88.46
+    },
+    {
+      "time": "2026-03-10T17:17:22.528639+00:00",
+      "spot": 88.38
+    },
+    {
+      "time": "2026-03-10T17:17:44.595076+00:00",
+      "spot": 88.43
+    },
+    {
+      "time": "2026-03-10T17:18:05.847883+00:00",
+      "spot": 88.54
+    },
+    {
+      "time": "2026-03-10T17:18:27.288377+00:00",
+      "spot": 88.51
+    },
+    {
+      "time": "2026-03-10T17:18:48.543385+00:00",
+      "spot": 88.54
+    },
+    {
+      "time": "2026-03-10T17:19:09.909355+00:00",
+      "spot": 88.49
+    },
+    {
+      "time": "2026-03-10T17:19:31.481634+00:00",
+      "spot": 88.44
+    },
+    {
+      "time": "2026-03-10T17:19:52.536958+00:00",
+      "spot": 88.44
+    },
+    {
+      "time": "2026-03-10T17:20:14.151345+00:00",
+      "spot": 88.4
+    },
+    {
+      "time": "2026-03-10T17:20:35.199552+00:00",
+      "spot": 88.4
+    },
+    {
+      "time": "2026-03-10T17:20:57.283041+00:00",
+      "spot": 88.46
+    },
+    {
+      "time": "2026-03-10T17:21:18.506407+00:00",
+      "spot": 88.44
+    },
+    {
+      "time": "2026-03-10T17:21:39.757662+00:00",
+      "spot": 88.37
+    },
+    {
+      "time": "2026-03-10T17:22:01.307172+00:00",
+      "spot": 88.45
+    },
+    {
+      "time": "2026-03-10T17:22:22.794514+00:00",
+      "spot": 88.45
+    },
+    {
+      "time": "2026-03-10T17:22:44.810804+00:00",
+      "spot": 88.46
+    },
+    {
+      "time": "2026-03-10T17:23:05.85931+00:00",
+      "spot": 88.47
+    },
+    {
+      "time": "2026-03-10T17:23:27.299943+00:00",
+      "spot": 88.48
+    },
+    {
+      "time": "2026-03-10T17:23:48.7293+00:00",
+      "spot": 88.49
+    },
+    {
+      "time": "2026-03-10T17:24:10.186098+00:00",
+      "spot": 88.52
+    },
+    {
+      "time": "2026-03-10T17:24:31.62547+00:00",
+      "spot": 88.58
+    },
+    {
+      "time": "2026-03-10T17:24:52.670469+00:00",
+      "spot": 88.59
+    },
+    {
+      "time": "2026-03-10T17:25:14.104446+00:00",
+      "spot": 88.48
+    },
+    {
+      "time": "2026-03-10T17:25:35.521941+00:00",
+      "spot": 88.47
+    },
+    {
+      "time": "2026-03-10T17:25:56.965087+00:00",
+      "spot": 88.4
+    },
+    {
+      "time": "2026-03-10T17:26:18.193663+00:00",
+      "spot": 88.3
+    },
+    {
+      "time": "2026-03-10T17:26:39.46442+00:00",
+      "spot": 88.16
+    },
+    {
+      "time": "2026-03-10T17:27:00.915554+00:00",
+      "spot": 88.17
+    },
+    {
+      "time": "2026-03-10T17:27:24.20592+00:00",
+      "spot": 88.18
+    },
+    {
+      "time": "2026-03-10T17:27:45.651617+00:00",
+      "spot": 88.23
+    },
+    {
+      "time": "2026-03-10T17:28:06.705004+00:00",
+      "spot": 88.26
+    },
+    {
+      "time": "2026-03-10T17:28:28.260549+00:00",
+      "spot": 88.25
+    },
+    {
+      "time": "2026-03-10T17:28:49.518724+00:00",
+      "spot": 88.21
+    },
+    {
+      "time": "2026-03-10T17:29:10.92587+00:00",
+      "spot": 88.19
+    },
+    {
+      "time": "2026-03-10T17:29:32.360655+00:00",
+      "spot": 88.18
+    },
+    {
+      "time": "2026-03-10T17:29:53.899799+00:00",
+      "spot": 88.22
+    },
+    {
+      "time": "2026-03-10T17:30:15.547536+00:00",
+      "spot": 88.22
+    },
+    {
+      "time": "2026-03-10T17:30:36.59987+00:00",
+      "spot": 88.28
+    },
+    {
+      "time": "2026-03-10T17:30:58.030262+00:00",
+      "spot": 88.24
+    },
+    {
+      "time": "2026-03-10T17:31:19.266254+00:00",
+      "spot": 88.2
+    },
+    {
+      "time": "2026-03-10T17:31:41.598913+00:00",
+      "spot": 88.25
+    },
+    {
+      "time": "2026-03-10T17:32:02.813574+00:00",
+      "spot": 88.35
+    },
+    {
+      "time": "2026-03-10T17:32:24.068026+00:00",
+      "spot": 88.45
+    },
+    {
+      "time": "2026-03-10T17:32:45.725599+00:00",
+      "spot": 88.42
+    },
+    {
+      "time": "2026-03-10T17:33:07.913214+00:00",
+      "spot": 88.48
+    },
+    {
+      "time": "2026-03-10T17:33:29.762834+00:00",
+      "spot": 88.5
+    },
+    {
+      "time": "2026-03-10T17:33:50.811966+00:00",
+      "spot": 88.38
+    },
+    {
+      "time": "2026-03-10T17:34:12.305686+00:00",
+      "spot": 88.35
+    },
+    {
+      "time": "2026-03-10T17:34:34.719069+00:00",
+      "spot": 88.32
+    },
+    {
+      "time": "2026-03-10T17:34:55.975071+00:00",
+      "spot": 88.3
+    },
+    {
+      "time": "2026-03-10T17:35:17.219885+00:00",
+      "spot": 88.18
+    },
+    {
+      "time": "2026-03-10T17:35:38.462045+00:00",
+      "spot": 88.11
+    },
+    {
+      "time": "2026-03-10T17:35:59.913123+00:00",
+      "spot": 88.17
+    },
+    {
+      "time": "2026-03-10T17:36:20.953486+00:00",
+      "spot": 88.22
+    },
+    {
+      "time": "2026-03-10T17:36:42.408215+00:00",
+      "spot": 88.15
+    },
+    {
+      "time": "2026-03-10T17:37:03.641107+00:00",
+      "spot": 88.02
+    },
+    {
+      "time": "2026-03-10T17:37:24.966279+00:00",
+      "spot": 87.91
+    },
+    {
+      "time": "2026-03-10T17:37:46.573118+00:00",
+      "spot": 87.91
+    },
+    {
+      "time": "2026-03-10T17:38:08.039881+00:00",
+      "spot": 87.74
+    },
+    {
+      "time": "2026-03-10T17:38:30.1019+00:00",
+      "spot": 87.64
+    },
+    {
+      "time": "2026-03-10T17:38:51.145174+00:00",
+      "spot": 87.77
+    },
+    {
+      "time": "2026-03-10T17:39:12.566258+00:00",
+      "spot": 87.73
+    },
+    {
+      "time": "2026-03-10T17:39:34.240101+00:00",
+      "spot": 87.69
+    },
+    {
+      "time": "2026-03-10T17:39:55.916854+00:00",
+      "spot": 87.76
+    },
+    {
+      "time": "2026-03-10T17:40:17.151487+00:00",
+      "spot": 87.78
+    },
+    {
+      "time": "2026-03-10T17:40:38.395782+00:00",
+      "spot": 87.68
+    },
+    {
+      "time": "2026-03-10T17:40:59.821633+00:00",
+      "spot": 87.65
+    },
+    {
+      "time": "2026-03-10T17:41:20.859437+00:00",
+      "spot": 87.79
+    },
+    {
+      "time": "2026-03-10T17:41:42.295844+00:00",
+      "spot": 87.84
+    },
+    {
+      "time": "2026-03-10T17:42:03.538396+00:00",
+      "spot": 87.79
+    },
+    {
+      "time": "2026-03-10T17:42:24.89126+00:00",
+      "spot": 87.8
+    },
+    {
+      "time": "2026-03-10T17:42:47.48081+00:00",
+      "spot": 87.82
+    },
+    {
+      "time": "2026-03-10T17:43:09.373841+00:00",
+      "spot": 87.86
+    },
+    {
+      "time": "2026-03-10T17:43:30.792309+00:00",
+      "spot": 87.88
+    },
+    {
+      "time": "2026-03-10T17:43:51.842836+00:00",
+      "spot": 87.78
+    },
+    {
+      "time": "2026-03-10T17:44:14.303443+00:00",
+      "spot": 87.79
+    },
+    {
+      "time": "2026-03-10T17:44:35.361461+00:00",
+      "spot": 87.74
+    },
+    {
+      "time": "2026-03-10T17:44:56.80826+00:00",
+      "spot": 87.82
+    },
+    {
+      "time": "2026-03-10T17:45:18.052461+00:00",
+      "spot": 87.78
+    },
+    {
+      "time": "2026-03-10T17:45:39.330177+00:00",
+      "spot": 87.69
+    },
+    {
+      "time": "2026-03-10T17:46:00.797355+00:00",
+      "spot": 87.69
+    },
+    {
+      "time": "2026-03-10T17:46:21.841748+00:00",
+      "spot": 87.74
+    },
+    {
+      "time": "2026-03-10T17:46:43.752678+00:00",
+      "spot": 87.7
+    },
+    {
+      "time": "2026-03-10T17:47:05.580966+00:00",
+      "spot": 87.81
+    },
+    {
+      "time": "2026-03-10T17:47:27.038233+00:00",
+      "spot": 87.77
+    },
+    {
+      "time": "2026-03-10T17:47:48.277845+00:00",
+      "spot": 87.84
+    },
+    {
+      "time": "2026-03-10T17:48:09.553102+00:00",
+      "spot": 87.83
+    },
+    {
+      "time": "2026-03-10T17:48:31.030755+00:00",
+      "spot": 87.86
+    },
+    {
+      "time": "2026-03-10T17:48:52.628349+00:00",
+      "spot": 87.99
+    },
+    {
+      "time": "2026-03-10T17:49:14.396257+00:00",
+      "spot": 88.04
+    },
+    {
+      "time": "2026-03-10T17:49:35.445879+00:00",
+      "spot": 87.98
+    },
+    {
+      "time": "2026-03-10T17:49:57.592929+00:00",
+      "spot": 87.9
+    },
+    {
+      "time": "2026-03-10T17:50:19.289048+00:00",
+      "spot": 87.86
+    },
+    {
+      "time": "2026-03-10T17:50:40.558321+00:00",
+      "spot": 87.94
+    },
+    {
+      "time": "2026-03-10T17:51:01.796158+00:00",
+      "spot": 87.94
+    },
+    {
+      "time": "2026-03-10T17:51:22.86491+00:00",
+      "spot": 87.96
+    },
+    {
+      "time": "2026-03-10T17:51:44.294681+00:00",
+      "spot": 88.01
+    },
+    {
+      "time": "2026-03-10T17:52:05.335007+00:00",
+      "spot": 87.97
+    },
+    {
+      "time": "2026-03-10T17:52:27.225363+00:00",
+      "spot": 87.93
+    },
+    {
+      "time": "2026-03-10T17:52:49.561876+00:00",
+      "spot": 88
+    },
+    {
+      "time": "2026-03-10T17:53:10.825091+00:00",
+      "spot": 87.99
+    },
+    {
+      "time": "2026-03-10T17:53:32.516005+00:00",
+      "spot": 88.04
+    },
+    {
+      "time": "2026-03-10T17:53:53.731492+00:00",
+      "spot": 88.1
+    },
+    {
+      "time": "2026-03-10T17:54:15.151017+00:00",
+      "spot": 88.09
+    },
+    {
+      "time": "2026-03-10T17:54:36.183429+00:00",
+      "spot": 88.11
+    },
+    {
+      "time": "2026-03-10T17:54:56.457292+00:00",
+      "spot": 88.11
+    },
+    {
+      "time": "2026-03-10T17:55:18.393467+00:00",
+      "spot": 88.04
+    },
+    {
+      "time": "2026-03-10T17:55:39.633623+00:00",
+      "spot": 87.92
+    },
+    {
+      "time": "2026-03-10T17:56:00.888159+00:00",
+      "spot": 87.96
+    }
+  ],
+  "weights": {
+    "flow_imbalance": 1.2,
+    "skew_signal": 0.92,
+    "vix_proxy": 0.78,
+    "futures_momentum": 1.05,
+    "orderbook_pressure": 0.88,
+    "resting_pressure": 0.72,
+    "vol_regime": 0.66,
+    "term_slope": 0.58
+  },
+  "audits": [],
+  "peakEquity": 1000,
+  "maxDrawdown": 0
+}

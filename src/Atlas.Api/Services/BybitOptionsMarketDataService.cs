@@ -3,6 +3,8 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Text.Json;
 using Atlas.Api.Models;
+using Atlas.Core.Common;
+using Atlas.Core.Models;
 
 namespace Atlas.Api.Services;
 
@@ -16,7 +18,7 @@ public interface IOptionsMarketDataService
 
 public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataService
 {
-    private static readonly IReadOnlyList<string> Assets = ["BTC", "ETH", "SOL"];
+    private static readonly IReadOnlyList<string> Assets = ["BTC", "ETH", "SOL", "WTI"];
     private static readonly TimeSpan FreshCacheTtl = TimeSpan.FromSeconds(6);
     private static readonly TimeSpan StaleCacheTtl = TimeSpan.FromMinutes(3);
     private static readonly TimeSpan SourceStaleAfter = TimeSpan.FromSeconds(18);
@@ -54,6 +56,13 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
         DateTimeOffset? LastFailureAt,
         string? LastError,
         DateTimeOffset SnapshotAt);
+
+    private sealed record CleaningStats(
+        int InputCount,
+        int OutputCount,
+        int DroppedInvalid,
+        int DroppedOutlier,
+        int Deduplicated);
 
     public ResilientOptionsMarketDataService(
         IHttpClientFactory httpClientFactory,
@@ -179,16 +188,34 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
 
     private async Task<IReadOnlyList<SourceFetchResult>> FetchFromSourcesAsync(string asset, CancellationToken ct)
     {
+        if (asset == "WTI")
+            return [GenerateSyntheticWtiResult(asset)];
+
         var tasks = new List<Task<SourceFetchResult>>
         {
             FetchBybitAsync(asset, ct)
         };
 
-        // Deribit has liquid BTC/ETH books; SOL fallback remains Bybit/cache.
+        // Deribit has liquid BTC/ETH books; SOL fallback remains Bybit/cache; WTI is synthetic.
         if (asset is "BTC" or "ETH")
             tasks.Add(FetchDeribitAsync(asset, ct));
 
         return await Task.WhenAll(tasks);
+    }
+
+    private SourceFetchResult GenerateSyntheticWtiResult(string asset)
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            var now = DateTimeOffset.UtcNow;
+            var quotes = BuildSyntheticWtiChain(now);
+            return FinalizeSourceResult("SYNTHETIC", asset, quotes, now, sw.ElapsedMilliseconds, null);
+        }
+        catch (Exception ex)
+        {
+            return FinalizeSourceResult("SYNTHETIC", asset, [], DateTimeOffset.UtcNow, sw.ElapsedMilliseconds, ex.Message);
+        }
     }
 
     private async Task<SourceFetchResult> FetchBybitAsync(string asset, CancellationToken ct)
@@ -368,19 +395,28 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
         long latencyMs,
         string? error)
     {
+        var (cleanedQuotes, cleaning) = CleanQuotes(asset, quotes, sourceTimestamp);
         bool isStale = DateTimeOffset.UtcNow - sourceTimestamp > SourceStaleAfter;
-        bool healthy = string.IsNullOrWhiteSpace(error) && quotes.Count > 0;
+        bool healthy = string.IsNullOrWhiteSpace(error) && cleanedQuotes.Count > 0;
 
-        UpdateSourceHealth(source, asset, healthy, isStale, latencyMs, quotes.Count, error);
+        UpdateSourceHealth(source, asset, healthy, isStale, latencyMs, cleanedQuotes.Count, error);
 
         if (!healthy)
             _monitoring.IncrementCounter("marketdata.source.error");
+
+        if (cleaning.DroppedInvalid > 0 || cleaning.DroppedOutlier > 0 || cleaning.Deduplicated > 0)
+        {
+            _monitoring.IncrementCounter("marketdata.cleaning.events");
+            _monitoring.RecordGauge("marketdata.cleaning.dropped.invalid", cleaning.DroppedInvalid);
+            _monitoring.RecordGauge("marketdata.cleaning.dropped.outlier", cleaning.DroppedOutlier);
+            _monitoring.RecordGauge("marketdata.cleaning.deduplicated", cleaning.Deduplicated);
+        }
 
         return new SourceFetchResult(
             Source: source,
             Asset: asset,
             Quotes: healthy
-                ? quotes.Select(q => q with { IsStale = isStale }).ToList()
+                ? cleanedQuotes.Select(q => q with { IsStale = isStale }).ToList()
                 : [],
             SourceTimestamp: sourceTimestamp,
             LatencyMs: latencyMs,
@@ -429,6 +465,296 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
         if (!Assets.Contains(normalized))
             throw new ArgumentException($"Unsupported asset '{asset}'. Supported assets: {string.Join(", ", Assets)}");
         return normalized;
+    }
+
+    private static IReadOnlyList<LiveOptionQuote> BuildSyntheticWtiChain(DateTimeOffset now)
+    {
+        // Synthetic fallback to keep analytics/trading flows alive for WTI when venue options are unavailable.
+        double hours = now.ToUnixTimeSeconds() / 3600.0;
+        double spot = 78.0 + 2.4 * Math.Sin(hours * 0.11);
+        double rate = 0.03;
+
+        int[] expiryDays = [7, 14, 30, 60, 90];
+        double[] moneyness = [0.75, 0.80, 0.85, 0.90, 0.95, 1.00, 1.05, 1.10, 1.15, 1.20, 1.25];
+        var quotes = new List<LiveOptionQuote>(expiryDays.Length * moneyness.Length * 2);
+
+        foreach (int days in expiryDays)
+        {
+            var expiry = new DateTimeOffset(now.UtcDateTime.Date.AddDays(days).AddHours(14), TimeSpan.Zero);
+            double t = Math.Max((expiry - now).TotalDays / 365.25, 1.0 / 365.25);
+            double termBump = 0.02 * Math.Sqrt(days / 30.0);
+
+            foreach (double m in moneyness)
+            {
+                double strike = Math.Round(spot * m, 2, MidpointRounding.AwayFromZero);
+                double skewBump = 0.07 * (1.0 - m);
+                double iv = Math.Clamp(0.34 + termBump + skewBump, 0.18, 0.75);
+
+                quotes.Add(BuildSyntheticWtiQuote("WTI", spot, strike, expiry, t, iv, rate, OptionRight.Call, now));
+                quotes.Add(BuildSyntheticWtiQuote("WTI", spot, strike, expiry, t, iv, rate, OptionRight.Put, now));
+            }
+        }
+
+        return quotes;
+    }
+
+    private static LiveOptionQuote BuildSyntheticWtiQuote(
+        string asset,
+        double spot,
+        double strike,
+        DateTimeOffset expiry,
+        double t,
+        double iv,
+        double rate,
+        OptionRight right,
+        DateTimeOffset now)
+    {
+        OptionType optionType = right == OptionRight.Call ? OptionType.Call : OptionType.Put;
+        double mark = Math.Max(0.01, BlackScholes.Price(spot, strike, iv, t, rate, optionType));
+        double spread = Math.Max(0.01, mark * 0.03);
+        double bid = Math.Max(0.0, mark - spread / 2.0);
+        double ask = mark + spread / 2.0;
+        double mid = (bid + ask) / 2.0;
+
+        double m = strike / spot;
+        double oiBase = 1500.0 * Math.Exp(-Math.Abs(m - 1.0) * 5.5) * Math.Exp(-t * 0.85);
+        double openInterest = Math.Max(12.0, oiBase);
+        double volume24h = Math.Max(3.0, openInterest * 0.06);
+        double turnover24h = volume24h * mid * 100.0;
+
+        return new LiveOptionQuote(
+            Symbol: $"{asset}-{expiry.UtcDateTime.ToString("ddMMMyy", CultureInfo.InvariantCulture).ToUpperInvariant()}-{strike.ToString("0.##", CultureInfo.InvariantCulture)}-{(right == OptionRight.Call ? "C" : "P")}-USD",
+            Asset: asset,
+            Expiry: expiry,
+            Strike: strike,
+            Right: right,
+            Bid: bid,
+            Ask: ask,
+            Mark: mark,
+            Mid: mid,
+            MarkIv: iv,
+            Delta: BlackScholes.Delta(spot, strike, rate, iv, t, optionType),
+            Gamma: BlackScholes.Gamma(spot, strike, rate, iv, t),
+            Vega: BlackScholes.Vega(spot, strike, rate, iv, t),
+            Theta: BlackScholes.Theta(spot, strike, rate, iv, t, optionType),
+            OpenInterest: openInterest,
+            Volume24h: volume24h,
+            Turnover24h: turnover24h,
+            UnderlyingPrice: spot,
+            Timestamp: now,
+            Venue: "SYNTH",
+            SourceTimestamp: now,
+            IsStale: false);
+    }
+
+    private (IReadOnlyList<LiveOptionQuote> Quotes, CleaningStats Stats) CleanQuotes(
+        string asset,
+        IReadOnlyList<LiveOptionQuote> quotes,
+        DateTimeOffset sourceTimestamp)
+    {
+        if (quotes.Count == 0)
+            return ([], new CleaningStats(0, 0, 0, 0, 0));
+
+        int droppedInvalid = 0;
+        int droppedOutlier = 0;
+        var normalizedAsset = asset.ToUpperInvariant();
+        var now = DateTimeOffset.UtcNow;
+        var sanitized = new List<LiveOptionQuote>(quotes.Count);
+
+        foreach (var quote in quotes)
+        {
+            if (!quote.Asset.Equals(normalizedAsset, StringComparison.OrdinalIgnoreCase))
+            {
+                droppedInvalid++;
+                continue;
+            }
+
+            if (!double.IsFinite(quote.Strike) || quote.Strike <= 0 || quote.Expiry == default)
+            {
+                droppedInvalid++;
+                continue;
+            }
+
+            if (quote.Expiry < now.AddDays(-2) || quote.Expiry > now.AddYears(3))
+            {
+                droppedInvalid++;
+                continue;
+            }
+
+            double underlying = SanitizePositive(quote.UnderlyingPrice);
+            if (underlying <= 0)
+            {
+                droppedInvalid++;
+                continue;
+            }
+
+            double bid = SanitizeNonNegative(quote.Bid);
+            double ask = SanitizeNonNegative(quote.Ask);
+            if (bid > 0 && ask > 0 && ask < bid)
+                (bid, ask) = (ask, bid);
+
+            double mark = SanitizeNonNegative(quote.Mark);
+            double midFallback = SanitizeNonNegative(quote.Mid);
+            double mid = ComputeMid(bid, ask, midFallback > 0 ? midFallback : mark);
+            if (mark <= 0) mark = mid;
+            if (mid <= 0 || mark <= 0)
+            {
+                droppedInvalid++;
+                continue;
+            }
+
+            double markIv = NormalizeIv(quote.MarkIv);
+            if (markIv <= 0)
+                markIv = EstimateFallbackIv(underlying, quote.Strike, quote.Expiry, now);
+            if (markIv <= 0 || !double.IsFinite(markIv))
+            {
+                droppedInvalid++;
+                continue;
+            }
+
+            double openInterest = SanitizeNonNegative(quote.OpenInterest);
+            double volume24h = SanitizeNonNegative(quote.Volume24h);
+            double turnover24h = SanitizeNonNegative(quote.Turnover24h);
+            if (turnover24h <= 0 && volume24h > 0)
+                turnover24h = volume24h * mid;
+
+            sanitized.Add(quote with
+            {
+                Asset = normalizedAsset,
+                Bid = bid,
+                Ask = ask,
+                Mark = mark,
+                Mid = mid,
+                MarkIv = markIv,
+                Delta = ClampFinite(quote.Delta, -1.20, 1.20),
+                Gamma = ClampFinite(quote.Gamma, -2.0, 2.0),
+                Vega = ClampFinite(quote.Vega, -12_000.0, 12_000.0),
+                Theta = ClampFinite(quote.Theta, -12_000.0, 12_000.0),
+                OpenInterest = openInterest,
+                Volume24h = volume24h,
+                Turnover24h = turnover24h,
+                UnderlyingPrice = underlying,
+                Timestamp = now,
+                SourceTimestamp = quote.SourceTimestamp ?? sourceTimestamp
+            });
+        }
+
+        if (sanitized.Count == 0)
+        {
+            return ([], new CleaningStats(
+                InputCount: quotes.Count,
+                OutputCount: 0,
+                DroppedInvalid: droppedInvalid,
+                DroppedOutlier: 0,
+                Deduplicated: 0));
+        }
+
+        var deduplicated = sanitized
+            .GroupBy(q => q.Symbol, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g
+                .OrderByDescending(q => q.SourceTimestamp ?? DateTimeOffset.MinValue)
+                .ThenByDescending(q => q.Turnover24h)
+                .ThenByDescending(q => q.OpenInterest)
+                .First())
+            .ToList();
+
+        int deduplicatedCount = Math.Max(0, sanitized.Count - deduplicated.Count);
+        var outlierFiltered = new List<LiveOptionQuote>(deduplicated.Count);
+
+        foreach (var expiryGroup in deduplicated.GroupBy(q => q.Expiry.Date))
+        {
+            var bucket = expiryGroup.ToList();
+            double medianSpot = ComputeMedian(bucket.Select(q => q.UnderlyingPrice).Where(v => v > 0));
+            double medianIv = ComputeMedian(bucket.Select(q => q.MarkIv).Where(v => v > 0));
+            double lowSpot = medianSpot > 0 ? medianSpot * 0.70 : 0;
+            double highSpot = medianSpot > 0 ? medianSpot * 1.30 : double.MaxValue;
+
+            foreach (var quote in bucket)
+            {
+                if (medianSpot > 0 && (quote.UnderlyingPrice < lowSpot || quote.UnderlyingPrice > highSpot))
+                {
+                    droppedOutlier++;
+                    continue;
+                }
+
+                double markIv = quote.MarkIv;
+                if (medianIv > 0)
+                    markIv = Math.Clamp(markIv, Math.Max(0.02, medianIv * 0.25), Math.Min(5.0, medianIv * 4.0));
+
+                double bid = quote.Bid;
+                double ask = quote.Ask;
+                double mid = quote.Mid > 0 ? quote.Mid : ComputeMid(bid, ask, quote.Mark);
+                double maxSpreadAbs = Math.Max(0.02, mid * 2.4);
+                if (ask > 0 && bid > 0 && ask - bid > maxSpreadAbs)
+                {
+                    double halfSpread = maxSpreadAbs / 2.0;
+                    bid = Math.Max(0, mid - halfSpread);
+                    ask = Math.Max(bid, mid + halfSpread);
+                }
+
+                outlierFiltered.Add(quote with
+                {
+                    Bid = bid,
+                    Ask = ask,
+                    Mid = ComputeMid(bid, ask, quote.Mark),
+                    MarkIv = markIv
+                });
+            }
+        }
+
+        var ordered = outlierFiltered
+            .OrderBy(q => q.Expiry)
+            .ThenBy(q => q.Strike)
+            .ThenBy(q => q.Right)
+            .ToList();
+
+        return (ordered, new CleaningStats(
+            InputCount: quotes.Count,
+            OutputCount: ordered.Count,
+            DroppedInvalid: droppedInvalid,
+            DroppedOutlier: droppedOutlier,
+            Deduplicated: deduplicatedCount));
+    }
+
+    private static double SanitizePositive(double value)
+    {
+        if (!double.IsFinite(value) || value <= 0) return 0;
+        return value;
+    }
+
+    private static double SanitizeNonNegative(double value)
+    {
+        if (!double.IsFinite(value) || value < 0) return 0;
+        return value;
+    }
+
+    private static double ClampFinite(double value, double min, double max)
+    {
+        if (!double.IsFinite(value)) return 0;
+        return MathUtils.Clamp(value, min, max);
+    }
+
+    private static double EstimateFallbackIv(double spot, double strike, DateTimeOffset expiry, DateTimeOffset now)
+    {
+        if (spot <= 0 || strike <= 0) return 0;
+        double dte = Math.Max(1.0, (expiry - now).TotalDays);
+        double term = 0.22 + 0.05 * Math.Sqrt(dte / 30.0);
+        double moneyness = Math.Abs(strike / spot - 1.0);
+        return Math.Clamp(term + moneyness * 0.55, 0.08, 2.2);
+    }
+
+    private static double ComputeMedian(IEnumerable<double> values)
+    {
+        var ordered = values
+            .Where(double.IsFinite)
+            .OrderBy(v => v)
+            .ToList();
+        if (ordered.Count == 0) return 0;
+
+        int mid = ordered.Count / 2;
+        return ordered.Count % 2 == 0
+            ? (ordered[mid - 1] + ordered[mid]) / 2.0
+            : ordered[mid];
     }
 
     private static bool TryParseBybitOptionSymbol(

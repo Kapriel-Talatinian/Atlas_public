@@ -103,7 +103,11 @@ public sealed record StrategyAnalysisResult(
     GreeksResult AggregateGreeks,
     IReadOnlyList<StrategyLegAnalysis> Legs,
     IReadOnlyList<PayoffPoint> PayoffCurve,
-    DateTimeOffset Timestamp);
+    DateTimeOffset Timestamp,
+    double RewardRiskRatio = 0,
+    double ProbabilityOfProfitApprox = 0,
+    double ExpectedValue = 0,
+    double PremiumAtRisk = 0);
 
 public sealed record OptionModelSnapshot(
     string Symbol,
@@ -295,4 +299,34 @@ public sealed record ArbitrageScanResult(
     DateTimeOffset? Expiry,
     int Count,
     IReadOnlyList<ArbitrageAnomaly> Anomalies,
+    DateTimeOffset Timestamp);
+
+public sealed record MacroBiasRequest(
+    string Asset,
+    int HorizonDays = 30,
+    double GrowthMomentum = 0,
+    double InflationShock = 0,
+    double PolicyTightening = 0,
+    double UsdStrength = 0,
+    double LiquidityStress = 0,
+    double SupplyShock = 0,
+    double RiskAversion = 0);
+
+public sealed record MacroBiasDriver(
+    string Name,
+    double Input,
+    double Weight,
+    double ContributionScore,
+    string Effect);
+
+public sealed record MacroBiasSnapshot(
+    string Asset,
+    int HorizonDays,
+    string Bias,
+    double BiasScore,
+    double ConfidenceScore,
+    string Summary,
+    double MacroScore,
+    double MarketMicroScore,
+    IReadOnlyList<MacroBiasDriver> Drivers,
     DateTimeOffset Timestamp);

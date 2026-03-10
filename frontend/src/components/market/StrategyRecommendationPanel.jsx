@@ -49,6 +49,9 @@ export default function StrategyRecommendationPanel({
                 <div>Premium: {formatUsd(rec.analysis?.netPremium || 0, 2)}</div>
                 <div>MaxP: {formatUsd(rec.analysis?.maxProfit || 0, 2)}</div>
                 <div>MaxL: {formatUsd(rec.analysis?.maxLoss || 0, 2)}</div>
+                <div>R/R: {fmt(rec.analysis?.rewardRiskRatio || 0, 2)}</div>
+                <div>PoP: {fmt((rec.analysis?.probabilityOfProfitApprox || 0) * 100, 1)}%</div>
+                <div>EV: {formatUsd(rec.analysis?.expectedValue || 0, 2)}</div>
               </div>
               <div className="subtle" style={{ marginTop: 6 }}>{rec.thesis}</div>
             </div>

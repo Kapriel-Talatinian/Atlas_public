@@ -1,0 +1,2581 @@
+{
+  "config": {
+    "enabled": false,
+    "autoTrade": false,
+    "autoTune": true,
+    "evaluationIntervalSec": 20,
+    "basePositionSize": 1,
+    "maxOpenTrades": 4,
+    "minConfidence": 58,
+    "stopLossPct": 0.35,
+    "takeProfitPct": 0.55,
+    "maxHoldingHours": 72,
+    "auditTargetTrades": 100,
+    "startingCapitalUsd": 1000
+  },
+  "startedAt": "2026-03-10T16:41:12.015702+00:00",
+  "lastEvaluationAt": "2026-03-10T17:56:00.886628+00:00",
+  "lastSignal": {
+    "bias": "Neutral",
+    "score": 1.6079026388690416,
+    "confidence": 58.80395131943452,
+    "strategyTemplate": "Gamma scalp / short-term straddle",
+    "summary": "Neutral ETH signal (\u002B1,6) | conf 58,8 | template: Gamma scalp / short-term straddle.",
+    "drivers": [
+      "Resting pressure: \u002B0,22",
+      "Vol regime: -0,18",
+      "Orderbook pressure: \u002B0,10",
+      "VIX proxy: -0,04"
+    ],
+    "features": {
+      "flowImbalance": -0.029205063077405297,
+      "skewSignal": 0,
+      "vixProxy": -0.04088888888888883,
+      "futuresMomentum": -0.010911369456110272,
+      "orderbookPressure": 0.10252033065976085,
+      "restingPressure": 0.22053895597450449,
+      "volRegime": -0.1751800000000001,
+      "termSlope": 0.0371999999999999
+    },
+    "timestamp": "2026-03-10T17:56:00.886628+00:00"
+  },
+  "openTrades": [],
+  "closedTrades": [],
+  "decisions": [
+    {
+      "timestamp": "2026-03-10T16:41:12.021581+00:00",
+      "bias": "Neutral",
+      "score": -0.4691789764179176,
+      "confidence": 58.23458948820896,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,5) | conf 58,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:41:33.040066+00:00",
+      "bias": "Neutral",
+      "score": -0.5518746828493689,
+      "confidence": 58.27593734142469,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:41:55.390408+00:00",
+      "bias": "Neutral",
+      "score": -0.5991424607665222,
+      "confidence": 58.29957123038326,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:42:16.579064+00:00",
+      "bias": "Neutral",
+      "score": -0.6197547578018134,
+      "confidence": 58.30987737890091,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:42:38.020589+00:00",
+      "bias": "Neutral",
+      "score": -0.7301885139743198,
+      "confidence": 58.36509425698716,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:42:59.213564+00:00",
+      "bias": "Neutral",
+      "score": -0.8376308759185287,
+      "confidence": 58.41881543795927,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:43:20.633013+00:00",
+      "bias": "Neutral",
+      "score": -0.877974251256194,
+      "confidence": 58.438987125628095,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:43:42.25964+00:00",
+      "bias": "Neutral",
+      "score": -1.0077561749955248,
+      "confidence": 58.50387808749776,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:44:03.468111+00:00",
+      "bias": "Neutral",
+      "score": -1.0083211970192765,
+      "confidence": 58.504160598509635,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:44:24.928401+00:00",
+      "bias": "Neutral",
+      "score": -1.143122522773291,
+      "confidence": 58.57156126138665,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:44:46.136832+00:00",
+      "bias": "Neutral",
+      "score": -1.1946488967715712,
+      "confidence": 58.597324448385784,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:45:07.568078+00:00",
+      "bias": "Neutral",
+      "score": -1.112491778181182,
+      "confidence": 58.55624588909059,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:45:29.289022+00:00",
+      "bias": "Neutral",
+      "score": -1.0152994049394937,
+      "confidence": 58.50764970246975,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:45:50.708503+00:00",
+      "bias": "Neutral",
+      "score": -0.8067731404758989,
+      "confidence": 58.40338657023795,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:46:14.245136+00:00",
+      "bias": "Neutral",
+      "score": -0.6834215483270012,
+      "confidence": 58.3417107741635,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:46:35.477768+00:00",
+      "bias": "Neutral",
+      "score": -0.7105178853469551,
+      "confidence": 58.35525894267348,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:46:57.083408+00:00",
+      "bias": "Neutral",
+      "score": -0.5974197751114816,
+      "confidence": 58.29870988755574,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:47:18.284457+00:00",
+      "bias": "Neutral",
+      "score": -0.7477884711049189,
+      "confidence": 58.37389423555246,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:47:39.507458+00:00",
+      "bias": "Neutral",
+      "score": -0.629661530822637,
+      "confidence": 58.314830765411315,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:48:00.718814+00:00",
+      "bias": "Neutral",
+      "score": -0.7046282428605191,
+      "confidence": 58.35231412143026,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:48:21.940049+00:00",
+      "bias": "Neutral",
+      "score": -0.7556977003617867,
+      "confidence": 58.3778488501809,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:48:43.327489+00:00",
+      "bias": "Neutral",
+      "score": -0.7014189908869222,
+      "confidence": 58.35070949544346,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:49:04.55356+00:00",
+      "bias": "Neutral",
+      "score": -0.7726975101509801,
+      "confidence": 58.38634875507549,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:49:26.299874+00:00",
+      "bias": "Neutral",
+      "score": -1.0838488372323656,
+      "confidence": 58.54192441861618,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:49:47.508808+00:00",
+      "bias": "Neutral",
+      "score": -0.994188964668745,
+      "confidence": 58.497094482334376,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:50:08.889355+00:00",
+      "bias": "Neutral",
+      "score": -0.9314574456520042,
+      "confidence": 58.465728722826,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:50:30.093408+00:00",
+      "bias": "Neutral",
+      "score": -1.0022552975846848,
+      "confidence": 58.50112764879234,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:50:51.676896+00:00",
+      "bias": "Neutral",
+      "score": -0.8648698715102299,
+      "confidence": 58.43243493575511,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:51:13.942886+00:00",
+      "bias": "Neutral",
+      "score": -1.0689457654883538,
+      "confidence": 58.534472882744176,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:51:34.974592+00:00",
+      "bias": "Neutral",
+      "score": -1.13853269232844,
+      "confidence": 58.56926634616422,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:51:56.431725+00:00",
+      "bias": "Neutral",
+      "score": -1.282686622210926,
+      "confidence": 58.641343311105466,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,3) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:52:17.652929+00:00",
+      "bias": "Neutral",
+      "score": -1.190852333307076,
+      "confidence": 58.59542616665354,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:52:39.78961+00:00",
+      "bias": "Neutral",
+      "score": -1.174754291073787,
+      "confidence": 58.58737714553689,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:52:59.375386+00:00",
+      "bias": "Neutral",
+      "score": -1.1132416122026618,
+      "confidence": 58.55662080610133,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:53:21.793366+00:00",
+      "bias": "Neutral",
+      "score": -0.929219915638394,
+      "confidence": 58.4646099578192,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:53:42.253977+00:00",
+      "bias": "Neutral",
+      "score": -1.1057354927933558,
+      "confidence": 58.55286774639668,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:54:04.144732+00:00",
+      "bias": "Neutral",
+      "score": -0.9443933190128576,
+      "confidence": 58.47219665950643,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:54:26.407602+00:00",
+      "bias": "Neutral",
+      "score": -0.9731845866701919,
+      "confidence": 58.48659229333509,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:54:47.83837+00:00",
+      "bias": "Neutral",
+      "score": -0.9376275586366807,
+      "confidence": 58.46881377931834,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:55:10.101664+00:00",
+      "bias": "Neutral",
+      "score": -1.0499367034383322,
+      "confidence": 58.52496835171917,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:55:31.344166+00:00",
+      "bias": "Neutral",
+      "score": -1.0197656329339038,
+      "confidence": 58.50988281646695,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:55:52.563002+00:00",
+      "bias": "Neutral",
+      "score": -0.919693803816178,
+      "confidence": 58.45984690190809,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:56:13.987937+00:00",
+      "bias": "Neutral",
+      "score": -0.7471203775801777,
+      "confidence": 58.37356018879009,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:56:35.204296+00:00",
+      "bias": "Neutral",
+      "score": -0.7870254221231743,
+      "confidence": 58.39351271106159,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:56:56.60614+00:00",
+      "bias": "Neutral",
+      "score": -0.7981712498281087,
+      "confidence": 58.39908562491406,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:57:17.617674+00:00",
+      "bias": "Neutral",
+      "score": -0.7894669499894046,
+      "confidence": 58.3947334749947,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:57:39.011951+00:00",
+      "bias": "Neutral",
+      "score": -0.8007904389073371,
+      "confidence": 58.40039521945367,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:58:00.209579+00:00",
+      "bias": "Neutral",
+      "score": -0.8930553488624526,
+      "confidence": 58.44652767443122,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:58:21.613116+00:00",
+      "bias": "Neutral",
+      "score": -0.8723753000180694,
+      "confidence": 58.43618765000903,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:58:43.033569+00:00",
+      "bias": "Neutral",
+      "score": -0.9463546161181877,
+      "confidence": 58.47317730805909,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:59:04.074113+00:00",
+      "bias": "Neutral",
+      "score": -0.9034974828624679,
+      "confidence": 58.45174874143123,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:59:25.545124+00:00",
+      "bias": "Neutral",
+      "score": -0.9045806256846651,
+      "confidence": 58.45229031284233,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T16:59:46.766722+00:00",
+      "bias": "Neutral",
+      "score": -0.9565494473027879,
+      "confidence": 58.478274723651396,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:00:07.998192+00:00",
+      "bias": "Neutral",
+      "score": -1.4095813900798118,
+      "confidence": 58.704790695039904,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:00:29.240976+00:00",
+      "bias": "Neutral",
+      "score": -1.2666412204875352,
+      "confidence": 58.633320610243764,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,3) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:00:50.474247+00:00",
+      "bias": "Neutral",
+      "score": -1.2377038773420534,
+      "confidence": 58.61885193867103,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:01:11.909006+00:00",
+      "bias": "Neutral",
+      "score": -1.3395227570261796,
+      "confidence": 58.66976137851309,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,3) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:01:32.943665+00:00",
+      "bias": "Neutral",
+      "score": -1.2921446952972915,
+      "confidence": 58.64607234764865,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,3) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:01:55.323934+00:00",
+      "bias": "Neutral",
+      "score": -1.3641553996270337,
+      "confidence": 58.68207769981352,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:02:16.950759+00:00",
+      "bias": "Neutral",
+      "score": -1.255476062956406,
+      "confidence": 58.6277380314782,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,3) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:02:39.015062+00:00",
+      "bias": "Neutral",
+      "score": -1.348708573859511,
+      "confidence": 58.674354286929756,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,3) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:03:00.251382+00:00",
+      "bias": "Neutral",
+      "score": -1.353770956368395,
+      "confidence": 58.6768854781842,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:03:21.49611+00:00",
+      "bias": "Neutral",
+      "score": -1.3550466210856864,
+      "confidence": 58.677523310542846,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:03:43.890276+00:00",
+      "bias": "Neutral",
+      "score": -1.1405518225008868,
+      "confidence": 58.57027591125044,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:04:04.936394+00:00",
+      "bias": "Neutral",
+      "score": -1.1991701850372916,
+      "confidence": 58.599585092518645,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:04:26.37746+00:00",
+      "bias": "Neutral",
+      "score": -1.2148142383943197,
+      "confidence": 58.60740711919716,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:04:47.423283+00:00",
+      "bias": "Neutral",
+      "score": -1.2758454349942674,
+      "confidence": 58.63792271749713,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,3) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:05:09.781413+00:00",
+      "bias": "Neutral",
+      "score": -1.1557731509504694,
+      "confidence": 58.57788657547523,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:05:31.427787+00:00",
+      "bias": "Neutral",
+      "score": -1.3552962452129969,
+      "confidence": 58.6776481226065,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:05:52.896576+00:00",
+      "bias": "Neutral",
+      "score": -1.3156754713074295,
+      "confidence": 58.657837735653715,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,3) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:06:14.131655+00:00",
+      "bias": "Neutral",
+      "score": -1.3456500596133136,
+      "confidence": 58.67282502980666,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,3) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:06:35.378938+00:00",
+      "bias": "Neutral",
+      "score": -1.1855323276813323,
+      "confidence": 58.592766163840665,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:06:56.837041+00:00",
+      "bias": "Neutral",
+      "score": -1.410568559138499,
+      "confidence": 58.70528427956925,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:07:17.877725+00:00",
+      "bias": "Neutral",
+      "score": -1.453229027239701,
+      "confidence": 58.72661451361985,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,5) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:07:40.063691+00:00",
+      "bias": "Neutral",
+      "score": -1.3760850089187875,
+      "confidence": 58.688042504459396,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:08:01.287805+00:00",
+      "bias": "Neutral",
+      "score": -1.1706992928886728,
+      "confidence": 58.585349646444335,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:08:22.523903+00:00",
+      "bias": "Neutral",
+      "score": -1.2406870794251463,
+      "confidence": 58.62034353971257,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:08:43.960793+00:00",
+      "bias": "Neutral",
+      "score": -1.014583829961034,
+      "confidence": 58.50729191498052,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:09:05.887701+00:00",
+      "bias": "Neutral",
+      "score": -1.1485851509283116,
+      "confidence": 58.574292575464156,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:09:27.312888+00:00",
+      "bias": "Neutral",
+      "score": -1.09365187598924,
+      "confidence": 58.54682593799462,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:09:48.347351+00:00",
+      "bias": "Neutral",
+      "score": -1.0537427371294132,
+      "confidence": 58.526871368564706,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:10:09.769563+00:00",
+      "bias": "Neutral",
+      "score": -1.1068315762791983,
+      "confidence": 58.5534157881396,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:10:31.002583+00:00",
+      "bias": "Neutral",
+      "score": -1.1037292046716938,
+      "confidence": 58.55186460233585,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:10:52.254937+00:00",
+      "bias": "Neutral",
+      "score": -1.2101325958027889,
+      "confidence": 58.605066297901395,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,2) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:11:14.394155+00:00",
+      "bias": "Neutral",
+      "score": -1.2620236025285896,
+      "confidence": 58.63101180126429,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,3) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:11:35.636785+00:00",
+      "bias": "Neutral",
+      "score": -1.1321878176083375,
+      "confidence": 58.56609390880417,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:11:58.191951+00:00",
+      "bias": "Neutral",
+      "score": -1.0080798653375196,
+      "confidence": 58.50403993266876,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:12:19.232602+00:00",
+      "bias": "Neutral",
+      "score": -1.0657506516840505,
+      "confidence": 58.53287532584203,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,1) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:12:40.67316+00:00",
+      "bias": "Neutral",
+      "score": -0.6659351642237521,
+      "confidence": 58.33296758211188,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:13:01.8997+00:00",
+      "bias": "Neutral",
+      "score": -0.6565607536854956,
+      "confidence": 58.32828037684275,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:13:23.338019+00:00",
+      "bias": "Neutral",
+      "score": -0.5517441001471516,
+      "confidence": 58.27587205007357,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:13:44.580052+00:00",
+      "bias": "Neutral",
+      "score": -0.5789391690619545,
+      "confidence": 58.28946958453098,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:14:06.28626+00:00",
+      "bias": "Neutral",
+      "score": -0.6618304473481815,
+      "confidence": 58.33091522367409,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:14:28.147659+00:00",
+      "bias": "Neutral",
+      "score": -0.6608653409883547,
+      "confidence": 58.330432670494176,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:14:49.208389+00:00",
+      "bias": "Neutral",
+      "score": -0.6519765556024963,
+      "confidence": 58.32598827780125,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:15:10.774603+00:00",
+      "bias": "Neutral",
+      "score": -0.6740749530549018,
+      "confidence": 58.33703747652745,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:15:32.028497+00:00",
+      "bias": "Neutral",
+      "score": -0.7345598614349195,
+      "confidence": 58.36727993071746,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:15:53.794474+00:00",
+      "bias": "Neutral",
+      "score": -0.8971234270391367,
+      "confidence": 58.44856171351957,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:16:15.03191+00:00",
+      "bias": "Neutral",
+      "score": -0.9559674477521756,
+      "confidence": 58.477983723876086,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:16:36.259922+00:00",
+      "bias": "Neutral",
+      "score": -0.9319540566795047,
+      "confidence": 58.46597702833975,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:16:57.705222+00:00",
+      "bias": "Neutral",
+      "score": -0.6006642000975726,
+      "confidence": 58.300332100048784,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:17:19.302741+00:00",
+      "bias": "Neutral",
+      "score": -0.6239921058400817,
+      "confidence": 58.311996052920044,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:17:41.590629+00:00",
+      "bias": "Neutral",
+      "score": -0.5193193531917113,
+      "confidence": 58.25965967659585,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,5) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:18:02.840392+00:00",
+      "bias": "Neutral",
+      "score": -0.5490257538374664,
+      "confidence": 58.274512876918735,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,5) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:18:24.285484+00:00",
+      "bias": "Neutral",
+      "score": -0.5851373288984695,
+      "confidence": 58.292568664449234,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:18:45.530926+00:00",
+      "bias": "Neutral",
+      "score": -0.6177801454762439,
+      "confidence": 58.30889007273812,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:19:06.905739+00:00",
+      "bias": "Neutral",
+      "score": -0.3146405112745085,
+      "confidence": 58.15732025563725,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,3) | conf 58,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:19:28.475593+00:00",
+      "bias": "Neutral",
+      "score": -0.3183133747799944,
+      "confidence": 58.159156687389995,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,3) | conf 58,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:19:49.532845+00:00",
+      "bias": "Neutral",
+      "score": -0.3835338204035389,
+      "confidence": 58.19176691020177,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,4) | conf 58,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:20:11.140067+00:00",
+      "bias": "Neutral",
+      "score": -0.3115004222098495,
+      "confidence": 58.15575021110492,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,3) | conf 58,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:20:32.196616+00:00",
+      "bias": "Neutral",
+      "score": -0.3381946473309433,
+      "confidence": 58.16909732366547,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,3) | conf 58,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:20:54.062803+00:00",
+      "bias": "Neutral",
+      "score": -0.3512008781925472,
+      "confidence": 58.17560043909627,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,4) | conf 58,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:21:15.503276+00:00",
+      "bias": "Neutral",
+      "score": -0.44152976137870786,
+      "confidence": 58.22076488068935,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,4) | conf 58,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:21:36.750248+00:00",
+      "bias": "Neutral",
+      "score": -0.5628228985818772,
+      "confidence": 58.281411449290935,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:21:58.302959+00:00",
+      "bias": "Neutral",
+      "score": -0.501141235809082,
+      "confidence": 58.25057061790454,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,5) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:22:19.575433+00:00",
+      "bias": "Neutral",
+      "score": -0.0060994515195516436,
+      "confidence": 58.00304972575977,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,0) | conf 58,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:22:41.807381+00:00",
+      "bias": "Neutral",
+      "score": -0.0516774597437859,
+      "confidence": 58.02583872987189,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,1) | conf 58,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:23:02.848126+00:00",
+      "bias": "Neutral",
+      "score": -0.08583690395994702,
+      "confidence": 58.04291845197997,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,1) | conf 58,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:23:24.296017+00:00",
+      "bias": "Neutral",
+      "score": -0.11223965247226685,
+      "confidence": 58.056119826236134,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,1) | conf 58,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:23:45.516636+00:00",
+      "bias": "Neutral",
+      "score": -0.10262573411006876,
+      "confidence": 58.05131286705503,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,1) | conf 58,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:24:07.183393+00:00",
+      "bias": "Neutral",
+      "score": 0.03800224181820243,
+      "confidence": 58.0190011209091,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,0) | conf 58,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:24:28.615074+00:00",
+      "bias": "Neutral",
+      "score": 0.07349681519728651,
+      "confidence": 58.036748407598644,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,1) | conf 58,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:24:49.666648+00:00",
+      "bias": "Neutral",
+      "score": -0.23310044393270832,
+      "confidence": 58.11655022196636,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,2) | conf 58,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:25:11.093543+00:00",
+      "bias": "Neutral",
+      "score": -0.05770834125701755,
+      "confidence": 58.028854170628506,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (-0,1) | conf 58,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:25:32.517303+00:00",
+      "bias": "Neutral",
+      "score": 0.7013797573375802,
+      "confidence": 58.35068987866879,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:25:53.954739+00:00",
+      "bias": "Neutral",
+      "score": 0.5636095790265315,
+      "confidence": 58.28180478951327,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:26:15.189589+00:00",
+      "bias": "Neutral",
+      "score": 0.720975512536479,
+      "confidence": 58.36048775626824,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:26:36.452251+00:00",
+      "bias": "Neutral",
+      "score": 1.13517834466172,
+      "confidence": 58.56758917233086,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,1) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:26:57.91261+00:00",
+      "bias": "Neutral",
+      "score": 0.5424932024311628,
+      "confidence": 58.27124660121558,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,5) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:27:20.582728+00:00",
+      "bias": "Neutral",
+      "score": 1.0270469638433515,
+      "confidence": 58.51352348192167,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:27:42.648625+00:00",
+      "bias": "Neutral",
+      "score": 0.6744390122245008,
+      "confidence": 58.33721950611225,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,7) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:28:03.698745+00:00",
+      "bias": "Neutral",
+      "score": 0.7369704364186724,
+      "confidence": 58.36848521820934,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:28:25.256724+00:00",
+      "bias": "Neutral",
+      "score": 0.7508566047192125,
+      "confidence": 58.37542830235961,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:28:46.508197+00:00",
+      "bias": "Neutral",
+      "score": 0.936414044620662,
+      "confidence": 58.46820702231033,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:29:07.923156+00:00",
+      "bias": "Neutral",
+      "score": 0.9282054184473251,
+      "confidence": 58.46410270922366,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,9) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:29:29.352813+00:00",
+      "bias": "Neutral",
+      "score": 0.9602554272259197,
+      "confidence": 58.48012771361296,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:29:50.895262+00:00",
+      "bias": "Neutral",
+      "score": 0.9767015289866213,
+      "confidence": 58.48835076449331,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:30:12.535445+00:00",
+      "bias": "Neutral",
+      "score": 1.0721441995960321,
+      "confidence": 58.53607209979802,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,1) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:30:33.592794+00:00",
+      "bias": "Neutral",
+      "score": 1.068990032302273,
+      "confidence": 58.53449501615113,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,1) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:30:55.018324+00:00",
+      "bias": "Neutral",
+      "score": 1.5289567634442576,
+      "confidence": 58.76447838172213,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:31:16.262999+00:00",
+      "bias": "Neutral",
+      "score": 1.50877613031945,
+      "confidence": 58.75438806515972,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:31:38.595786+00:00",
+      "bias": "Neutral",
+      "score": 1.8555273161977337,
+      "confidence": 58.92776365809887,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,9) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:31:59.808966+00:00",
+      "bias": "Neutral",
+      "score": 1.7104247474783285,
+      "confidence": 58.855212373739164,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:32:21.055106+00:00",
+      "bias": "Neutral",
+      "score": 1.7912507503905792,
+      "confidence": 58.89562537519529,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,8) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:32:42.723814+00:00",
+      "bias": "Neutral",
+      "score": 1.6603445571489104,
+      "confidence": 58.83017227857445,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:33:04.394474+00:00",
+      "bias": "Neutral",
+      "score": 1.6272696679023655,
+      "confidence": 58.813634833951184,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,6) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:33:26.758567+00:00",
+      "bias": "Neutral",
+      "score": 1.7535199323513169,
+      "confidence": 58.876759966175655,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,8) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:33:47.79822+00:00",
+      "bias": "Neutral",
+      "score": 1.7794516624778085,
+      "confidence": 58.889725831238906,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,8) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:34:09.302879+00:00",
+      "bias": "Neutral",
+      "score": 2.00788908223054,
+      "confidence": 59.00394454111527,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B2,0) | conf 59,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:34:31.353061+00:00",
+      "bias": "Neutral",
+      "score": 2.160255964469266,
+      "confidence": 59.080127982234636,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B2,2) | conf 59,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:34:52.971002+00:00",
+      "bias": "Neutral",
+      "score": 2.2921489337038365,
+      "confidence": 59.14607446685192,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B2,3) | conf 59,1 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:35:14.20498+00:00",
+      "bias": "Neutral",
+      "score": 2.3088361022540203,
+      "confidence": 59.15441805112701,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B2,3) | conf 59,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:35:35.458834+00:00",
+      "bias": "Neutral",
+      "score": 2.7316959727987307,
+      "confidence": 59.365847986399366,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B2,7) | conf 59,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:35:56.900966+00:00",
+      "bias": "Neutral",
+      "score": 2.4427896283280774,
+      "confidence": 59.221394814164036,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B2,4) | conf 59,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:36:17.950476+00:00",
+      "bias": "Neutral",
+      "score": 2.6892007361253984,
+      "confidence": 59.3446003680627,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B2,7) | conf 59,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:36:39.394484+00:00",
+      "bias": "Neutral",
+      "score": 2.474891381085376,
+      "confidence": 59.237445690542685,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B2,5) | conf 59,2 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:37:00.638217+00:00",
+      "bias": "Neutral",
+      "score": 1.605111086137658,
+      "confidence": 58.80255554306883,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,6) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:37:21.957213+00:00",
+      "bias": "Neutral",
+      "score": 1.619684254534671,
+      "confidence": 58.80984212726734,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,6) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:37:43.570243+00:00",
+      "bias": "Neutral",
+      "score": 1.5261289119468973,
+      "confidence": 58.76306445597345,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:38:04.817705+00:00",
+      "bias": "Neutral",
+      "score": 1.5468861125358868,
+      "confidence": 58.77344305626794,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:38:27.09593+00:00",
+      "bias": "Neutral",
+      "score": 0.9700322473892199,
+      "confidence": 58.48501612369461,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:38:48.134391+00:00",
+      "bias": "Neutral",
+      "score": 1.01636303923696,
+      "confidence": 58.50818151961848,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:39:09.563262+00:00",
+      "bias": "Neutral",
+      "score": 0.7613039167423288,
+      "confidence": 58.38065195837117,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:39:31.003007+00:00",
+      "bias": "Neutral",
+      "score": 0.7570383098214606,
+      "confidence": 58.378519154910734,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:39:52.914379+00:00",
+      "bias": "Neutral",
+      "score": 0.5653864888370833,
+      "confidence": 58.28269324441854,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:40:14.14058+00:00",
+      "bias": "Neutral",
+      "score": 0.7043415280481524,
+      "confidence": 58.35217076402407,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:40:35.392691+00:00",
+      "bias": "Neutral",
+      "score": 0.9779451002193552,
+      "confidence": 58.48897255010968,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:40:56.815813+00:00",
+      "bias": "Neutral",
+      "score": 0.9540563671784855,
+      "confidence": 58.47702818358924,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:41:17.856556+00:00",
+      "bias": "Neutral",
+      "score": 0.7042324689962746,
+      "confidence": 58.35211623449814,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:41:39.287252+00:00",
+      "bias": "Neutral",
+      "score": 0.6487367178757262,
+      "confidence": 58.32436835893786,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,6) | conf 58,3 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:42:00.534448+00:00",
+      "bias": "Neutral",
+      "score": 0.7201412800323033,
+      "confidence": 58.360070640016154,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,7) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:42:21.879869+00:00",
+      "bias": "Neutral",
+      "score": 0.8480738184927746,
+      "confidence": 58.42403690924639,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B0,8) | conf 58,4 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:42:44.47696+00:00",
+      "bias": "Neutral",
+      "score": 1.0400527469256784,
+      "confidence": 58.52002637346284,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,0) | conf 58,5 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:43:06.365131+00:00",
+      "bias": "Neutral",
+      "score": 1.349776410820847,
+      "confidence": 58.674888205410426,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,3) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:43:27.787501+00:00",
+      "bias": "Neutral",
+      "score": 1.4877575662424933,
+      "confidence": 58.74387878312125,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:43:48.828511+00:00",
+      "bias": "Neutral",
+      "score": 1.4641376824612642,
+      "confidence": 58.732068841230635,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:44:11.300184+00:00",
+      "bias": "Neutral",
+      "score": 1.4834102900269757,
+      "confidence": 58.74170514501349,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:44:32.355051+00:00",
+      "bias": "Neutral",
+      "score": 1.4465338691031036,
+      "confidence": 58.72326693455155,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:44:53.804504+00:00",
+      "bias": "Neutral",
+      "score": 1.4235415597086092,
+      "confidence": 58.711770779854305,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:45:15.03857+00:00",
+      "bias": "Neutral",
+      "score": 1.4381680784844808,
+      "confidence": 58.71908403924224,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:45:36.326508+00:00",
+      "bias": "Neutral",
+      "score": 1.4096626711311475,
+      "confidence": 58.70483133556557,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:45:57.783795+00:00",
+      "bias": "Neutral",
+      "score": 1.5433821569030757,
+      "confidence": 58.77169107845154,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:46:18.838549+00:00",
+      "bias": "Neutral",
+      "score": 1.835100823936907,
+      "confidence": 58.917550411968456,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,8) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:46:40.511899+00:00",
+      "bias": "Neutral",
+      "score": 1.5472265273168828,
+      "confidence": 58.77361326365844,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:47:02.579113+00:00",
+      "bias": "Neutral",
+      "score": 1.2572124758784202,
+      "confidence": 58.62860623793921,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,3) | conf 58,6 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:47:24.034612+00:00",
+      "bias": "Neutral",
+      "score": 1.311464867572404,
+      "confidence": 58.6557324337862,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,3) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:47:45.271909+00:00",
+      "bias": "Neutral",
+      "score": 1.99019799197725,
+      "confidence": 58.99509899598863,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B2,0) | conf 59,0 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:48:06.543926+00:00",
+      "bias": "Neutral",
+      "score": 1.7382556786040677,
+      "confidence": 58.86912783930203,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:48:28.028738+00:00",
+      "bias": "Neutral",
+      "score": 1.7048075499878048,
+      "confidence": 58.8524037749939,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:48:49.621687+00:00",
+      "bias": "Neutral",
+      "score": 1.663590425737053,
+      "confidence": 58.83179521286853,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:49:11.392661+00:00",
+      "bias": "Neutral",
+      "score": 1.4982290192846712,
+      "confidence": 58.74911450964233,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:49:32.436471+00:00",
+      "bias": "Neutral",
+      "score": 1.580681589855394,
+      "confidence": 58.790340794927694,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,6) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:49:54.589704+00:00",
+      "bias": "Neutral",
+      "score": 1.6928185318286486,
+      "confidence": 58.846409265914325,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:50:16.285517+00:00",
+      "bias": "Neutral",
+      "score": 1.7698457661955724,
+      "confidence": 58.884922883097786,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,8) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:50:37.55195+00:00",
+      "bias": "Neutral",
+      "score": 1.8151312045313133,
+      "confidence": 58.907565602265656,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,8) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:50:58.792619+00:00",
+      "bias": "Neutral",
+      "score": 1.827546667420672,
+      "confidence": 58.91377333371034,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,8) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:51:19.839639+00:00",
+      "bias": "Neutral",
+      "score": 1.7233402817650876,
+      "confidence": 58.861670140882545,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:51:41.292304+00:00",
+      "bias": "Neutral",
+      "score": 1.7163421073424692,
+      "confidence": 58.858171053671235,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:52:02.330583+00:00",
+      "bias": "Neutral",
+      "score": 1.7879084139570467,
+      "confidence": 58.89395420697852,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,8) | conf 58,9 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:52:24.221413+00:00",
+      "bias": "Neutral",
+      "score": 1.5834196344081413,
+      "confidence": 58.79170981720407,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,6) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:52:46.547333+00:00",
+      "bias": "Neutral",
+      "score": 1.6938054416864057,
+      "confidence": 58.846902720843204,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:53:07.821365+00:00",
+      "bias": "Neutral",
+      "score": 1.59747712397779,
+      "confidence": 58.7987385619889,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,6) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:53:29.506807+00:00",
+      "bias": "Neutral",
+      "score": 1.6339217700672863,
+      "confidence": 58.816960885033645,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,6) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:53:50.7273+00:00",
+      "bias": "Neutral",
+      "score": 1.6114618517388957,
+      "confidence": 58.80573092586945,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,6) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:54:12.145983+00:00",
+      "bias": "Neutral",
+      "score": 1.5332852798315428,
+      "confidence": 58.76664263991577,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:54:33.180319+00:00",
+      "bias": "Neutral",
+      "score": 1.6772076281646873,
+      "confidence": 58.83860381408234,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:54:56.45574+00:00",
+      "bias": "Neutral",
+      "score": 1.4827654895890594,
+      "confidence": 58.74138274479453,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,5) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:55:18.391913+00:00",
+      "bias": "Neutral",
+      "score": 1.420949450033848,
+      "confidence": 58.71047472501692,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,4) | conf 58,7 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:55:39.63204+00:00",
+      "bias": "Neutral",
+      "score": 1.6876677011159233,
+      "confidence": 58.843833850557964,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,7) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    },
+    {
+      "timestamp": "2026-03-10T17:56:00.887439+00:00",
+      "bias": "Neutral",
+      "score": 1.6079026388690416,
+      "confidence": 58.80395131943452,
+      "action": "Hold",
+      "reason": "Neutral ETH signal (\u002B1,6) | conf 58,8 | template: Gamma scalp / short-term straddle."
+    }
+  ],
+  "spotHistory": [
+    {
+      "time": "2026-03-10T16:41:12.015733+00:00",
+      "spot": 2086.07
+    },
+    {
+      "time": "2026-03-10T16:41:33.038921+00:00",
+      "spot": 2086.07
+    },
+    {
+      "time": "2026-03-10T16:41:55.192631+00:00",
+      "spot": 2086.84
+    },
+    {
+      "time": "2026-03-10T16:42:16.577492+00:00",
+      "spot": 2086.4
+    },
+    {
+      "time": "2026-03-10T16:42:37.822687+00:00",
+      "spot": 2087.63
+    },
+    {
+      "time": "2026-03-10T16:42:59.211355+00:00",
+      "spot": 2087.9
+    },
+    {
+      "time": "2026-03-10T16:43:20.444731+00:00",
+      "spot": 2088.6
+    },
+    {
+      "time": "2026-03-10T16:43:42.057207+00:00",
+      "spot": 2090.06
+    },
+    {
+      "time": "2026-03-10T16:44:03.466144+00:00",
+      "spot": 2091.18
+    },
+    {
+      "time": "2026-03-10T16:44:24.706812+00:00",
+      "spot": 2092.86
+    },
+    {
+      "time": "2026-03-10T16:44:46.134604+00:00",
+      "spot": 2093
+    },
+    {
+      "time": "2026-03-10T16:45:07.363713+00:00",
+      "spot": 2092.49
+    },
+    {
+      "time": "2026-03-10T16:45:29.287+00:00",
+      "spot": 2091.8
+    },
+    {
+      "time": "2026-03-10T16:45:50.504519+00:00",
+      "spot": 2089.69
+    },
+    {
+      "time": "2026-03-10T16:46:13.036303+00:00",
+      "spot": 2088.25
+    },
+    {
+      "time": "2026-03-10T16:46:35.26127+00:00",
+      "spot": 2088.55
+    },
+    {
+      "time": "2026-03-10T16:46:56.862935+00:00",
+      "spot": 2088.73
+    },
+    {
+      "time": "2026-03-10T16:47:18.282999+00:00",
+      "spot": 2088.23
+    },
+    {
+      "time": "2026-03-10T16:47:39.301049+00:00",
+      "spot": 2086.22
+    },
+    {
+      "time": "2026-03-10T16:48:00.715485+00:00",
+      "spot": 2087.1
+    },
+    {
+      "time": "2026-03-10T16:48:21.737342+00:00",
+      "spot": 2088.18
+    },
+    {
+      "time": "2026-03-10T16:48:43.14047+00:00",
+      "spot": 2086.81
+    },
+    {
+      "time": "2026-03-10T16:49:04.550383+00:00",
+      "spot": 2087.41
+    },
+    {
+      "time": "2026-03-10T16:49:26.099126+00:00",
+      "spot": 2088.92
+    },
+    {
+      "time": "2026-03-10T16:49:47.507303+00:00",
+      "spot": 2088.12
+    },
+    {
+      "time": "2026-03-10T16:50:08.534413+00:00",
+      "spot": 2087.98
+    },
+    {
+      "time": "2026-03-10T16:50:30.09195+00:00",
+      "spot": 2087.2
+    },
+    {
+      "time": "2026-03-10T16:50:51.314976+00:00",
+      "spot": 2088.13
+    },
+    {
+      "time": "2026-03-10T16:51:13.739045+00:00",
+      "spot": 2089.41
+    },
+    {
+      "time": "2026-03-10T16:51:34.971128+00:00",
+      "spot": 2090.29
+    },
+    {
+      "time": "2026-03-10T16:51:56.205657+00:00",
+      "spot": 2091.93
+    },
+    {
+      "time": "2026-03-10T16:52:17.649492+00:00",
+      "spot": 2091.87
+    },
+    {
+      "time": "2026-03-10T16:52:38.906076+00:00",
+      "spot": 2092.2
+    },
+    {
+      "time": "2026-03-10T16:52:59.374741+00:00",
+      "spot": 2092.42
+    },
+    {
+      "time": "2026-03-10T16:53:21.176932+00:00",
+      "spot": 2092.09
+    },
+    {
+      "time": "2026-03-10T16:53:41.369676+00:00",
+      "spot": 2092.43
+    },
+    {
+      "time": "2026-03-10T16:54:04.144152+00:00",
+      "spot": 2091.36
+    },
+    {
+      "time": "2026-03-10T16:54:26.199437+00:00",
+      "spot": 2091.54
+    },
+    {
+      "time": "2026-03-10T16:54:47.835802+00:00",
+      "spot": 2091.21
+    },
+    {
+      "time": "2026-03-10T16:55:09.0503+00:00",
+      "spot": 2091.55
+    },
+    {
+      "time": "2026-03-10T16:55:31.342242+00:00",
+      "spot": 2090.53
+    },
+    {
+      "time": "2026-03-10T16:55:52.371609+00:00",
+      "spot": 2090.37
+    },
+    {
+      "time": "2026-03-10T16:56:13.79055+00:00",
+      "spot": 2089.64
+    },
+    {
+      "time": "2026-03-10T16:56:35.015664+00:00",
+      "spot": 2088.64
+    },
+    {
+      "time": "2026-03-10T16:56:56.398593+00:00",
+      "spot": 2088.07
+    },
+    {
+      "time": "2026-03-10T16:57:17.617012+00:00",
+      "spot": 2087.8
+    },
+    {
+      "time": "2026-03-10T16:57:38.81174+00:00",
+      "spot": 2087.32
+    },
+    {
+      "time": "2026-03-10T16:58:00.20856+00:00",
+      "spot": 2087.33
+    },
+    {
+      "time": "2026-03-10T16:58:21.409538+00:00",
+      "spot": 2087.83
+    },
+    {
+      "time": "2026-03-10T16:58:42.811664+00:00",
+      "spot": 2087.84
+    },
+    {
+      "time": "2026-03-10T16:59:04.071894+00:00",
+      "spot": 2087.42
+    },
+    {
+      "time": "2026-03-10T16:59:25.275889+00:00",
+      "spot": 2087.36
+    },
+    {
+      "time": "2026-03-10T16:59:46.764588+00:00",
+      "spot": 2087.97
+    },
+    {
+      "time": "2026-03-10T17:00:07.797704+00:00",
+      "spot": 2087.23
+    },
+    {
+      "time": "2026-03-10T17:00:29.239211+00:00",
+      "spot": 2087.63
+    },
+    {
+      "time": "2026-03-10T17:00:50.274832+00:00",
+      "spot": 2086.67
+    },
+    {
+      "time": "2026-03-10T17:01:11.697989+00:00",
+      "spot": 2087
+    },
+    {
+      "time": "2026-03-10T17:01:32.942066+00:00",
+      "spot": 2087.4
+    },
+    {
+      "time": "2026-03-10T17:01:54.961072+00:00",
+      "spot": 2088.82
+    },
+    {
+      "time": "2026-03-10T17:02:16.948299+00:00",
+      "spot": 2088.71
+    },
+    {
+      "time": "2026-03-10T17:02:38.811584+00:00",
+      "spot": 2089.01
+    },
+    {
+      "time": "2026-03-10T17:03:00.248649+00:00",
+      "spot": 2089.73
+    },
+    {
+      "time": "2026-03-10T17:03:21.281224+00:00",
+      "spot": 2088.87
+    },
+    {
+      "time": "2026-03-10T17:03:43.686013+00:00",
+      "spot": 2086.44
+    },
+    {
+      "time": "2026-03-10T17:04:04.934246+00:00",
+      "spot": 2086.24
+    },
+    {
+      "time": "2026-03-10T17:04:26.166812+00:00",
+      "spot": 2086.72
+    },
+    {
+      "time": "2026-03-10T17:04:47.420856+00:00",
+      "spot": 2086.77
+    },
+    {
+      "time": "2026-03-10T17:05:08.954601+00:00",
+      "spot": 2086.4
+    },
+    {
+      "time": "2026-03-10T17:05:31.425468+00:00",
+      "spot": 2086.89
+    },
+    {
+      "time": "2026-03-10T17:05:52.680229+00:00",
+      "spot": 2088.21
+    },
+    {
+      "time": "2026-03-10T17:06:14.129175+00:00",
+      "spot": 2089.26
+    },
+    {
+      "time": "2026-03-10T17:06:35.171883+00:00",
+      "spot": 2089.51
+    },
+    {
+      "time": "2026-03-10T17:06:56.616524+00:00",
+      "spot": 2091.67
+    },
+    {
+      "time": "2026-03-10T17:07:17.875978+00:00",
+      "spot": 2091.99
+    },
+    {
+      "time": "2026-03-10T17:07:39.117595+00:00",
+      "spot": 2090.91
+    },
+    {
+      "time": "2026-03-10T17:08:01.285096+00:00",
+      "spot": 2087.91
+    },
+    {
+      "time": "2026-03-10T17:08:22.334637+00:00",
+      "spot": 2087.33
+    },
+    {
+      "time": "2026-03-10T17:08:43.749113+00:00",
+      "spot": 2087.51
+    },
+    {
+      "time": "2026-03-10T17:09:05.01206+00:00",
+      "spot": 2088.73
+    },
+    {
+      "time": "2026-03-10T17:09:27.115683+00:00",
+      "spot": 2087.05
+    },
+    {
+      "time": "2026-03-10T17:09:48.344844+00:00",
+      "spot": 2087.53
+    },
+    {
+      "time": "2026-03-10T17:10:09.57342+00:00",
+      "spot": 2087.46
+    },
+    {
+      "time": "2026-03-10T17:10:31.00048+00:00",
+      "spot": 2087.15
+    },
+    {
+      "time": "2026-03-10T17:10:52.046594+00:00",
+      "spot": 2087.98
+    },
+    {
+      "time": "2026-03-10T17:11:13.518035+00:00",
+      "spot": 2088.3
+    },
+    {
+      "time": "2026-03-10T17:11:35.427574+00:00",
+      "spot": 2087.12
+    },
+    {
+      "time": "2026-03-10T17:11:57.97873+00:00",
+      "spot": 2086.42
+    },
+    {
+      "time": "2026-03-10T17:12:19.229274+00:00",
+      "spot": 2086.2
+    },
+    {
+      "time": "2026-03-10T17:12:40.462171+00:00",
+      "spot": 2085.32
+    },
+    {
+      "time": "2026-03-10T17:13:01.896882+00:00",
+      "spot": 2084.21
+    },
+    {
+      "time": "2026-03-10T17:13:23.130348+00:00",
+      "spot": 2083.48
+    },
+    {
+      "time": "2026-03-10T17:13:44.576287+00:00",
+      "spot": 2083.35
+    },
+    {
+      "time": "2026-03-10T17:14:05.906356+00:00",
+      "spot": 2083.66
+    },
+    {
+      "time": "2026-03-10T17:14:27.925557+00:00",
+      "spot": 2084.49
+    },
+    {
+      "time": "2026-03-10T17:14:49.206161+00:00",
+      "spot": 2084.69
+    },
+    {
+      "time": "2026-03-10T17:15:10.435544+00:00",
+      "spot": 2084.19
+    },
+    {
+      "time": "2026-03-10T17:15:32.025665+00:00",
+      "spot": 2084.9
+    },
+    {
+      "time": "2026-03-10T17:15:53.435071+00:00",
+      "spot": 2086.33
+    },
+    {
+      "time": "2026-03-10T17:16:15.030664+00:00",
+      "spot": 2088.28
+    },
+    {
+      "time": "2026-03-10T17:16:36.057651+00:00",
+      "spot": 2086.84
+    },
+    {
+      "time": "2026-03-10T17:16:57.495035+00:00",
+      "spot": 2085.59
+    },
+    {
+      "time": "2026-03-10T17:17:19.30037+00:00",
+      "spot": 2083.7
+    },
+    {
+      "time": "2026-03-10T17:17:41.397997+00:00",
+      "spot": 2083.32
+    },
+    {
+      "time": "2026-03-10T17:18:02.838008+00:00",
+      "spot": 2084.8
+    },
+    {
+      "time": "2026-03-10T17:18:24.084518+00:00",
+      "spot": 2085.46
+    },
+    {
+      "time": "2026-03-10T17:18:45.527846+00:00",
+      "spot": 2086.82
+    },
+    {
+      "time": "2026-03-10T17:19:06.573222+00:00",
+      "spot": 2086.31
+    },
+    {
+      "time": "2026-03-10T17:19:28.261258+00:00",
+      "spot": 2085.94
+    },
+    {
+      "time": "2026-03-10T17:19:49.531107+00:00",
+      "spot": 2085.7
+    },
+    {
+      "time": "2026-03-10T17:20:10.765873+00:00",
+      "spot": 2085.53
+    },
+    {
+      "time": "2026-03-10T17:20:32.194689+00:00",
+      "spot": 2085.12
+    },
+    {
+      "time": "2026-03-10T17:20:53.85329+00:00",
+      "spot": 2085.62
+    },
+    {
+      "time": "2026-03-10T17:21:15.50166+00:00",
+      "spot": 2085.33
+    },
+    {
+      "time": "2026-03-10T17:21:36.547042+00:00",
+      "spot": 2085.13
+    },
+    {
+      "time": "2026-03-10T17:21:57.97747+00:00",
+      "spot": 2085.35
+    },
+    {
+      "time": "2026-03-10T17:22:19.572896+00:00",
+      "spot": 2085.15
+    },
+    {
+      "time": "2026-03-10T17:22:41.605045+00:00",
+      "spot": 2084.79
+    },
+    {
+      "time": "2026-03-10T17:23:02.845585+00:00",
+      "spot": 2085.22
+    },
+    {
+      "time": "2026-03-10T17:23:24.074429+00:00",
+      "spot": 2085.55
+    },
+    {
+      "time": "2026-03-10T17:23:45.515169+00:00",
+      "spot": 2085.47
+    },
+    {
+      "time": "2026-03-10T17:24:06.957137+00:00",
+      "spot": 2086.82
+    },
+    {
+      "time": "2026-03-10T17:24:28.414032+00:00",
+      "spot": 2088.07
+    },
+    {
+      "time": "2026-03-10T17:24:49.664556+00:00",
+      "spot": 2088.04
+    },
+    {
+      "time": "2026-03-10T17:25:10.881752+00:00",
+      "spot": 2085.71
+    },
+    {
+      "time": "2026-03-10T17:25:32.514466+00:00",
+      "spot": 2084.68
+    },
+    {
+      "time": "2026-03-10T17:25:53.758431+00:00",
+      "spot": 2084.29
+    },
+    {
+      "time": "2026-03-10T17:26:15.187336+00:00",
+      "spot": 2081.67
+    },
+    {
+      "time": "2026-03-10T17:26:36.227808+00:00",
+      "spot": 2079.89
+    },
+    {
+      "time": "2026-03-10T17:26:57.704123+00:00",
+      "spot": 2078.71
+    },
+    {
+      "time": "2026-03-10T17:27:20.204745+00:00",
+      "spot": 2079.08
+    },
+    {
+      "time": "2026-03-10T17:27:42.437943+00:00",
+      "spot": 2081.34
+    },
+    {
+      "time": "2026-03-10T17:28:03.696519+00:00",
+      "spot": 2081.2
+    },
+    {
+      "time": "2026-03-10T17:28:24.927803+00:00",
+      "spot": 2082.02
+    },
+    {
+      "time": "2026-03-10T17:28:46.506338+00:00",
+      "spot": 2080.88
+    },
+    {
+      "time": "2026-03-10T17:29:07.551793+00:00",
+      "spot": 2080.84
+    },
+    {
+      "time": "2026-03-10T17:29:29.150442+00:00",
+      "spot": 2079.96
+    },
+    {
+      "time": "2026-03-10T17:29:50.691983+00:00",
+      "spot": 2080.08
+    },
+    {
+      "time": "2026-03-10T17:30:12.322362+00:00",
+      "spot": 2080.36
+    },
+    {
+      "time": "2026-03-10T17:30:33.590919+00:00",
+      "spot": 2080.58
+    },
+    {
+      "time": "2026-03-10T17:30:54.809218+00:00",
+      "spot": 2081.84
+    },
+    {
+      "time": "2026-03-10T17:31:16.261214+00:00",
+      "spot": 2081.08
+    },
+    {
+      "time": "2026-03-10T17:31:38.395907+00:00",
+      "spot": 2078.84
+    },
+    {
+      "time": "2026-03-10T17:31:59.805698+00:00",
+      "spot": 2083.8
+    },
+    {
+      "time": "2026-03-10T17:32:20.852846+00:00",
+      "spot": 2085.71
+    },
+    {
+      "time": "2026-03-10T17:32:42.50578+00:00",
+      "spot": 2085.28
+    },
+    {
+      "time": "2026-03-10T17:33:04.391628+00:00",
+      "spot": 2085.93
+    },
+    {
+      "time": "2026-03-10T17:33:26.54857+00:00",
+      "spot": 2086.72
+    },
+    {
+      "time": "2026-03-10T17:33:47.795478+00:00",
+      "spot": 2086.19
+    },
+    {
+      "time": "2026-03-10T17:34:09.034253+00:00",
+      "spot": 2083.79
+    },
+    {
+      "time": "2026-03-10T17:34:31.349163+00:00",
+      "spot": 2082.99
+    },
+    {
+      "time": "2026-03-10T17:34:52.764214+00:00",
+      "spot": 2082.67
+    },
+    {
+      "time": "2026-03-10T17:35:14.201529+00:00",
+      "spot": 2080.5
+    },
+    {
+      "time": "2026-03-10T17:35:35.257421+00:00",
+      "spot": 2076.9
+    },
+    {
+      "time": "2026-03-10T17:35:56.674149+00:00",
+      "spot": 2078.85
+    },
+    {
+      "time": "2026-03-10T17:36:17.948455+00:00",
+      "spot": 2077.37
+    },
+    {
+      "time": "2026-03-10T17:36:39.174726+00:00",
+      "spot": 2078.1
+    },
+    {
+      "time": "2026-03-10T17:37:00.636797+00:00",
+      "spot": 2074.59
+    },
+    {
+      "time": "2026-03-10T17:37:21.671111+00:00",
+      "spot": 2072.1
+    },
+    {
+      "time": "2026-03-10T17:37:43.210194+00:00",
+      "spot": 2072.17
+    },
+    {
+      "time": "2026-03-10T17:38:04.81485+00:00",
+      "spot": 2070.9
+    },
+    {
+      "time": "2026-03-10T17:38:26.849485+00:00",
+      "spot": 2068.65
+    },
+    {
+      "time": "2026-03-10T17:38:48.131177+00:00",
+      "spot": 2067.92
+    },
+    {
+      "time": "2026-03-10T17:39:09.368126+00:00",
+      "spot": 2068.86
+    },
+    {
+      "time": "2026-03-10T17:39:30.999126+00:00",
+      "spot": 2068.56
+    },
+    {
+      "time": "2026-03-10T17:39:52.723695+00:00",
+      "spot": 2070.51
+    },
+    {
+      "time": "2026-03-10T17:40:14.138285+00:00",
+      "spot": 2071.1
+    },
+    {
+      "time": "2026-03-10T17:40:35.193104+00:00",
+      "spot": 2068.82
+    },
+    {
+      "time": "2026-03-10T17:40:56.617415+00:00",
+      "spot": 2068.26
+    },
+    {
+      "time": "2026-03-10T17:41:17.855509+00:00",
+      "spot": 2068.2
+    },
+    {
+      "time": "2026-03-10T17:41:39.093023+00:00",
+      "spot": 2073.4
+    },
+    {
+      "time": "2026-03-10T17:42:00.532179+00:00",
+      "spot": 2072.32
+    },
+    {
+      "time": "2026-03-10T17:42:21.573539+00:00",
+      "spot": 2073.37
+    },
+    {
+      "time": "2026-03-10T17:42:44.475555+00:00",
+      "spot": 2073.31
+    },
+    {
+      "time": "2026-03-10T17:43:06.023934+00:00",
+      "spot": 2074.78
+    },
+    {
+      "time": "2026-03-10T17:43:27.593589+00:00",
+      "spot": 2074.57
+    },
+    {
+      "time": "2026-03-10T17:43:48.82492+00:00",
+      "spot": 2073.74
+    },
+    {
+      "time": "2026-03-10T17:44:10.080965+00:00",
+      "spot": 2073.36
+    },
+    {
+      "time": "2026-03-10T17:44:32.352161+00:00",
+      "spot": 2072.47
+    },
+    {
+      "time": "2026-03-10T17:44:53.589681+00:00",
+      "spot": 2072.86
+    },
+    {
+      "time": "2026-03-10T17:45:15.035454+00:00",
+      "spot": 2072.08
+    },
+    {
+      "time": "2026-03-10T17:45:36.080017+00:00",
+      "spot": 2070.37
+    },
+    {
+      "time": "2026-03-10T17:45:57.573698+00:00",
+      "spot": 2070.2
+    },
+    {
+      "time": "2026-03-10T17:46:18.836615+00:00",
+      "spot": 2070.05
+    },
+    {
+      "time": "2026-03-10T17:46:40.311984+00:00",
+      "spot": 2070.09
+    },
+    {
+      "time": "2026-03-10T17:47:02.577418+00:00",
+      "spot": 2072.02
+    },
+    {
+      "time": "2026-03-10T17:47:23.840342+00:00",
+      "spot": 2072.81
+    },
+    {
+      "time": "2026-03-10T17:47:45.268945+00:00",
+      "spot": 2076.1
+    },
+    {
+      "time": "2026-03-10T17:48:06.316448+00:00",
+      "spot": 2078.23
+    },
+    {
+      "time": "2026-03-10T17:48:27.817578+00:00",
+      "spot": 2078.89
+    },
+    {
+      "time": "2026-03-10T17:48:49.619746+00:00",
+      "spot": 2080.04
+    },
+    {
+      "time": "2026-03-10T17:49:10.841563+00:00",
+      "spot": 2084.36
+    },
+    {
+      "time": "2026-03-10T17:49:32.428709+00:00",
+      "spot": 2081.91
+    },
+    {
+      "time": "2026-03-10T17:49:53.830473+00:00",
+      "spot": 2080.47
+    },
+    {
+      "time": "2026-03-10T17:50:16.283549+00:00",
+      "spot": 2080.49
+    },
+    {
+      "time": "2026-03-10T17:50:37.325443+00:00",
+      "spot": 2082.62
+    },
+    {
+      "time": "2026-03-10T17:50:58.790535+00:00",
+      "spot": 2082.44
+    },
+    {
+      "time": "2026-03-10T17:51:19.835366+00:00",
+      "spot": 2083.03
+    },
+    {
+      "time": "2026-03-10T17:51:41.090198+00:00",
+      "spot": 2082.82
+    },
+    {
+      "time": "2026-03-10T17:52:02.327572+00:00",
+      "spot": 2082.48
+    },
+    {
+      "time": "2026-03-10T17:52:24.027+00:00",
+      "spot": 2082.08
+    },
+    {
+      "time": "2026-03-10T17:52:46.544608+00:00",
+      "spot": 2082.94
+    },
+    {
+      "time": "2026-03-10T17:53:07.603979+00:00",
+      "spot": 2082.19
+    },
+    {
+      "time": "2026-03-10T17:53:29.503697+00:00",
+      "spot": 2081.95
+    },
+    {
+      "time": "2026-03-10T17:53:50.540295+00:00",
+      "spot": 2080.58
+    },
+    {
+      "time": "2026-03-10T17:54:11.949648+00:00",
+      "spot": 2082.36
+    },
+    {
+      "time": "2026-03-10T17:54:33.178191+00:00",
+      "spot": 2082
+    },
+    {
+      "time": "2026-03-10T17:54:56.071901+00:00",
+      "spot": 2083.19
+    },
+    {
+      "time": "2026-03-10T17:55:18.390033+00:00",
+      "spot": 2082.33
+    },
+    {
+      "time": "2026-03-10T17:55:39.436735+00:00",
+      "spot": 2078.13
+    },
+    {
+      "time": "2026-03-10T17:56:00.886628+00:00",
+      "spot": 2079.07
+    }
+  ],
+  "weights": {
+    "flow_imbalance": 1.2,
+    "skew_signal": 0.92,
+    "vix_proxy": 0.78,
+    "futures_momentum": 1.05,
+    "orderbook_pressure": 0.88,
+    "resting_pressure": 0.72,
+    "vol_regime": 0.66,
+    "term_slope": 0.58
+  },
+  "audits": [],
+  "peakEquity": 1000,
+  "maxDrawdown": 0
+}

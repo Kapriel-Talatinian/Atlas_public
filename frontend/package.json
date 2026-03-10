@@ -5,6 +5,7 @@
   "scripts": {
     "api": "dotnet run --project ../src/Atlas.Api --urls http://127.0.0.1:5000",
     "dev": "vite",
+    "dev:full": "concurrently -k -n api,web -c green,cyan \"npm run api\" \"npm run dev\"",
     "build": "vite build",
     "serve": "vite preview",
     "serve:prod": "serve -s dist -l ${PORT:-4173}"
@@ -16,6 +17,7 @@
     "serve": "^14.2.4"
   },
   "devDependencies": {
+    "concurrently": "^9.2.1",
     "vite": "^4.0.0",
     "@vitejs/plugin-react": "^4.0.0"
   }

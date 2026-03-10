@@ -1,5 +1,12 @@
 const IS_DEV = Boolean(import.meta.env.DEV);
-const LOCAL_FALLBACK_BASES = ["http://127.0.0.1:5000", "http://127.0.0.1:5050"];
+const LOCAL_FALLBACK_BASES = [
+  "http://127.0.0.1:5000",
+  "http://127.0.0.1:5050",
+  "http://127.0.0.1:5186",
+  "http://localhost:5000",
+  "http://localhost:5050",
+  "http://localhost:5186",
+];
 const FALLBACK_BASES = IS_DEV ? LOCAL_FALLBACK_BASES : [];
 const REQUEST_TIMEOUT_MS = 12000;
 const RETRYABLE_HTTP_STATUS = new Set([404, 500, 502, 503, 504]);
@@ -14,8 +21,17 @@ function candidateBases() {
   const list = [];
   if (preferredBase) list.push(preferredBase);
   if (ENV_BASE) list.push(ENV_BASE);
-  list.push("");
   if (IS_DEV) list.push(...FALLBACK_BASES);
+  if (IS_DEV || !ENV_BASE) list.push("");
+  return [...new Set(list)];
+}
+
+function streamCandidateBases() {
+  const list = [];
+  if (preferredBase) list.push(preferredBase);
+  if (ENV_BASE) list.push(ENV_BASE);
+  if (IS_DEV) list.push(...FALLBACK_BASES);
+  if (!preferredBase && !ENV_BASE && (IS_DEV || !ENV_BASE)) list.push("");
   return [...new Set(list)];
 }
 
@@ -137,7 +153,7 @@ export function getMarketStreamUrls({ asset, expiry, chainLimit = 80 }) {
     chainLimit: String(chainLimit),
   });
   if (expiry) params.set("expiry", expiry);
-  return candidateBases().map((base) => `${base}/api/options/stream?${params.toString()}`);
+  return streamCandidateBases().map((base) => `${base}/api/options/stream?${params.toString()}`);
 }
 
 export function createMarketStream(url) {
@@ -152,7 +168,7 @@ export async function getHealth() {
   }
 }
 
-export function getAssetsOverview(assets = ["BTC", "ETH", "SOL"]) {
+export function getAssetsOverview(assets = ["BTC", "ETH", "SOL", "WTI"]) {
   const query = encodeURIComponent(assets.join(","));
   return request(`/api/options/assets?assets=${query}`);
 }
@@ -201,6 +217,39 @@ export function getOptionSignals({ asset, expiry, type = "all", limit = 120 }) {
 
 export function getVolRegime(asset) {
   return request(`/api/options/regime?asset=${encodeURIComponent(asset)}`);
+}
+
+export function getMacroBias({
+  asset,
+  horizonDays = 30,
+  growthMomentum = 0,
+  inflationShock = 0,
+  policyTightening = 0,
+  usdStrength = 0,
+  liquidityStress = 0,
+  supplyShock = 0,
+  riskAversion = 0,
+}) {
+  const params = new URLSearchParams({
+    asset,
+    horizonDays: String(horizonDays),
+    growthMomentum: String(growthMomentum),
+    inflationShock: String(inflationShock),
+    policyTightening: String(policyTightening),
+    usdStrength: String(usdStrength),
+    liquidityStress: String(liquidityStress),
+    supplyShock: String(supplyShock),
+    riskAversion: String(riskAversion),
+  });
+  return request(`/api/options/macro-bias?${params.toString()}`);
+}
+
+export function getLiveBias({ asset, horizonDays = 30 }) {
+  const params = new URLSearchParams({
+    asset,
+    horizonDays: String(horizonDays),
+  });
+  return request(`/api/options/live-bias?${params.toString()}`);
 }
 
 export function getStrategyRecommendations({ asset, expiry, size = 1, riskProfile = "balanced" }) {
@@ -336,4 +385,28 @@ export function resetPaperBook() {
 
 export function getSystemOps() {
   return request("/api/system/ops");
+}
+
+export function getExperimentalBotSnapshot(asset = "BTC") {
+  return request(`/api/experimental/bot/snapshot?asset=${encodeURIComponent(asset)}`);
+}
+
+export function configureExperimentalBot(asset = "BTC", payload = {}) {
+  return request(`/api/experimental/bot/configure?asset=${encodeURIComponent(asset)}`, {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function runExperimentalBotCycles(asset = "BTC", cycles = 1) {
+  return request(
+    `/api/experimental/bot/run?asset=${encodeURIComponent(asset)}&cycles=${encodeURIComponent(String(cycles))}`,
+    { method: "POST" }
+  );
+}
+
+export function resetExperimentalBot(asset = "BTC") {
+  return request(`/api/experimental/bot/reset?asset=${encodeURIComponent(asset)}`, {
+    method: "POST",
+  });
 }

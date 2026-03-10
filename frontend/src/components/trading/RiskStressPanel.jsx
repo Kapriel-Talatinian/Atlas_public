@@ -37,6 +37,22 @@ export default function RiskStressPanel({ preview, stress, loadingPreview, loadi
             <div className="summary-label">Maintenance Margin</div>
             <div className="summary-value">{formatUsd(preview.estimatedMaintenanceMargin || 0, 0)}</div>
           </div>
+          <div className="summary-card">
+            <div className="summary-label">Est. Slippage</div>
+            <div className="summary-value">{fmtPct(preview.estimatedSlippagePct || 0)}</div>
+          </div>
+          <div className="summary-card">
+            <div className="summary-label">Exec Quality</div>
+            <div className="summary-value">{formatSigned(preview.estimatedExecutionQuality || 0, 1)}</div>
+          </div>
+          <div className="summary-card">
+            <div className="summary-label">Fee Rate</div>
+            <div className="summary-value">{fmtPct(preview.estimatedFeeRate || 0)}</div>
+          </div>
+          <div className="summary-card">
+            <div className="summary-label">Est. Fill Qty</div>
+            <div className="summary-value">{(preview.estimatedFilledQuantity || 0).toFixed(2)}</div>
+          </div>
         </div>
       ) : (
         <div className="status-chip">No preview yet.</div>

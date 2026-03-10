@@ -1,93 +1,237 @@
 # Atlas — Institutional Crypto Options Desk
 
-Plateforme API + UI pour options crypto (BTC/ETH/SOL) avec:
-- analytics quant (surface, calibration, signaux, arbitrage, optimizer Greeks),
-- desk d'exécution en paper trading,
-- moteur de risque pré-trade,
-- marge (initial/maintenance),
-- kill-switch,
-- monitoring ops (metrics, alerts, health, stale/fallback market data).
+Atlas est une plateforme **API + UI** pour un desk options crypto orienté execution/risk:
+- analytics options (surface IV, Greeks, calibration, regime, macro/live bias),
+- paper trading institutionnel (pré-trade risk, marge, slippage, QoE, idempotence, retries),
+- market data résiliente multi-source (Bybit + Deribit + fallback WTI synthétique),
+- monitoring ops (health, metrics, alerts),
+- bot expérimental 24/7 en paper avec apprentissage online et audit continu.
 
-## 1) Stack et périmètre
+> Statut produit: **simulation/paper trading uniquement** (pas d'envoi d'ordres réel exchange).
+
+## 1) Vue d'ensemble
+
+### 1.1 Architecture globale
+
+```mermaid
+flowchart LR
+    subgraph FE[Frontend - React + Vite]
+        UI[Trading UI / Strategy Lab / Experimental Bot]
+    end
+
+    subgraph API[Backend - ASP.NET Core .NET 8]
+        OCTRL[OptionsController]
+        TCTRL[TradingController]
+        ECTRL[ExperimentalController]
+        SCTRL[SystemController]
+        PRCTRL[PricingController]
+        TFCTRL[ToxicFlowController]
+
+        OAS[OptionsAnalyticsService]
+        PTS[PaperTradingService]
+        EAS[ExperimentalAutoTraderService]
+        MDS[ResilientOptionsMarketDataService]
+        MON[SystemMonitoringService]
+    end
+
+    subgraph CORE[Quant Core]
+        BS[Black-Scholes]
+        HES[Heston]
+        SABR[SABR]
+        MC[Monte Carlo]
+        BT[Binomial Tree]
+    end
+
+    subgraph VENUES[Market Data Sources]
+        BYBIT[Bybit Options]
+        DERIBIT[Deribit Options]
+        WTI[Synthetic WTI Chain]
+    end
+
+    UI --> OCTRL
+    UI --> TCTRL
+    UI --> ECTRL
+    UI --> SCTRL
+
+    OCTRL --> OAS
+    TCTRL --> PTS
+    ECTRL --> EAS
+
+    OAS --> MDS
+    PTS --> MDS
+    EAS --> MDS
+
+    OAS --> CORE
+    PRCTRL --> CORE
+
+    MDS --> BYBIT
+    MDS --> DERIBIT
+    MDS --> WTI
+
+    API --> MON
+```
+
+### 1.2 Pipeline market data (résilient)
+
+```mermaid
+sequenceDiagram
+    participant Client as Frontend/API Caller
+    participant API as Atlas.Api
+    participant MDS as ResilientOptionsMarketDataService
+    participant B as Bybit
+    participant D as Deribit
+
+    Client->>API: GET /api/options/chain?asset=BTC
+    API->>MDS: GetOptionChain(BTC)
+
+    par Fetch source 1
+        MDS->>B: /v5/market/tickers
+        B-->>MDS: raw quotes
+    and Fetch source 2
+        MDS->>D: /api/v2/public/get_book_summary_by_currency
+        D-->>MDS: raw quotes
+    end
+
+    MDS->>MDS: validation + dedup + outlier filter + IV fallback
+    MDS->>MDS: stale detection + source health update
+    MDS->>MDS: fallback selection (best available source)
+
+    MDS-->>API: cleaned chain + metadata
+    API-->>Client: normalized response
+```
+
+### 1.3 Cycle d'ordre (state machine)
+
+```mermaid
+stateDiagram-v2
+    [*] --> Received
+    Received --> Rejected: validation/risk fail
+    Received --> Accepted: checks passed
+
+    Accepted --> AttemptingFill
+    AttemptingFill --> Filled: full fill
+    AttemptingFill --> PartiallyFilled: partial fill
+    AttemptingFill --> Rejected: not executable / no liquidity
+
+    PartiallyFilled --> AttemptingFill: retry <= maxRetries
+    PartiallyFilled --> Filled: remaining = 0
+    PartiallyFilled --> Rejected: retries exhausted / reject condition
+
+    Filled --> [*]
+    Rejected --> [*]
+```
+
+### 1.4 Boucle du bot expérimental (autopilot)
+
+```mermaid
+flowchart TD
+    Tick[Background tick 24/7] --> LoadState[Load/persisted state]
+    LoadState --> FetchChain[Fetch chain + features]
+    FetchChain --> Signal[Compute signal + confidence]
+    Signal --> RiskGate{Risk gate + config}
+
+    RiskGate -->|Trade| OpenPos[Open/Update positions]
+    RiskGate -->|No trade| Hold[Hold decision]
+
+    OpenPos --> ExitLogic[Stop/TP/Time/Signal flip]
+    ExitLogic --> Audit[Audit trade outcome]
+    Audit --> Learn[Update model weights]
+    Learn --> AutoTune[Auto-tune params]
+    AutoTune --> Persist[Persist JSON state]
+
+    Hold --> Persist
+    Persist --> Snapshot[Expose snapshot API]
+```
+
+## 2) Fonctionnalités clés
+
+### 2.1 Options analytics
+- Chain, expiries, surface IV, model comparison.
+- Calibration, regime detection, live bias et macro bias.
+- Recommandations de stratégies et optimizer Greeks.
+- Arbitrage scan et exposure grid.
+
+### 2.2 Exécution (paper trading)
+- Pré-trade simulation: prix exécutable, slippage, frais, QoE.
+- State machine robuste: retries, partial fills, state trace.
+- Idempotence via `clientOrderId` + anti-duplicate fingerprint.
+- Risk engine pré-trade: notional, taille, Greeks, concentration, open orders, daily loss.
+- Margin engine: initial/maintenance/equity/available margin/margin ratio.
+- Kill-switch manuel + activation auto en cas de liquidation.
+
+### 2.3 Market data pro
+- Multi-source: Bybit + Deribit, fallback source.
+- Détection stale feed et cache stale contrôlé.
+- Pipeline nettoyage: invalids/outliers/dédoublonnage/normalisation.
+- Source health par asset/source.
+
+### 2.4 Monitoring / observabilité
+- Metrics, counters, gauges, active alerts.
+- Request observability middleware + latence/status HTTP.
+- Endpoints ops dédiés (`/api/system/*`).
+
+### 2.5 Experimental Bot
+- Snapshot live: signal, trades, décisions, poids modèle.
+- Persistance d'état sur disque (pas de reset au redémarrage).
+- Rolling audit (100 trades par défaut): win-rate, profit factor, drawdown.
+- Auto-tune optionnel des paramètres de trading.
+- Capital de départ configurable (`startingCapitalUsd`, défaut 1000).
+
+## 3) Stack technique
 
 - Backend: `ASP.NET Core (.NET 8)`
-- Frontend: `React + Vite + Recharts`
-- Actifs supportés: `BTC`, `ETH`, `SOL`
-- Données options: multi-source résiliente `Bybit + Deribit` (fallback + stale detection)
-- Trading: **paper trading** (pas d'envoi d'ordres réel vers exchange)
+- Frontend: `React 18`, `Vite`, `Recharts`
+- Tests backend: `xUnit`
+- Packaging API cloud: `Dockerfile.api`
+- Déploiement recommandé: Railway (API + Frontend séparés)
 
-## 2) Architecture réelle
+## 4) Structure du repository
 
 ```text
 atlas/
 ├── Atlas.sln
+├── Dockerfile.api
+├── railway.json
 ├── src/
-│   ├── Atlas.Core/                 # pricing models + greeks
+│   ├── Atlas.Api/
+│   │   ├── Controllers/
+│   │   ├── Services/
+│   │   ├── Middleware/
 │   │   ├── Models/
-│   │   │   ├── BlackScholes.cs
-│   │   │   ├── HestonModel.cs
-│   │   │   ├── MonteCarlo.cs
-│   │   │   ├── BinomialTree.cs
-│   │   │   ├── SabrModel.cs
-│   │   │   └── ImpliedVolSolver.cs
-│   ├── Atlas.ToxicFlow/            # toxic flow engine
-│   ├── Atlas.Exchange/             # exchange abstraction
-│   └── Atlas.Api/
-│       ├── Controllers/
-│       │   ├── OptionsController.cs
-│       │   ├── TradingController.cs
-│       │   ├── PricingController.cs
-│       │   ├── ToxicFlowController.cs
-│       │   └── SystemController.cs
-│       ├── Services/
-│       │   ├── OptionsAnalyticsService.cs
-│       │   ├── PaperTradingService.cs
-│       │   ├── BybitOptionsMarketDataService.cs      # service résilient (Bybit+Deribit)
-│       │   └── SystemMonitoringService.cs
-│       └── Middleware/
-│           └── RequestObservabilityMiddleware.cs
-├── tests/Atlas.Tests/
-└── frontend/
-    ├── src/App.jsx
-    └── src/components/
+│   │   └── Program.cs
+│   ├── Atlas.Core/
+│   ├── Atlas.Exchange/
+│   └── Atlas.ToxicFlow/
+├── frontend/
+│   ├── src/
+│   ├── package.json
+│   └── railway.json
+└── tests/
+    └── Atlas.Tests/
 ```
 
-## 3) Démarrage local (fiable)
+## 5) Démarrage local
 
-### Prérequis
-
+### 5.1 Prérequis
 - `.NET SDK 8.x`
 - `Node.js 18+`
 - `npm`
 
-### Backend API
+### 5.2 Lancer l'API
 
-Depuis la racine repo:
-
-```bash
-dotnet run --project src/Atlas.Api
-```
-
-Backend par défaut: `http://127.0.0.1:5000`
-
-Si tu es déjà dans `frontend/`:
+Depuis la racine:
 
 ```bash
-dotnet run --project ../src/Atlas.Api --urls http://127.0.0.1:5000
+dotnet run --project src/Atlas.Api --urls http://127.0.0.1:5000
 ```
 
-ou via script:
-
-```bash
-cd frontend
-npm run api
-```
-
-### Swagger
-
+Swagger:
 - `http://127.0.0.1:5000/swagger`
 
-### Frontend
+Health:
+- `http://127.0.0.1:5000/health`
+
+### 5.3 Lancer le frontend
 
 ```bash
 cd frontend
@@ -95,105 +239,42 @@ npm install
 npm run dev
 ```
 
-Frontend: `http://127.0.0.1:5173`
+UI:
+- `http://127.0.0.1:5173`
 
-## 4) Variables d'environnement
-
-### Frontend (`frontend/.env.example`)
-
-- `VITE_API_BASE_URL`: base API explicite (ex: `http://127.0.0.1:5000` en local, URL publique API en Railway)
-- `VITE_PROXY_TARGET`: cible proxy Vite pour `/api` en local (`npm run dev`)
-
-Exemple local:
+Mode full stack local (API + UI en une commande):
 
 ```bash
 cd frontend
-VITE_API_BASE_URL=http://127.0.0.1:5000 npm run dev
+npm run dev:full
 ```
 
-### API (`src/Atlas.Api/.env.example`)
+## 6) Variables d'environnement
 
-- `ASPNETCORE_ENVIRONMENT`: `Production` ou `Development`
-- `PORT`: port runtime (injecté automatiquement par Railway)
-- `CORS_ALLOWED_ORIGINS`: liste d'origines autorisées séparées par virgules
+### 6.1 Backend (`src/Atlas.Api/.env.example`)
 
-## 5) Résolution des erreurs "Failed to fetch" / `ECONNREFUSED`
+| Variable | Description | Exemple |
+|---|---|---|
+| `PORT` | Port runtime (injecté en cloud) | `5000` |
+| `CORS_ALLOWED_ORIGINS` | Origines autorisées (CSV) | `http://127.0.0.1:5173` |
+| `ASPNETCORE_ENVIRONMENT` | Environnement .NET | `Production` |
+| `EXPERIMENTAL_BOT_STATE_DIR` | Répertoire persistance bot (optionnel) | `/data/atlas-bot` |
 
-1. Démarrer d'abord l'API (`dotnet run ...`).
-2. Vérifier que l'API écoute bien sur `127.0.0.1:5000`.
-3. Depuis `frontend/`, utiliser `../src/Atlas.Api` (et non `src/Atlas.Api`).
-4. Si port custom, aligner `VITE_API_BASE_URL` ou `VITE_PROXY_TARGET`.
-5. En production, définir `VITE_API_BASE_URL` vers l'URL publique de l'API (pas de fallback localhost).
+### 6.2 Frontend (`frontend/.env.example`)
 
-## 6) Fonctionnalités institutionnelles implémentées
+| Variable | Description | Exemple |
+|---|---|---|
+| `VITE_API_BASE_URL` | URL API explicite | `http://127.0.0.1:5000` |
+| `VITE_PROXY_TARGET` | Target proxy Vite local | `http://127.0.0.1:5000` |
 
-### Exécution
+## 7) Référence API
 
-- Slippage estimé et réalisé (`slippagePct`)
-- Frais effectifs (`fees`, `effectiveFeeRate`)
-- Score de qualité d'exécution (`executionQualityScore`)
-- Fills détaillés par tentative (`fills[]`)
-- `filledQuantity` / `remainingQuantity`
-
-### State machine d'ordres
-
-- États: `Received`, `Accepted`, `PartiallyFilled`, `Filled`, `Rejected`, `Cancelled`, `Expired`
-- Idempotence via `clientOrderId`
-- Anti-duplicate (fingerprint fenêtre courte)
-- Retries configurables (`maxRetries`)
-- Partial fills (`allowPartialFill`)
-- Trace d'état (`stateTrace`)
-
-### Risque pré-trade
-
-Contrôles sur:
-- notionnel ordre,
-- taille ordre,
-- limites Greeks portefeuille (`delta/gamma/vega/theta`),
-- concentration,
-- exposition par asset,
-- perte journalière,
-- max open orders,
-- kill-switch.
-
-### Marge et liquidation
-
-- Initial margin + maintenance margin
-- Equity, available margin, margin ratio
-- Déclenchement liquidation explicite si maintenance cassée
-- Notifications + activation kill-switch automatique lors d'une liquidation
-
-### Market data résiliente
-
-- Sources: Bybit + Deribit
-- Fallback automatique
-- Détection stale data
-- Health détaillé par source/asset
-
-### Monitoring / observabilité
-
-- Middleware requêtes: latence, status HTTP, logs
-- Metrics/gauges/counters
-- Alerts actives
-- Snapshot ops consolidé
-- Header `X-Trace-Id`
-
-### Validation quant
-
-- Tests unitaires pricing et Greeks
-- Tests de non-régression modèles (BS/Heston/SABR)
-- Cohérence Greeks vs finite differences
-
-## 7) Référence API complète
-
-### Pricing (`/api/pricing`)
-
+### 7.1 Pricing (`/api/pricing`)
 - `GET /api/pricing/compare`
 - `GET /api/pricing/greeks`
 - `GET /api/pricing/implied-vol`
 
-### Toxic Flow (`/api/toxicflow`)
-
+### 7.2 Toxic Flow (`/api/toxicflow`)
 - `GET /api/toxicflow/dashboard`
 - `GET /api/toxicflow/clusters`
 - `GET /api/toxicflow/counterparties`
@@ -201,9 +282,8 @@ Contrôles sur:
 - `GET /api/toxicflow/counterparty/{id}`
 - `GET /api/toxicflow/history`
 
-### Options (`/api/options`)
-
-- `GET /api/options/assets?assets=BTC,ETH,SOL`
+### 7.3 Options (`/api/options`)
+- `GET /api/options/assets?assets=BTC,ETH,SOL,WTI`
 - `GET /api/options/expiries?asset=BTC`
 - `GET /api/options/chain?asset=BTC&expiry=YYYY-MM-DD&type=all&limit=220`
 - `GET /api/options/surface?asset=BTC&limit=600`
@@ -211,16 +291,17 @@ Contrôles sur:
 - `GET /api/options/calibration?asset=BTC&expiry=YYYY-MM-DD`
 - `GET /api/options/signals?asset=BTC&expiry=YYYY-MM-DD&type=all&limit=140`
 - `GET /api/options/regime?asset=BTC`
+- `GET /api/options/macro-bias?asset=BTC&horizonDays=30&growthMomentum=0&inflationShock=0&policyTightening=0&usdStrength=0&liquidityStress=0&supplyShock=0&riskAversion=0`
+- `GET /api/options/live-bias?asset=BTC&horizonDays=30`
 - `GET /api/options/recommendations?asset=BTC&expiry=YYYY-MM-DD&size=1&riskProfile=balanced`
 - `GET /api/options/optimizer?asset=BTC&expiry=YYYY-MM-DD&size=1&riskProfile=balanced&targetDelta=0&targetVega=0&targetTheta=0`
-- `GET /api/options/exposure-grid?asset=BTC&expiry=YYYY-MM-DD&maxExpiries=6&maxStrikes=24`
+- `GET /api/options/exposure-grid?asset=BTC&maxExpiries=6&maxStrikes=24`
 - `GET /api/options/arbitrage?asset=BTC&expiry=YYYY-MM-DD&limit=120`
 - `GET /api/options/strategies/presets?asset=BTC&expiry=YYYY-MM-DD&size=1`
-- `POST /api/options/strategies/analyze`
 - `GET /api/options/stream?asset=BTC&expiry=YYYY-MM-DD&chainLimit=80` (SSE)
+- `POST /api/options/strategies/analyze`
 
-### Trading (`/api/trading`)
-
+### 7.4 Trading (`/api/trading`)
 - `GET /api/trading/limits`
 - `GET /api/trading/orders?limit=200`
 - `GET /api/trading/notifications?limit=120`
@@ -235,18 +316,23 @@ Contrôles sur:
 - `POST /api/trading/stress`
 - `POST /api/trading/reset`
 
-### System / Ops (`/api/system`)
+### 7.5 Experimental Bot (`/api/experimental/bot`)
+- `GET /api/experimental/bot/snapshot?asset=BTC`
+- `POST /api/experimental/bot/configure?asset=BTC`
+- `POST /api/experimental/bot/run?asset=BTC&cycles=1`
+- `POST /api/experimental/bot/reset?asset=BTC`
 
+### 7.6 System / Ops (`/api/system`)
 - `GET /api/system/health`
 - `GET /api/system/metrics`
 - `GET /api/system/alerts`
 - `GET /api/system/market-data`
 - `GET /api/system/ops`
-- `GET /health` (health simplifié)
+- `GET /health`
 
-## 8) Payloads utiles
+## 8) Exemples payloads
 
-### `POST /api/trading/orders`
+### 8.1 `POST /api/trading/orders`
 
 ```json
 {
@@ -262,16 +348,7 @@ Contrôles sur:
 }
 ```
 
-### `POST /api/trading/preview`
-
-Même payload que `orders`, retourne:
-- accept/reject,
-- projection risque,
-- marge projetée,
-- slippage/quality estimés,
-- quantité estimée exécutée.
-
-### `POST /api/trading/killswitch`
+### 8.2 `POST /api/trading/killswitch`
 
 ```json
 {
@@ -281,86 +358,108 @@ Même payload que `orders`, retourne:
 }
 ```
 
-## 9) Exemples `curl`
+## 9) Exemples curl
 
 ```bash
-# Health ops
+# Health
+curl -s http://127.0.0.1:5000/health
+
+# Ops snapshot
 curl -s http://127.0.0.1:5000/api/system/ops
 
 # Option chain ETH
-curl -s "http://127.0.0.1:5000/api/options/chain?asset=ETH&limit=50"
+curl -s "http://127.0.0.1:5000/api/options/chain?asset=ETH&limit=80"
 
-# Préview ordre
+# Preview ordre
 curl -s -X POST http://127.0.0.1:5000/api/trading/preview \
   -H 'Content-Type: application/json' \
   -d '{"symbol":"ETH-10MAR26-1700-C","side":"Buy","quantity":1,"type":"Market"}'
 
-# Kill-switch ON
-curl -s -X POST http://127.0.0.1:5000/api/trading/killswitch \
-  -H 'Content-Type: application/json' \
-  -d '{"isActive":true,"reason":"manual lock","updatedBy":"ops"}'
+# Bot snapshot
+curl -s "http://127.0.0.1:5000/api/experimental/bot/snapshot?asset=BTC"
 ```
 
-## 10) Tests et qualité
+## 10) Qualité et tests
 
 ```bash
-# Backend build
+# Build backend
 dotnet build Atlas.sln -c Release
 
-# Tests
+# Tests backend
 dotnet test Atlas.sln
 
-# Frontend build
+# Build frontend
 cd frontend
 npm run build
 ```
 
-## 11) Limites actuelles
+## 11) Déploiement Railway (sans VPS)
 
-- Trading en simulation (`paper`) uniquement.
-- Pas de persistance DB long terme (in-memory).
-- Pas d'authentification/autorisation multi-utilisateurs pour le moment.
+Architecture recommandée: **2 services** (API + Frontend).
 
-## 12) Passage vers prod réelle
+```mermaid
+flowchart LR
+    GH[GitHub Repo] --> RAPI[Railway Service API]
+    GH --> RWEB[Railway Service Frontend]
 
-1. Ajouter authn/authz + gestion des secrets.
-2. Brancher execution venue réelle (connecteurs exchange).
-3. Ajouter stockage persistant (orders/fills/positions/alerts/metrics).
-4. Déployer observabilité externe (Prometheus/Grafana/OTel collector).
-5. Ajouter runbooks d'incident + on-call 24/7.
+    RAPI --> APIURL[https://atlas-api.up.railway.app]
+    RWEB --> WEBURL[https://atlas-web.up.railway.app]
 
-## 13) Déploiement Railway (sans VPS)
-
-Le repo est prêt pour un déploiement Railway en **2 services**:
-- Service API avec root directory `src/Atlas.Api` et config `[railway.json](src/Atlas.Api/railway.json)`.
-- Service Frontend avec root directory `frontend` et config `[railway.json](frontend/railway.json)`.
-
-### Étapes Railway
-
-1. Connecter le repo GitHub dans Railway.
-2. Créer le service API avec root directory `src/Atlas.Api`.
-3. Déployer l'API puis récupérer son URL publique (`https://...up.railway.app`).
-4. Créer le service Frontend avec root directory `frontend`.
-5. Définir `VITE_API_BASE_URL=https://<api-url>` dans le service Frontend.
-6. Définir `CORS_ALLOWED_ORIGINS=https://<frontend-url>` dans le service API.
-7. Redéployer les deux services.
-
-### Vérifications
-
-```bash
-curl -s https://<api-url>/health
-curl -s https://<api-url>/api/system/health
+    WEBURL -->|VITE_API_BASE_URL| APIURL
+    APIURL -->|CORS_ALLOWED_ORIGINS| WEBURL
 ```
 
-- UI: `https://<frontend-url>`
-- Swagger: `https://<api-url>/swagger`
+### 11.1 Service API
+- Root directory: `/`
+- Config: [`railway.json`](railway.json)
+- Build: `Dockerfile.api`
 
-### Local inchangé
+### 11.2 Service Frontend
+- Root directory: `frontend`
+- Config: [`frontend/railway.json`](frontend/railway.json)
 
-- API local: `dotnet run --project src/Atlas.Api`
-- Front local: `cd frontend && npm run dev`
-- Le fallback `127.0.0.1` est actif uniquement en développement.
+### 11.3 Étapes
+1. Connecter le repo à Railway.
+2. Créer le service API (`/`).
+3. Déployer et récupérer l'URL API.
+4. Créer le service Frontend (`frontend`).
+5. Définir `VITE_API_BASE_URL=https://<api-url>` côté Frontend.
+6. Définir `CORS_ALLOWED_ORIGINS=https://<frontend-url>` côté API.
+7. Redéployer les deux services.
 
-## 14) Licence
+## 12) Troubleshooting
+
+### 12.1 `Failed to fetch` / `ECONNREFUSED 127.0.0.1:5000`
+- Vérifier que l'API tourne sur le port attendu.
+- Vérifier `VITE_API_BASE_URL` / `VITE_PROXY_TARGET`.
+- Redémarrer API puis frontend.
+
+### 12.2 `unknown symbol ...` sur WTI
+- La chaîne WTI est synthétique et peut changer de strike entre deux refresh.
+- Le moteur fait une résolution canonique + nearest strike fallback, mais rafraîchir la chain avant envoi reste recommandé.
+
+### 12.3 Swagger indisponible
+- Vérifier `http://127.0.0.1:5000/swagger`.
+- Vérifier que le backend a bien démarré sans erreur (`dotnet run --project src/Atlas.Api`).
+
+### 12.4 Railway build error
+- API doit être construite depuis la racine repo (`/`) car `Atlas.Api` dépend de `Atlas.Core/Exchange/ToxicFlow`.
+
+## 13) Passage production réel (checklist)
+
+- AuthN/AuthZ (JWT/OIDC, RBAC).
+- Secret management (KMS/Vault).
+- Persistance DB (orders/fills/positions/audits/metrics).
+- Observabilité externe (OpenTelemetry + Prometheus/Grafana + alerting).
+- Runbooks d'incident + on-call.
+- Connecteurs execution réelle exchange + reconciliations.
+
+## 14) Limites actuelles
+
+- Trading réel non activé (paper only).
+- Pas de multi-tenancy utilisateur complet.
+- Bot expérimental = recherche/itération, pas promesse de performance live.
+
+## 15) Licence
 
 Proprietary. All rights reserved.

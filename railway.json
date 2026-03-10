@@ -1,7 +1,7 @@
 {
   "build": {
     "builder": "DOCKERFILE",
-    "dockerfilePath": "/Dockerfile.api"
+    "dockerfilePath": "Dockerfile.api"
   },
   "deploy": {
     "healthcheckPath": "/health",
