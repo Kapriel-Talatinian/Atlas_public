@@ -12,3 +12,5 @@ npm-debug.log*
 **/obj/
 *.user
 *.suo
+# Runtime bot state
+src/Atlas.Api/data/
