@@ -2305,6 +2305,9 @@ public sealed class PaperTradingService : IPaperTradingService
         double netVega,
         double netTheta)
     {
+        // TODO: replace this linear add-on model with a scenario-based
+        // SPAN-like engine (16 scenarios x asset) once real venue margin
+        // schedules and portfolio offsets are introduced. See QUANT_NOTES.md §6.
         double initial =
             gross * 0.12 +
             Math.Abs(netDelta) * 1.4 +

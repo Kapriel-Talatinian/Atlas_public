@@ -39,6 +39,8 @@ public static class HestonModel
         if (T <= 1e-10)
             return type == OptionType.Call ? Math.Max(S - K, 0) : Math.Max(K - S, 0);
 
+        // TODO: replace with Carr-Madan FFT / characteristic-function pricing
+        // (see QUANT_NOTES.md §2.2.1 for the production-grade path).
         // Effective variance: E[v(T)] under mean-reversion
         double effVar = v0 * v0 * Math.Exp(-p.Kappa * T)
                       + p.Theta * p.Theta * (1 - Math.Exp(-p.Kappa * T));

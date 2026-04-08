@@ -36,6 +36,19 @@ Implementation notes:
 - higher-order Greeks exposed: `vanna`, `volga`, `charm`, `rho`,
 - deterministic limits are handled for near-zero maturity and near-zero volatility.
 
+### 2.1.1 Why Brenner-Subrahmanyam for implied-vol initialization
+
+Atlas uses the **Brenner-Subrahmanyam** style initialization for implied volatility extraction because it is fast, simple, and very effective in the regime that matters most operationally: near-ATM options where most quoting, surface anchoring, and sanity checks happen.
+
+The practical reason for using it is not elegance but convergence behavior:
+
+- for ATM and near-ATM options it places Newton-Raphson close to the root,
+- the first few Newton steps are therefore informative rather than chaotic,
+- in practice this tends to converge in roughly `3-5` iterations for liquid ATM-style inputs,
+- the implementation cost is essentially zero compared with a more elaborate heuristic seed.
+
+This is exactly the kind of heuristic that belongs in a desk platform: cheap, robust in the common case, and easy to explain.
+
 ### 2.2 Heston
 
 Heston is included because crypto options require a structural view of **stochastic volatility and skew**, not just a flat-vol surface.
@@ -53,6 +66,22 @@ Important implementation detail:
 - this is intentional for speed, readability, and portfolio-demo robustness.
 
 That means the Heston component should be read as a **research-grade structural approximation**, not as a production-calibrated library pricer.
+
+### 2.2.1 What a "real" Heston path would require
+
+If Atlas were pushed from portfolio-grade analytics to production-grade stochastic-volatility pricing, the Heston layer would need to move away from moment matching and toward a proper characteristic-function implementation.
+
+The natural next step would be:
+
+- **Carr-Madan FFT** pricing with a damping parameter such as `alpha = 1.5`,
+- or direct characteristic-function integration using **Gauss-Laguerre quadrature**,
+- plus a calibration routine with regularization and parameter guards.
+
+Why that is not already in the repository:
+
+- the current platform goal is to expose coherent cross-model analytics, not to win a calibration benchmark,
+- FFT/integration code is materially more complex to audit and explain,
+- the moment-matching approximation is materially more stable for an interactive demo platform with broad feature scope.
 
 ### 2.3 SABR
 
@@ -148,6 +177,21 @@ Atlas then computes ex-post fit diagnostics on a turnover-prioritized quote samp
 
 These fit metrics are returned explicitly by the API so the user can see whether a model is being used in a regime where it is still believable.
 
+### 3.5 Root-finding architecture for implied volatility
+
+The implied-vol solver follows a deliberate two-stage design:
+
+- **Newton-Raphson first** for speed,
+- **Brent second** for guaranteed bracketed convergence.
+
+This is the right split for a desk application because:
+
+- Newton is very fast when vega is informative and the initial guess is decent,
+- Newton becomes fragile in deep OTM / ITM regimes or near arbitrage bounds,
+- Brent is slower but reliable once the root is bracketed.
+
+The key design choice is therefore not “Newton or Brent”, but **Newton with Brent as the safety net**. That mirrors how production solvers are often structured: optimistic fast path, conservative guaranteed fallback.
+
 ## 4. Data hygiene and market realism
 
 The quant layer is only as credible as the incoming data. For that reason, Atlas does not directly trust one feed.
@@ -192,6 +236,8 @@ Implied volatility inversion uses:
 
 This is especially important in crypto, where noisy quotes and extreme vols can otherwise destabilize the solver.
 
+Brent matters here because it is **bracketed and guaranteed to converge** whenever the pricing function changes sign over the search interval. In practical terms, that means Atlas prefers a slightly slower answer over a numerically brittle one when the quote is awkward.
+
 ### 5.3 Greeks consistency
 
 Analytical Black-Scholes Greeks are checked against finite-difference approximations in test coverage. This is a basic but important guardrail: risk numbers that are fast but inconsistent are worse than useless.
@@ -204,7 +250,36 @@ Atlas does not hide the disagreement between models. It computes model dispersio
 
 When the chain is sparse or missing, Atlas returns conservative fallbacks and low-confidence calibration rather than pretending precision exists where it does not.
 
-## 6. Validation philosophy
+## 6. Margin design
+
+Atlas currently uses a **linear add-on portfolio margin approximation**:
+
+- base rate on gross notional,
+- add-ons for `|delta|`, `|gamma|`, `|vega|`, `|theta|`,
+- simple initial / maintenance split.
+
+Why this choice is reasonable at the current stage:
+
+- it is transparent,
+- it is monotone in obvious risk dimensions,
+- it is easy to validate in tests,
+- it exposes the shape of a margin engine without pretending to be exchange-exact.
+
+### 6.1 What would be needed for SPAN-like margin
+
+A production-grade risk stack would move toward a **scenario-based** engine closer to SPAN / portfolio margin.
+
+At minimum, that would require:
+
+- `16` stress scenarios per asset family,
+- spot shocks, vol shocks, skew twists, and tenor shocks,
+- cross-asset aggregation rules,
+- concentration and liquidity add-ons,
+- explicit short-option minimums and offset logic.
+
+In other words, the current linear engine is a useful infrastructure placeholder, but a true production system would compute margin as the worst loss across a structured scenario cube, not as a weighted linear proxy.
+
+## 7. Validation philosophy
 
 The current validation strategy is deliberately practical.
 
@@ -220,7 +295,7 @@ It includes:
 
 This does not prove production-grade model quality. It proves something more realistic for this project stage: the implementation is numerically coherent, regression-resistant, and operationally inspectable.
 
-## 7. Known limitations
+## 8. Known limitations
 
 The limitations should be stated plainly.
 
@@ -231,7 +306,7 @@ The limitations should be stated plainly.
 - American exercise handling exists in the tree tooling, but the live desk logic is centered on European crypto options.
 - Public venue APIs can degrade or block traffic; synthetic fallback preserves platform continuity but is not a substitute for dedicated institutional market data.
 
-## 8. Why these trade-offs are acceptable here
+## 9. Why these trade-offs are acceptable here
 
 For Atlas, the most important outcome is not “the fanciest pricer on paper.” It is a system where:
 
@@ -243,10 +318,10 @@ For Atlas, the most important outcome is not “the fanciest pricer on paper.”
 
 That is the right trade for a portfolio project that wants to signal both **quant judgment** and **platform engineering maturity**.
 
-## 9. References
+## 10. References
 
 - Gatheral, Jim. *The Volatility Surface: A Practitioner's Guide*. Wiley, 2006.
 - Hagan, Patrick S., Deep Kumar, Andrew S. Lesniewski, and Diana E. Woodward. “Managing Smile Risk.” *Wilmott Magazine*, 2002.
 - Heston, Steven L. “A Closed-Form Solution for Options with Stochastic Volatility with Applications to Bond and Currency Options.” *The Review of Financial Studies*, 1993.
 - Carr, Peter, and Dilip Madan. “Option Valuation Using the Fast Fourier Transform.” *Journal of Computational Finance*, 1999.
-
+- Jäckel, Peter. *By Implication: A Computationally Efficient Implied Volatility Solver*. 2006.

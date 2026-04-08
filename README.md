@@ -1,7 +1,7 @@
 # Atlas — Institutional Crypto Options Desk
 
 [![CI](https://github.com/Kapriel-Talatinian/Atlas_public/actions/workflows/ci.yml/badge.svg)](https://github.com/Kapriel-Talatinian/Atlas_public/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-29%20passing-11a36a)
+![Tests](https://img.shields.io/badge/tests-49%20passing-11a36a)
 ![UI Screens](https://img.shields.io/badge/screenshots-4%20captured-0ea5e9)
 ![License](https://img.shields.io/badge/license-Proprietary-111827)
 
@@ -44,10 +44,14 @@ Deep links utiles pour partager une vue précise:
 
 ## Test Surface
 
-Atlas expose aujourd’hui **29 tests backend xUnit** sur les briques qui comptent le plus pour la crédibilité quant/risk du projet:
+Atlas expose aujourd’hui **49 tests backend xUnit** sur les briques qui comptent le plus pour la crédibilité quant/risk du projet:
 
 - pricing et Greeks: Black-Scholes, IV solver, convergence Monte Carlo / binomial, stabilité numérique
+- tests ciblés quant: parity BS, deep OTM IV convergence, zero-vol boundary, SABR ATM, Heston finite outputs
 - non-régression modèle: snapshots `BS / Heston / SABR`
+- OMS / exécution: idempotence `clientOrderId`, fingerprint duplicate rejection, kill-switch blocking, pre-trade preview
+- risk / margin: net-delta breach, kill-switch propagation, projected margin sanity
+- market data résiliente: synthetic fallback, stale-cache fallback, source degradation handling
 - toxic flow: clustering et signaux de contrepartie
 - observabilité: calcul SLO disponibilité / p95
 - persistance: snapshots positions vers SQLite et relecture des événements
@@ -77,12 +81,14 @@ Pour un lecteur quant, les deux points d’entrée les plus utiles sont maintena
 
 - [QUANT_NOTES.md](QUANT_NOTES.md): choix de modèles, calibration, edge cases, limites connues, références papiers.
 - [examples/pricing_demo.py](examples/pricing_demo.py): script de démonstration qui prend une option du chain Atlas, compare marché vs `BS / Heston / SABR`, affiche la calibration et une coupe de smile.
+- [examples/pricing_parity_check.cs](examples/pricing_parity_check.cs): exemple C# exécutable qui compare `Black-Scholes / Binomial Richardson / Monte Carlo` sur 20 scénarios.
 
 Commandes rapides:
 
 ```bash
 dotnet run --project src/Atlas.Api
 python3 examples/pricing_demo.py --asset BTC --right call
+dotnet run --project examples/Atlas.Examples.csproj
 ```
 
 ## 1) Vue d'ensemble
