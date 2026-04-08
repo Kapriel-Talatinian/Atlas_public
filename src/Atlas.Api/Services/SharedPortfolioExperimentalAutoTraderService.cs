@@ -101,6 +101,10 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
         public DateTimeOffset StartedAt { get; set; } = DateTimeOffset.UtcNow;
         public DateTimeOffset LastEvaluationAt { get; set; } = DateTimeOffset.MinValue;
         public ExperimentalBotSignal? LastSignal { get; set; }
+        public long StateVersion { get; set; }
+        public DateTimeOffset LastPersistedAt { get; set; }
+        public string LastCycleStatus { get; set; } = "cold";
+        public int LastCycleDurationMs { get; set; }
         public List<NeuralSignalSnapshot> NeuralSignals { get; } = [];
         public List<InternalTrade> OpenTrades { get; } = [];
         public List<InternalTrade> ClosedTrades { get; } = [];
@@ -147,9 +151,10 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
     private readonly IOptionsMarketDataService _marketData;
     private readonly IOptionsAnalyticsService _analytics;
     private readonly INeuralTradingBrainService _brain;
+    private readonly IBotStateRepository _repository;
+    private readonly AtlasRuntimeContext _runtime;
     private readonly ISystemMonitoringService _monitoring;
     private readonly ILogger<SharedPortfolioExperimentalAutoTraderService> _logger;
-    private readonly string _statePath;
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         WriteIndented = true,
@@ -162,35 +167,36 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
         IOptionsMarketDataService marketData,
         IOptionsAnalyticsService analytics,
         INeuralTradingBrainService brain,
+        IBotStateRepository repository,
+        AtlasRuntimeContext runtime,
         ISystemMonitoringService monitoring,
-        IHostEnvironment hostEnvironment,
         ILogger<SharedPortfolioExperimentalAutoTraderService> logger)
     {
         _marketData = marketData;
         _analytics = analytics;
         _brain = brain;
+        _repository = repository;
+        _runtime = runtime;
         _monitoring = monitoring;
         _logger = logger;
-
-        string configured = Environment.GetEnvironmentVariable("EXPERIMENTAL_BOT_STATE_DIR") ?? string.Empty;
-        string directory = string.IsNullOrWhiteSpace(configured)
-            ? Path.Combine(hostEnvironment.ContentRootPath, "data", "experimental-bot")
-            : configured.Trim();
-
-        Directory.CreateDirectory(directory);
-        _statePath = Path.Combine(directory, "shared-portfolio.json");
         _state = LoadOrCreateState();
     }
 
     public async Task<ExperimentalBotSnapshot> GetSnapshotAsync(string asset, CancellationToken ct = default)
     {
-        await EvaluateIfDueAsync(force: false, cycles: 1, ct);
+        if (_runtime.CanRunBotLoop)
+            await EvaluateIfDueAsync(force: false, cycles: 1, ct);
+        else
+            await RefreshFromRepositoryThreadSafeAsync(ct);
         return await BuildSnapshotThreadSafeAsync(ct);
     }
 
     public async Task<ExperimentalBotModelExplainSnapshot> GetModelExplainAsync(string asset, CancellationToken ct = default)
     {
-        await EvaluateIfDueAsync(force: false, cycles: 1, ct);
+        if (_runtime.CanRunBotLoop)
+            await EvaluateIfDueAsync(force: false, cycles: 1, ct);
+        else
+            await RefreshFromRepositoryThreadSafeAsync(ct);
 
         await _state.Gate.WaitAsync(ct);
         try
@@ -256,11 +262,13 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
 
     public async Task<ExperimentalBotSnapshot> ConfigureAsync(string asset, ExperimentalBotConfigRequest request, CancellationToken ct = default)
     {
+        EnsureMutationAllowed();
         await _state.Gate.WaitAsync(ct);
         try
         {
             _state.Config = ApplyConfigRequest(_state.Config, request);
             RefreshDrawdownAnchors(_state);
+            _state.LastCycleStatus = "configured";
             PersistStateNoLock(_state);
         }
         finally
@@ -274,17 +282,20 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
 
     public async Task<ExperimentalBotSnapshot> RunCycleAsync(string asset, int cycles = 1, CancellationToken ct = default)
     {
+        EnsureMutationAllowed();
         await EvaluateIfDueAsync(force: true, cycles: cycles, ct);
         return await BuildSnapshotThreadSafeAsync(ct);
     }
 
     public async Task<ExperimentalBotSnapshot> ResetAsync(string asset, CancellationToken ct = default)
     {
+        EnsureMutationAllowed();
         await _state.Gate.WaitAsync(ct);
         try
         {
             BotState fresh = CreateDefaultState();
             ReplaceState(_state, fresh);
+            _state.LastCycleStatus = "reset";
             PersistStateNoLock(_state);
         }
         finally
@@ -298,6 +309,9 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
 
     public async Task RunAutopilotAsync(CancellationToken ct = default)
     {
+        if (!_runtime.CanRunBotLoop)
+            return;
+
         bool shouldRun;
         await _state.Gate.WaitAsync(ct);
         try
@@ -366,6 +380,7 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
             bool dirty = false;
             for (int i = 0; i < safeCycles; i++)
             {
+                var cycleStopwatch = System.Diagnostics.Stopwatch.StartNew();
                 DateTimeOffset now = DateTimeOffset.UtcNow;
                 if (!force && _state.LastEvaluationAt != DateTimeOffset.MinValue)
                 {
@@ -493,6 +508,15 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
                 _state.LastEvaluationAt = now;
                 TrimState(_state);
                 RefreshDrawdownAnchors(_state);
+                cycleStopwatch.Stop();
+                _state.LastCycleDurationMs = (int)Math.Clamp(cycleStopwatch.ElapsedMilliseconds, 0, int.MaxValue);
+                _state.LastCycleStatus = contexts.Count == 0
+                    ? "idle"
+                    : opened > 0
+                        ? "trading"
+                        : closed.Count > 0
+                            ? "managed"
+                            : "ok";
                 PersistStateNoLock(_state);
                 PublishPortfolioMetrics(_state);
                 dirty = true;
@@ -510,6 +534,7 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
                     Drivers: ["No structured candidate available"],
                     Features: new ExperimentalBotFeatureVector(0, 0, 0, 0, 0, 0, 0, 0),
                     Timestamp: DateTimeOffset.UtcNow);
+                _state.LastCycleStatus = "cold";
             }
         }
         finally
@@ -1499,6 +1524,10 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
         target.StartedAt = source.StartedAt;
         target.LastEvaluationAt = source.LastEvaluationAt;
         target.LastSignal = source.LastSignal;
+        target.StateVersion = source.StateVersion;
+        target.LastPersistedAt = source.LastPersistedAt;
+        target.LastCycleStatus = source.LastCycleStatus;
+        target.LastCycleDurationMs = source.LastCycleDurationMs;
         target.PeakEquity = source.PeakEquity;
         target.MaxDrawdown = source.MaxDrawdown;
 
@@ -1521,20 +1550,21 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
 
     private BotState LoadOrCreateState()
     {
-        if (!File.Exists(_statePath))
-            return CreateDefaultState();
-
         try
         {
-            string json = File.ReadAllText(_statePath);
-            if (string.IsNullOrWhiteSpace(json))
+            BotStateRecord? record = _repository.Load(PortfolioKey);
+            if (record is null || string.IsNullOrWhiteSpace(record.StateJson))
                 return CreateDefaultState();
 
-            PersistedBotState? persisted = JsonSerializer.Deserialize<PersistedBotState>(json, _jsonOptions);
+            PersistedBotState? persisted = JsonSerializer.Deserialize<PersistedBotState>(record.StateJson, _jsonOptions);
             if (persisted is null)
                 return CreateDefaultState();
 
             BotState state = CreateDefaultState();
+            state.StateVersion = Math.Max(0, record.StateVersion);
+            state.LastPersistedAt = record.LastPersistedAt;
+            state.LastCycleStatus = string.IsNullOrWhiteSpace(record.LastCycleStatus) ? "cold" : record.LastCycleStatus;
+            state.LastCycleDurationMs = Math.Max(0, record.LastCycleDurationMs);
             state.Config = ApplyConfigRequest(DefaultConfig(), new ExperimentalBotConfigRequest(
                 Enabled: persisted.Config.Enabled,
                 AutoTrade: persisted.Config.AutoTrade,
@@ -1587,6 +1617,10 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
         {
             Config = config,
             StartedAt = DateTimeOffset.UtcNow,
+            StateVersion = 0,
+            LastPersistedAt = DateTimeOffset.MinValue,
+            LastCycleStatus = "cold",
+            LastCycleDurationMs = 0,
             PeakEquity = config.StartingCapitalUsd,
             MaxDrawdown = 0
         };
@@ -1616,8 +1650,24 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
                 MaxDrawdown = state.MaxDrawdown
             };
 
-            string json = JsonSerializer.Serialize(persisted, _jsonOptions);
-            File.WriteAllText(_statePath, json);
+            BotStateRecord saved = _repository.Save(new BotStateSaveRequest(
+                BotKey: PortfolioKey,
+                StateJson: JsonSerializer.Serialize(persisted, _jsonOptions),
+                ExpectedStateVersion: state.StateVersion,
+                LastEvaluationAt: state.LastEvaluationAt == DateTimeOffset.MinValue ? null : state.LastEvaluationAt,
+                LastCycleStatus: state.LastCycleStatus,
+                LastCycleDurationMs: state.LastCycleDurationMs));
+
+            state.StateVersion = saved.StateVersion;
+            state.LastPersistedAt = saved.LastPersistedAt;
+            state.LastCycleStatus = saved.LastCycleStatus;
+            state.LastCycleDurationMs = saved.LastCycleDurationMs;
+        }
+        catch (BotStateConflictException ex)
+        {
+            _logger.LogWarning(ex, "Bot runtime state conflict detected, reloading latest repository state");
+            ReloadStateFromRepositoryNoLock();
+            throw;
         }
         catch (Exception ex)
         {
@@ -1626,7 +1676,86 @@ public sealed class SharedPortfolioExperimentalAutoTraderService : IExperimental
                 "experimental-bot",
                 NotificationSeverity.Warning,
                 $"Shared portfolio persistence failure: {ex.GetType().Name}");
+            throw;
         }
+    }
+
+    private void ReloadStateFromRepositoryNoLock()
+    {
+        BotStateRecord? record = _repository.Load(PortfolioKey);
+        if (record is null || string.IsNullOrWhiteSpace(record.StateJson))
+            return;
+
+        if (_state.StateVersion > 0 && record.StateVersion <= _state.StateVersion)
+            return;
+
+        PersistedBotState? persisted = JsonSerializer.Deserialize<PersistedBotState>(record.StateJson, _jsonOptions);
+        if (persisted is null)
+            return;
+
+        BotState fresh = CreateDefaultState();
+        fresh.StateVersion = Math.Max(0, record.StateVersion);
+        fresh.LastPersistedAt = record.LastPersistedAt;
+        fresh.LastCycleStatus = string.IsNullOrWhiteSpace(record.LastCycleStatus) ? "cold" : record.LastCycleStatus;
+        fresh.LastCycleDurationMs = Math.Max(0, record.LastCycleDurationMs);
+        fresh.Config = ApplyConfigRequest(DefaultConfig(), new ExperimentalBotConfigRequest(
+            Enabled: persisted.Config.Enabled,
+            AutoTrade: persisted.Config.AutoTrade,
+            AutoTune: persisted.Config.AutoTune,
+            EvaluationIntervalSec: persisted.Config.EvaluationIntervalSec,
+            BasePositionSize: persisted.Config.BasePositionSize,
+            MinConfidence: persisted.Config.MinConfidence,
+            StopLossPct: persisted.Config.StopLossPct,
+            TakeProfitPct: persisted.Config.TakeProfitPct,
+            MaxHoldingHours: persisted.Config.MaxHoldingHours,
+            AuditTargetTrades: persisted.Config.AuditTargetTrades,
+            StartingCapitalUsd: persisted.Config.StartingCapitalUsd,
+            PortfolioRiskBudgetPct: persisted.Config.PortfolioRiskBudgetPct,
+            MaxAssetRiskPct: persisted.Config.MaxAssetRiskPct,
+            MaxTradeRiskPct: persisted.Config.MaxTradeRiskPct,
+            MaxNewTradesPerCycle: persisted.Config.MaxNewTradesPerCycle));
+        fresh.StartedAt = persisted.StartedAt == default ? DateTimeOffset.UtcNow : persisted.StartedAt;
+        fresh.LastEvaluationAt = persisted.LastEvaluationAt;
+        fresh.LastSignal = persisted.LastSignal;
+        fresh.NeuralSignals.AddRange(persisted.NeuralSignals);
+        fresh.OpenTrades.AddRange(persisted.OpenTrades);
+        fresh.ClosedTrades.AddRange(persisted.ClosedTrades);
+        fresh.Decisions.AddRange(persisted.Decisions);
+        fresh.Audits.AddRange(persisted.Audits);
+        fresh.SpotHistory.AddRange(persisted.SpotHistory.Where(p => p.Spot > 0));
+        fresh.PeakEquity = Math.Max(persisted.PeakEquity, fresh.Config.StartingCapitalUsd);
+        fresh.MaxDrawdown = Math.Max(0, persisted.MaxDrawdown);
+        fresh.Weights.Clear();
+        foreach (var (key, value) in DefaultWeights)
+            fresh.Weights[key] = value;
+        foreach (var (key, value) in persisted.Weights)
+            fresh.Weights[key] = MathUtils.Clamp(value, -3, 3);
+
+        TrimState(fresh);
+        RefreshDrawdownAnchors(fresh);
+        ReplaceState(_state, fresh);
+    }
+
+    private async Task RefreshFromRepositoryThreadSafeAsync(CancellationToken ct)
+    {
+        await _state.Gate.WaitAsync(ct);
+        try
+        {
+            ReloadStateFromRepositoryNoLock();
+        }
+        finally
+        {
+            _state.Gate.Release();
+        }
+    }
+
+    private void EnsureMutationAllowed()
+    {
+        if (_runtime.CanRunBotLoop)
+            return;
+
+        throw new InvalidOperationException(
+            $"Bot mutations are disabled for runtime role {_runtime.Role}. Use bot-worker or all mode.");
     }
 
     private void PublishPortfolioMetrics(BotState state)

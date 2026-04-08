@@ -33,6 +33,7 @@ import {
   getStrategyRecommendations,
   getPresetStrategies,
   getExperimentalBotSnapshot,
+  getPolymarketLiveSnapshot,
   getKillSwitchState,
   retryOpenOrders,
   setKillSwitchState,
@@ -71,6 +72,7 @@ import ModelCalibrationPanel from "./components/market/ModelCalibrationPanel";
 import MarketStatsStrip from "./components/market/MarketStatsStrip";
 import OverviewMetrics from "./components/market/OverviewMetrics";
 import ExperimentalBotPanel from "./components/experimental/ExperimentalBotPanel";
+import PolymarketLivePanel from "./components/polymarket/PolymarketLivePanel";
 import BookSummaryCards from "./components/trading/BookSummaryCards";
 import OrderLadder from "./components/trading/OrderLadder";
 import OrderTicket from "./components/trading/OrderTicket";
@@ -95,7 +97,7 @@ function readInitialUiState() {
   const rawAsset = String(params.get("asset") || "").trim().toUpperCase();
   const rawPreset = String(params.get("preset") || "").trim().toLowerCase();
 
-  const allowedTabs = new Set(["market", "execution", "strategy", "alpha", "experimental"]);
+  const allowedTabs = new Set(["market", "execution", "strategy", "alpha", "polymarket", "experimental"]);
   const tab = allowedTabs.has(rawTab) ? rawTab : "market";
   const asset = ASSETS.includes(rawAsset) ? rawAsset : "BTC";
   const preset = rawPreset === "first" ? "first" : "";
@@ -160,6 +162,7 @@ function App() {
   const [loadingExposure, setLoadingExposure] = useState(false);
   const [loadingArbitrage, setLoadingArbitrage] = useState(false);
   const [loadingBot, setLoadingBot] = useState(false);
+  const [loadingPolymarket, setLoadingPolymarket] = useState(false);
   const [loadingBook, setLoadingBook] = useState(false);
   const [placingOrder, setPlacingOrder] = useState(false);
   const [loadingPreview, setLoadingPreview] = useState(false);
@@ -184,6 +187,7 @@ function App() {
   const [exposureMetric, setExposureMetric] = useState("gamma");
   const [arbitrageScan, setArbitrageScan] = useState(null);
   const [botSnapshot, setBotSnapshot] = useState(null);
+  const [polymarketSnapshot, setPolymarketSnapshot] = useState(null);
   const [riskProfile, setRiskProfile] = useState("balanced");
   const [optimizerTargets, setOptimizerTargets] = useState({
     targetDelta: 0,
@@ -485,6 +489,18 @@ function App() {
     }
   }, []);
 
+  const refreshPolymarketLive = useCallback(async () => {
+    setLoadingPolymarket(true);
+    try {
+      const snapshot = await getPolymarketLiveSnapshot({ lookaheadMinutes: 24 * 60, maxMarkets: 24 });
+      setPolymarketSnapshot(snapshot);
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setLoadingPolymarket(false);
+    }
+  }, []);
+
   useEffect(() => {
     let cancelled = false;
     const refresh = async () => {
@@ -540,12 +556,24 @@ function App() {
   }, [refreshExperimentalBot]);
 
   useEffect(() => {
+    refreshPolymarketLive().catch(() => null);
+  }, [refreshPolymarketLive]);
+
+  useEffect(() => {
     if (activeTab !== "experimental") return undefined;
     const id = setInterval(() => {
       refreshExperimentalBot().catch(() => null);
     }, 9000);
     return () => clearInterval(id);
   }, [activeTab, refreshExperimentalBot]);
+
+  useEffect(() => {
+    if (activeTab !== "polymarket") return undefined;
+    const id = setInterval(() => {
+      refreshPolymarketLive().catch(() => null);
+    }, 12000);
+    return () => clearInterval(id);
+  }, [activeTab, refreshPolymarketLive]);
 
   useEffect(() => {
     let mounted = true;
@@ -1013,6 +1041,32 @@ function App() {
     }
   }, [refreshTradingBook]);
 
+  const isPolymarketView = activeTab === "polymarket";
+
+  if (isPolymarketView) {
+    return (
+      <div className="app-shell app-shell-polymarket">
+        <section className="polymarket-route-nav">
+          <div>
+            <div className="polymarket-route-kicker">Atlas navigation</div>
+            <h1 className="polymarket-route-title">Polymarket live workspace</h1>
+          </div>
+          <div className="polymarket-route-tabs">
+            <TabBar activeTab={activeTab} onChange={setActiveTab} />
+          </div>
+        </section>
+
+        <PolymarketLivePanel
+          snapshot={polymarketSnapshot}
+          loading={loadingPolymarket}
+          onRefresh={() => refreshPolymarketLive()}
+        />
+
+        {error && <div className="error">{error}</div>}
+      </div>
+    );
+  }
+
   return (
     <div className="app-shell">
       <section className="hero">
@@ -1021,7 +1075,7 @@ function App() {
             <h1 className="hero-title">Atlas Institutional Options Desk</h1>
             <p className="hero-subtitle">
               Live options chain (BTC/ETH/SOL/WTI), institutional paper execution, pre-trade risk guard,
-              portfolio greeks and strategy analytics in one terminal-grade interface.
+              portfolio greeks, strategy analytics, and Polymarket crypto threshold intelligence in one terminal-grade interface.
             </p>
             <div className="asset-switch">
               {ASSETS.map((symbol) => (

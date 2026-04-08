@@ -3,6 +3,7 @@ const TABS = [
   { id: "execution", label: "Execution" },
   { id: "strategy", label: "Strategy Lab" },
   { id: "alpha", label: "Alpha Lab" },
+  { id: "polymarket", label: "Polymarket Live" },
   { id: "experimental", label: "Autopilot" },
 ];
 

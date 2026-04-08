@@ -1,7 +1,7 @@
 # Atlas — Institutional Crypto Options Desk
 
 [![CI](https://github.com/Kapriel-Talatinian/Atlas_public/actions/workflows/ci.yml/badge.svg)](https://github.com/Kapriel-Talatinian/Atlas_public/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-54%20passing-11a36a)
+![Tests](https://img.shields.io/badge/tests-68%20passing-11a36a)
 ![UI Screens](https://img.shields.io/badge/screenshots-4%20captured-0ea5e9)
 ![License](https://img.shields.io/badge/license-Proprietary-111827)
 
@@ -44,7 +44,7 @@ Deep links utiles pour partager une vue précise:
 
 ## Test Surface
 
-Atlas expose aujourd’hui **54 tests backend xUnit** sur les briques qui comptent le plus pour la crédibilité quant/risk du projet:
+Atlas expose aujourd’hui **68 tests backend xUnit** sur les briques qui comptent le plus pour la crédibilité quant/risk du projet:
 
 - pricing et Greeks: Black-Scholes, IV solver, convergence Monte Carlo / binomial, stabilité numérique
 - tests ciblés quant: parity BS, deep OTM IV convergence, zero-vol boundary, SABR ATM, Heston finite outputs
@@ -52,6 +52,8 @@ Atlas expose aujourd’hui **54 tests backend xUnit** sur les briques qui compte
 - OMS / exécution: idempotence `clientOrderId`, fingerprint duplicate rejection, kill-switch blocking, pre-trade preview
 - risk / margin: net-delta breach, kill-switch propagation, projected margin sanity
 - market data résiliente: synthetic fallback, stale-cache fallback, source degradation handling
+- runtime bot prod: repo-backed state, optimistic concurrency, leader-role gating, API read-only snapshot behavior
+- Polymarket signal math: parsing threshold markets, fair short-horizon probability, side selection sanity
 - toxic flow: clustering et signaux de contrepartie
 - observabilité: calcul SLO disponibilité / p95
 - persistance: snapshots positions vers SQLite et relecture des événements
@@ -82,6 +84,9 @@ Pour un lecteur quant, les deux points d’entrée les plus utiles sont maintena
 - [QUANT_NOTES.md](QUANT_NOTES.md): choix de modèles, calibration, edge cases, limites connues, références papiers.
 - [examples/pricing_demo.py](examples/pricing_demo.py): script de démonstration qui prend une option du chain Atlas, compare marché vs `BS / Heston / SABR`, affiche la calibration et une coupe de smile.
 - [examples/pricing_parity_check.cs](examples/pricing_parity_check.cs): exemple C# exécutable qui compare `Black-Scholes / Binomial Richardson / Monte Carlo` sur 20 scénarios.
+- [docs/architecture/war-machine-sprint-1.md](docs/architecture/war-machine-sprint-1.md): sprint 1 détaillé pour durcir Atlas en prod et supprimer le risque de split-brain du bot.
+- [docs/architecture/postgres-bot-runtime.md](docs/architecture/postgres-bot-runtime.md): schéma Postgres exact pour sortir le runtime bot du disque local.
+- [docs/backlog/war-machine-backlog.md](docs/backlog/war-machine-backlog.md): backlog ticketisé par ROI pour transformer Atlas en machine de guerre.
 
 Commandes rapides:
 
@@ -219,7 +224,7 @@ flowchart TD
     ExitLogic --> Audit[Audit trade outcome]
     Audit --> Learn[Update model weights]
     Learn --> AutoTune[Auto-tune params]
-    AutoTune --> Persist[Persist JSON state]
+    AutoTune --> Persist[Persist runtime state]
 
     Hold --> Persist
     Persist --> Snapshot[Expose snapshot API]
@@ -262,11 +267,27 @@ flowchart TD
 - Écriture append-only pour replay/reconciliation post-incident.
 
 ### 2.6 Experimental Bot
-- Snapshot live: signal, trades, décisions, poids modèle.
-- Persistance d'état sur disque (pas de reset au redémarrage).
-- Rolling audit (100 trades par défaut): win-rate, profit factor, drawdown.
-- Auto-tune optionnel des paramètres de trading.
+- Autopilot partagé `BTC / ETH / SOL` avec portefeuille commun.
+- Structures multi-legs uniquement, logique entrée/sortie/risk/post-trade automatisée.
+- Runtime prod prêt à séparer en rôles `api` / `bot-worker` / `all`.
+- Persistance bot centralisable via Postgres avec leader election et health runtime.
+- Rolling audit: win-rate, profit factor, drawdown, décisions et rationales math/macro/micro.
 - Capital de départ configurable (`startingCapitalUsd`, défaut 1000).
+
+### 2.7 Polymarket Live
+- Onglet `Polymarket Live` dédié, séparé du moteur options.
+- Scan public 24/24 des marchés crypto `BTC / ETH / SOL` type threshold (`above / below / between`) parseables.
+- Fair-value très court terme à partir du spot Atlas + ATM IV + live bias + régime.
+- Stack en 3 niveaux: `Scout`, `Quant`, `Execution`.
+- Snapshot explicable: `macro`, `micro`, `math`, `execution plan`, `risk plan`.
+- Autopilot live/paper prêt côté Atlas avec:
+  - portefeuille commun,
+  - stake fixe max `1$` par trade,
+  - historique des positions,
+  - PnL `daily / monthly / since inception`,
+  - journal des décisions,
+  - notifications Telegram à l’entrée, à la sortie et en fin de journée/mois.
+- Exécution réelle volontairement gardée derrière les variables d’environnement de signature tant que la reconciliation et le router d’ordres CLOB ne sont pas finalisés.
 
 ## 3) Stack technique
 
@@ -274,7 +295,7 @@ flowchart TD
 - Frontend: `React 18`, `Vite`, `Recharts`
 - Tests backend: `xUnit`
 - Packaging API cloud: `Dockerfile.api`
-- Déploiement recommandé: Railway (API + Frontend séparés)
+- Déploiement recommandé: Railway (`api` + `bot-worker` + `frontend`)
 
 ## 4) Structure du repository
 
@@ -322,6 +343,9 @@ Swagger:
 Health:
 - `http://127.0.0.1:5000/health`
 
+Runtime bot:
+- `http://127.0.0.1:5000/api/experimental/runtime`
+
 ### 5.3 Lancer le frontend
 
 ```bash
@@ -340,6 +364,30 @@ cd frontend
 npm run dev:full
 ```
 
+### 5.4 Lancer Atlas en mode prod split local
+
+API HTTP sans loop bot:
+
+```bash
+ATLAS_RUNTIME_ROLE=api \
+dotnet run --project src/Atlas.Api --urls http://127.0.0.1:5000
+```
+
+Worker bot dédié:
+
+```bash
+ATLAS_RUNTIME_ROLE=bot-worker \
+ATLAS_INSTANCE_ID=atlas-worker-local \
+dotnet run --project src/Atlas.Api --urls http://127.0.0.1:5050
+```
+
+Mode local simple tout-en-un:
+
+```bash
+ATLAS_RUNTIME_ROLE=all \
+dotnet run --project src/Atlas.Api --urls http://127.0.0.1:5000
+```
+
 ## 6) Variables d'environnement
 
 ### 6.1 Backend (`src/Atlas.Api/.env.example`)
@@ -347,10 +395,32 @@ npm run dev:full
 | Variable | Description | Exemple |
 |---|---|---|
 | `PORT` | Port runtime (injecté en cloud) | `5000` |
+| `ATLAS_RUNTIME_ROLE` | Rôle runtime Atlas (`api`, `bot-worker`, `all`) | `api` |
+| `ATLAS_INSTANCE_ID` | Identifiant stable de replica/worker | `atlas-api-1` |
 | `CORS_ALLOWED_ORIGINS` | Origines autorisées (CSV) | `http://127.0.0.1:5173` |
 | `ASPNETCORE_ENVIRONMENT` | Environnement .NET | `Production` |
 | `TRADING_DB_PATH` | Chemin DB SQLite ordres/risque/audit | `/data/atlas/trading.db` |
-| `EXPERIMENTAL_BOT_STATE_DIR` | Répertoire persistance bot (optionnel) | `/data/atlas-bot` |
+| `EXPERIMENTAL_BOT_STATE_DIR` | Répertoire persistance bot fallback local | `/data/atlas-bot` |
+| `BOT_RUNTIME_DB_CONNECTION_STRING` | Postgres runtime bot + leader lock | `Host=...;Database=...` |
+| `BOT_HEARTBEAT_SECONDS` | Tick worker bot | `3` |
+| `BOT_LEASE_SECONDS` | Durée lease leader bot | `15` |
+| `POLYMARKET_TRADING_ENABLED` | Arme ou non le futur router live Polymarket | `false` |
+| `POLYMARKET_WALLET_ADDRESS` | Adresse wallet dédiée Polymarket | `0x...` |
+| `POLYMARKET_PRIVATE_KEY` | Clé privée serveur pour future signature live | unset in dev |
+| `POLYMARKET_BOT_ENABLED` | Active le bot Polymarket 24/24 | `true` |
+| `POLYMARKET_EXECUTION_MODE` | `analysis-only`, `paper`, `dry-run`, `live` | `paper` |
+| `POLYMARKET_MAX_TRADE_USD` | Risque maximum par trade | `1` |
+| `POLYMARKET_STARTING_BALANCE_USD` | Solde initial du portefeuille Polymarket | `100` |
+| `POLYMARKET_DAILY_LOSS_LIMIT_USD` | Coupe-circuit quotidien | `5` |
+| `POLYMARKET_LOOKAHEAD_MINUTES` | Fenêtre de scan Polymarket | `1440` |
+| `POLYMARKET_MAX_MARKETS` | Nombre maximum de marchés scorés | `24` |
+| `POLYMARKET_MAX_NEW_TRADES_PER_CYCLE` | Nouvelles entrées par cycle | `2` |
+| `POLYMARKET_BOT_EVALUATION_SECONDS` | Cadence du moteur Polymarket | `12` |
+| `POLYMARKET_WORKER_HEARTBEAT_SECONDS` | Heartbeat worker Polymarket | `4` |
+| `POLYMARKET_WORKER_LEASE_SECONDS` | Lease leader worker Polymarket | `16` |
+| `POLYMARKET_REPORT_TIMEZONE` | Fuseau des rapports PnL | `Europe/Paris` |
+| `TELEGRAM_BOT_TOKEN` | Token bot Telegram pour alertes | unset in public repo |
+| `TELEGRAM_CHAT_ID` | Groupe / chat cible Telegram | unset in public repo |
 
 ### 6.2 Frontend (`frontend/.env.example`)
 
@@ -424,7 +494,15 @@ npm run dev:full
 - `POST /api/experimental/bot/run?asset=BTC&cycles=1`
 - `POST /api/experimental/bot/reset?asset=BTC`
 
-### 7.6 System / Ops (`/api/system`)
+### 7.6 Experimental Runtime (`/api/experimental/runtime`)
+- `GET /api/experimental/runtime`
+- `GET /api/experimental/runtime/leader`
+- `GET /api/experimental/runtime/health`
+
+### 7.7 Polymarket (`/api/polymarket`)
+- `GET /api/polymarket/live?lookaheadMinutes=1440&maxMarkets=24`
+
+### 7.8 System / Ops (`/api/system`)
 - `GET /api/system/health`
 - `GET /api/system/metrics`
 - `GET /api/system/alerts`
@@ -500,45 +578,67 @@ npm run build
 
 Résumé visible pour un lecteur technique:
 
-- `29` tests passent actuellement en local et en CI
+- `68` tests passent actuellement en local et en CI
 - pricing: `Black-Scholes`, `ImpliedVolSolver`, `MonteCarlo`, `BinomialTree`
 - cohérence mathématique: Greeks analytiques vs finite-difference
 - non-régression: snapshots `BS/Heston/SABR`
-- fiabilité plateforme: `SLO monitoring`, persistance SQLite des positions
+- fiabilité plateforme: `SLO monitoring`, persistance SQLite des positions, runtime bot repo-backed, leader-role gating
 
 ## 11) Déploiement Railway (sans VPS)
 
-Architecture recommandée: **2 services** (API + Frontend).
+Architecture recommandée: **3 services** (`API` + `Bot Worker` + `Frontend`).
 
 ```mermaid
 flowchart LR
     GH[GitHub Repo] --> RAPI[Railway Service API]
+    GH --> RWORK[Railway Service Bot Worker]
     GH --> RWEB[Railway Service Frontend]
 
     RAPI --> APIURL[https://<atlas-api>.up.railway.app]
+    RWORK --> WORKER[Background bot runtime]
     RWEB --> WEBURL[https://<atlas-web>.up.railway.app]
 
     WEBURL -->|VITE_API_BASE_URL| APIURL
     APIURL -->|CORS_ALLOWED_ORIGINS| WEBURL
+    RAPI -->|BOT_RUNTIME_DB_CONNECTION_STRING| PG[(Railway Postgres)]
+    RWORK -->|BOT_RUNTIME_DB_CONNECTION_STRING| PG
 ```
 
 ### 11.1 Service API
 - Root directory: `/`
 - Config: [`railway.json`](railway.json)
 - Build: `Dockerfile.api`
+- Variables:
+  - `ATLAS_RUNTIME_ROLE=api`
+  - `CORS_ALLOWED_ORIGINS=https://<frontend-url>`
+  - `BOT_RUNTIME_DB_CONNECTION_STRING=<railway-postgres-url>`
 
-### 11.2 Service Frontend
+### 11.2 Service Bot Worker
+- Root directory: `/`
+- Build: `Dockerfile.api`
+- Variables:
+  - `ATLAS_RUNTIME_ROLE=bot-worker`
+  - `ATLAS_INSTANCE_ID=atlas-worker-1`
+  - `BOT_RUNTIME_DB_CONNECTION_STRING=<railway-postgres-url>`
+  - `BOT_HEARTBEAT_SECONDS=3`
+  - `BOT_LEASE_SECONDS=15`
+
+### 11.3 Service Frontend
 - Root directory: `frontend`
 - Config: [`frontend/railway.json`](frontend/railway.json)
 
-### 11.3 Étapes
+### 11.4 Étapes
 1. Connecter le repo à Railway.
-2. Créer le service API (`/`).
-3. Déployer et récupérer l'URL API.
-4. Créer le service Frontend (`frontend`).
-5. Définir `VITE_API_BASE_URL=https://<api-url>` côté Frontend.
-6. Définir `CORS_ALLOWED_ORIGINS=https://<frontend-url>` côté API.
-7. Redéployer les deux services.
+2. Créer un Postgres Railway.
+3. Créer le service API (`/`) avec `ATLAS_RUNTIME_ROLE=api`.
+4. Créer le service Bot Worker (`/`) avec `ATLAS_RUNTIME_ROLE=bot-worker`.
+5. Injecter le même `BOT_RUNTIME_DB_CONNECTION_STRING` dans API et Worker.
+6. Déployer et récupérer l'URL API.
+7. Créer le service Frontend (`frontend`).
+8. Définir `VITE_API_BASE_URL=https://<api-url>` côté Frontend.
+9. Définir `CORS_ALLOWED_ORIGINS=https://<frontend-url>` côté API.
+10. Vérifier `GET /api/experimental/runtime` sur l'API et `GET /api/experimental/runtime/health` sur le worker.
+11. Redéployer les services.
 
 ## 12) Troubleshooting
 

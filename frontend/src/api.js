@@ -451,3 +451,11 @@ export function resetExperimentalBot(asset = "MULTI") {
     method: "POST",
   });
 }
+
+export function getPolymarketLiveSnapshot({ lookaheadMinutes = 24 * 60, maxMarkets = 24 } = {}) {
+  const params = new URLSearchParams({
+    lookaheadMinutes: String(lookaheadMinutes),
+    maxMarkets: String(maxMarkets),
+  });
+  return request(`/api/polymarket/live?${params.toString()}`);
+}

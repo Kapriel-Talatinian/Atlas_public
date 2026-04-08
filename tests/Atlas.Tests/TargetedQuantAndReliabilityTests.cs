@@ -295,6 +295,82 @@ public class OptionsAnalyticsExposureTests
     }
 }
 
+public class PolymarketSignalMathTests
+{
+    [Fact]
+    public void PolymarketParser_ParsesAboveThresholdQuestion()
+    {
+        bool ok = PolymarketSignalMath.TryParseTradeableQuestion(
+            "Will the price of Bitcoin be above $70,000 on April 8?",
+            out PolymarketParsedQuestion? parsed);
+
+        Assert.True(ok);
+        Assert.NotNull(parsed);
+        Assert.Equal("BTC", parsed!.Asset);
+        Assert.Equal(PolymarketThresholdRelation.Above, parsed.Relation);
+        Assert.Equal(70_000, parsed.LowerStrike);
+    }
+
+    [Fact]
+    public void PolymarketParser_ParsesBetweenThresholdQuestion()
+    {
+        bool ok = PolymarketSignalMath.TryParseTradeableQuestion(
+            "Will the price of Ethereum be between $1,800 and $1,900 on April 8?",
+            out PolymarketParsedQuestion? parsed);
+
+        Assert.True(ok);
+        Assert.NotNull(parsed);
+        Assert.Equal("ETH", parsed!.Asset);
+        Assert.Equal(PolymarketThresholdRelation.Between, parsed.Relation);
+        Assert.Equal(1_800, parsed.LowerStrike);
+        Assert.Equal(1_900, parsed.UpperStrike);
+    }
+
+    [Fact]
+    public void PolymarketParser_ParsesDirectionalUpDownQuestion_WhenReferenceProvided()
+    {
+        bool ok = PolymarketSignalMath.TryParseTradeableQuestion(
+            "Bitcoin Up or Down - April 8, 2:00PM-2:05PM ET",
+            out PolymarketParsedQuestion? parsed,
+            directionalReferencePrice: 82_500);
+
+        Assert.True(ok);
+        Assert.NotNull(parsed);
+        Assert.Equal("BTC", parsed!.Asset);
+        Assert.Equal(PolymarketThresholdRelation.Above, parsed.Relation);
+        Assert.Equal(82_500, parsed.LowerStrike);
+    }
+
+    [Fact]
+    public void PolymarketFairProbability_AboveThreshold_BehavesSensibly()
+    {
+        var parsed = new PolymarketParsedQuestion(
+            Asset: "BTC",
+            Relation: PolymarketThresholdRelation.Above,
+            LowerStrike: 100_000,
+            UpperStrike: null,
+            RawQuestion: "Will the price of Bitcoin be above $100,000 in 1 hour?");
+
+        double bullish = PolymarketSignalMath.ComputeFairYesProbability(
+            spot: 110_000,
+            annualizedVol: 0.50,
+            expiry: DateTimeOffset.UtcNow.AddHours(1),
+            now: DateTimeOffset.UtcNow,
+            parsed: parsed);
+
+        double bearish = PolymarketSignalMath.ComputeFairYesProbability(
+            spot: 90_000,
+            annualizedVol: 0.50,
+            expiry: DateTimeOffset.UtcNow.AddHours(1),
+            now: DateTimeOffset.UtcNow,
+            parsed: parsed);
+
+        Assert.True(bullish > 0.5);
+        Assert.True(bearish < 0.5);
+        Assert.True(bullish > bearish);
+    }
+}
+
 public class SharedExperimentalAutopilotTests
 {
     [Fact]
@@ -398,28 +474,125 @@ public class SharedExperimentalAutopilotTests
         }
     }
 
-    private static SharedPortfolioExperimentalAutoTraderService BuildExperimentalService(string tempRoot)
+    [Fact]
+    public async Task ApiRole_Snapshot_ReloadsPersistedState_WithoutRunningCycle()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-bot-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var workerService = BuildExperimentalService(tempRoot, AtlasRuntimeRole.All);
+            await workerService.ConfigureAsync("MULTI", new ExperimentalBotConfigRequest(
+                Enabled: true,
+                AutoTrade: true,
+                MinConfidence: 40,
+                StartingCapitalUsd: 5_000,
+                MaxTradeRiskPct: 0.25,
+                PortfolioRiskBudgetPct: 0.90));
+
+            ExperimentalBotSnapshot workerSnapshot = await workerService.RunCycleAsync("MULTI", cycles: 2);
+            Assert.NotEmpty(workerSnapshot.OpenTrades);
+
+            var apiService = BuildExperimentalService(tempRoot, AtlasRuntimeRole.Api, quotes: Array.Empty<LiveOptionQuote>());
+            ExperimentalBotSnapshot apiSnapshot = await apiService.GetSnapshotAsync("MULTI");
+
+            Assert.Equal(workerSnapshot.Signal?.StrategyTemplate, apiSnapshot.Signal?.StrategyTemplate);
+            Assert.Equal(workerSnapshot.OpenTrades.Count, apiSnapshot.OpenTrades.Count);
+            Assert.NotEmpty(apiSnapshot.OpenTrades);
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task ApiRole_RunCycle_ThrowsInvalidOperationException()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-bot-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var apiService = BuildExperimentalService(tempRoot, AtlasRuntimeRole.Api);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => apiService.RunCycleAsync("MULTI", cycles: 1));
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task ApiRole_Configure_ThrowsInvalidOperationException()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-bot-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var apiService = BuildExperimentalService(tempRoot, AtlasRuntimeRole.Api);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => apiService.ConfigureAsync(
+                "MULTI",
+                new ExperimentalBotConfigRequest(Enabled: true)));
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task ApiRole_Reset_ThrowsInvalidOperationException()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-bot-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var apiService = BuildExperimentalService(tempRoot, AtlasRuntimeRole.Api);
+
+            await Assert.ThrowsAsync<InvalidOperationException>(() => apiService.ResetAsync("MULTI"));
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    private static SharedPortfolioExperimentalAutoTraderService BuildExperimentalService(
+        string tempRoot,
+        AtlasRuntimeRole role = AtlasRuntimeRole.All,
+        IEnumerable<LiveOptionQuote>? quotes = null)
     {
         DateTimeOffset near = new(DateTime.UtcNow.Date.AddDays(21).AddHours(8), TimeSpan.Zero);
         DateTimeOffset far = new(DateTime.UtcNow.Date.AddDays(49).AddHours(8), TimeSpan.Zero);
 
-        var quotes = new List<LiveOptionQuote>();
-        quotes.AddRange(BuildBotAssetQuotes("BTC", 100_000, near, far));
-        quotes.AddRange(BuildBotAssetQuotes("ETH", 4_000, near, far));
-        quotes.AddRange(BuildBotAssetQuotes("SOL", 180, near, far));
+        var configuredQuotes = quotes?.ToList() ?? new List<LiveOptionQuote>();
+        if (configuredQuotes.Count == 0 && quotes is null)
+        {
+            configuredQuotes.AddRange(BuildBotAssetQuotes("BTC", 100_000, near, far));
+            configuredQuotes.AddRange(BuildBotAssetQuotes("ETH", 4_000, near, far));
+            configuredQuotes.AddRange(BuildBotAssetQuotes("SOL", 180, near, far));
+        }
 
-        var marketData = new StaticMarketDataService(quotes);
+        var marketData = new StaticMarketDataService(configuredQuotes);
         var analytics = new OptionsAnalyticsService(marketData);
         var brain = new NeuralTradingBrainService(analytics, marketData);
+        var repository = new FileBotStateRepository(new BotFakeHostEnvironment(tempRoot), NullLogger<FileBotStateRepository>.Instance);
+        var runtime = new AtlasRuntimeContext(role, $"test-{role.ToString().ToLowerInvariant()}", "unit-test");
         var monitoring = new SystemMonitoringService();
-        var env = new BotFakeHostEnvironment(tempRoot);
 
         return new SharedPortfolioExperimentalAutoTraderService(
             marketData,
             analytics,
             brain,
+            repository,
+            runtime,
             monitoring,
-            env,
             NullLogger<SharedPortfolioExperimentalAutoTraderService>.Instance);
     }
 
@@ -502,6 +675,533 @@ public class SharedExperimentalAutopilotTests
     private sealed class BotFakeHostEnvironment : IHostEnvironment
     {
         public BotFakeHostEnvironment(string contentRootPath)
+        {
+            ContentRootPath = contentRootPath;
+            ApplicationName = "Atlas.Tests";
+            EnvironmentName = "Development";
+            ContentRootFileProvider = null!;
+        }
+
+        public string EnvironmentName { get; set; }
+        public string ApplicationName { get; set; }
+        public string ContentRootPath { get; set; }
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; }
+    }
+}
+
+public class BotRuntimeInfrastructureTests
+{
+    [Fact]
+    public void FileBotStateRepository_SaveThenLoad_RoundTripsState()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-bot-state-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var repository = new FileBotStateRepository(
+                new RuntimeFakeHostEnvironment(tempRoot),
+                NullLogger<FileBotStateRepository>.Instance);
+
+            BotStateRecord saved = repository.Save(new BotStateSaveRequest(
+                BotKey: "MULTI",
+                StateJson: "{\"equity\":1234.5}",
+                ExpectedStateVersion: 0,
+                LastEvaluationAt: DateTimeOffset.UtcNow,
+                LastCycleStatus: "ok",
+                LastCycleDurationMs: 87));
+
+            BotStateRecord? loaded = repository.Load("MULTI");
+
+            Assert.NotNull(loaded);
+            Assert.Equal(saved.StateVersion, loaded!.StateVersion);
+            Assert.Equal("{\"equity\":1234.5}", loaded.StateJson);
+            Assert.Equal("ok", loaded.LastCycleStatus);
+            Assert.Equal(87, loaded.LastCycleDurationMs);
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void FileBotStateRepository_ConflictingSave_Throws()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-bot-state-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var repository = new FileBotStateRepository(
+                new RuntimeFakeHostEnvironment(tempRoot),
+                NullLogger<FileBotStateRepository>.Instance);
+
+            BotStateRecord initial = repository.Save(new BotStateSaveRequest(
+                BotKey: "MULTI",
+                StateJson: "{\"state\":1}",
+                ExpectedStateVersion: 0,
+                LastEvaluationAt: DateTimeOffset.UtcNow,
+                LastCycleStatus: "ok",
+                LastCycleDurationMs: 25));
+
+            Assert.Equal(1, initial.StateVersion);
+
+            Assert.Throws<BotStateConflictException>(() => repository.Save(new BotStateSaveRequest(
+                BotKey: "MULTI",
+                StateJson: "{\"state\":2}",
+                ExpectedStateVersion: 0,
+                LastEvaluationAt: DateTimeOffset.UtcNow,
+                LastCycleStatus: "ok",
+                LastCycleDurationMs: 26)));
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void SingleNodeLeaderElection_WorkerRole_AcquiresLeadership()
+    {
+        var service = new SingleNodeBotLeaderElectionService();
+        var runtime = new AtlasRuntimeContext(AtlasRuntimeRole.BotWorker, "worker-1", "unit-test");
+
+        BotLeaderLeaseSnapshot lease = service.AcquireOrRenew("MULTI", runtime, TimeSpan.FromSeconds(12));
+
+        Assert.True(lease.IsLeader);
+        Assert.Equal("worker-1", lease.OwnerInstanceId);
+        Assert.True(lease.LeaseUntil > lease.CheckedAt);
+        Assert.Equal(1, lease.FencingToken);
+    }
+
+    [Fact]
+    public void SingleNodeLeaderElection_ApiRole_StaysStandby()
+    {
+        var service = new SingleNodeBotLeaderElectionService();
+        var runtime = new AtlasRuntimeContext(AtlasRuntimeRole.Api, "api-1", "unit-test");
+
+        BotLeaderLeaseSnapshot lease = service.AcquireOrRenew("MULTI", runtime, TimeSpan.FromSeconds(12));
+
+        Assert.False(lease.IsLeader);
+        Assert.Null(lease.OwnerInstanceId);
+        Assert.Null(lease.LeaseUntil);
+        Assert.Equal(0, lease.FencingToken);
+    }
+
+    private sealed class RuntimeFakeHostEnvironment : IHostEnvironment
+    {
+        public RuntimeFakeHostEnvironment(string contentRootPath)
+        {
+            ContentRootPath = contentRootPath;
+            ApplicationName = "Atlas.Tests";
+            EnvironmentName = "Development";
+            ContentRootFileProvider = null!;
+        }
+
+        public string EnvironmentName { get; set; }
+        public string ApplicationName { get; set; }
+        public string ContentRootPath { get; set; }
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; }
+    }
+}
+
+public class PolymarketBotServiceTests
+{
+    [Fact]
+    public async Task PolymarketBot_OpensOneDollarCappedPositions_AndPublishesJournal()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-poly-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        var previous = CaptureEnvironment(
+            "POLYMARKET_BOT_ENABLED",
+            "POLYMARKET_EXECUTION_MODE",
+            "POLYMARKET_MAX_TRADE_USD",
+            "POLYMARKET_STARTING_BALANCE_USD",
+            "POLYMARKET_DAILY_LOSS_LIMIT_USD",
+            "POLYMARKET_BOT_EVALUATION_SECONDS",
+            "POLYMARKET_REPORT_TIMEZONE");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_ENABLED", "true");
+            Environment.SetEnvironmentVariable("POLYMARKET_EXECUTION_MODE", "paper");
+            Environment.SetEnvironmentVariable("POLYMARKET_MAX_TRADE_USD", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_STARTING_BALANCE_USD", "25");
+            Environment.SetEnvironmentVariable("POLYMARKET_DAILY_LOSS_LIMIT_USD", "5");
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_EVALUATION_SECONDS", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_REPORT_TIMEZONE", "UTC");
+
+            var live = new StaticPolymarketBotLiveService(BuildLiveSnapshot(
+                BuildSignal("MKT-1", "BTC", "Will Bitcoin be above $80,000 in 20 minutes?", "Buy Yes", 0.42, 0.58, 0.57, 0.43, 20, 72, 81),
+                BuildSignal("MKT-2", "ETH", "Will Ethereum be below $3,500 in 25 minutes?", "Buy No", 0.63, 0.37, 0.31, 0.69, 25, 68, 79)));
+            var telegram = new CaptureTelegramService();
+            var service = BuildPolymarketBotService(tempRoot, live, telegram, AtlasRuntimeRole.All);
+
+            PolymarketLiveSnapshot snapshot = await service.RunAutopilotAsync();
+
+            Assert.Equal(2, snapshot.OpenPositions.Count);
+            Assert.All(snapshot.OpenPositions, position => Assert.InRange(position.StakeUsd, 0.99, 1.01));
+            Assert.Equal(23, snapshot.Portfolio.CashBalanceUsd, 10);
+            Assert.True(snapshot.Journal.Count >= 2);
+            Assert.Equal(2, telegram.Messages.Count);
+            Assert.All(telegram.Messages, message => Assert.Contains("NEW ORDER |", message));
+        }
+        finally
+        {
+            RestoreEnvironment(previous);
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task PolymarketBot_DoesNotDuplicateSameMarketAcrossCycles()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-poly-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        var previous = CaptureEnvironment(
+            "POLYMARKET_BOT_ENABLED",
+            "POLYMARKET_EXECUTION_MODE",
+            "POLYMARKET_MAX_TRADE_USD",
+            "POLYMARKET_STARTING_BALANCE_USD",
+            "POLYMARKET_DAILY_LOSS_LIMIT_USD",
+            "POLYMARKET_BOT_EVALUATION_SECONDS",
+            "POLYMARKET_REPORT_TIMEZONE");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_ENABLED", "true");
+            Environment.SetEnvironmentVariable("POLYMARKET_EXECUTION_MODE", "paper");
+            Environment.SetEnvironmentVariable("POLYMARKET_MAX_TRADE_USD", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_STARTING_BALANCE_USD", "10");
+            Environment.SetEnvironmentVariable("POLYMARKET_DAILY_LOSS_LIMIT_USD", "5");
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_EVALUATION_SECONDS", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_REPORT_TIMEZONE", "UTC");
+
+            var live = new StaticPolymarketBotLiveService(BuildLiveSnapshot(
+                BuildSignal("MKT-1", "BTC", "Will Bitcoin be above $80,000 in 20 minutes?", "Buy Yes", 0.42, 0.58, 0.57, 0.43, 20, 72, 81)));
+            var telegram = new CaptureTelegramService();
+            var service = BuildPolymarketBotService(tempRoot, live, telegram, AtlasRuntimeRole.All);
+
+            PolymarketLiveSnapshot first = await service.RunAutopilotAsync();
+            PolymarketLiveSnapshot second = await service.RunAutopilotAsync();
+
+            Assert.Single(first.OpenPositions);
+            Assert.Single(second.OpenPositions);
+            Assert.InRange(second.Portfolio.CashBalanceUsd, 8.99, 9.01);
+        }
+        finally
+        {
+            RestoreEnvironment(previous);
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task PolymarketBot_CanHoldThresholdAndDirectionalTrade_OnSameAsset()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-poly-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        var previous = CaptureEnvironment(
+            "POLYMARKET_BOT_ENABLED",
+            "POLYMARKET_EXECUTION_MODE",
+            "POLYMARKET_MAX_TRADE_USD",
+            "POLYMARKET_STARTING_BALANCE_USD",
+            "POLYMARKET_DAILY_LOSS_LIMIT_USD",
+            "POLYMARKET_BOT_EVALUATION_SECONDS",
+            "POLYMARKET_REPORT_TIMEZONE",
+            "POLYMARKET_MAX_NEW_TRADES_PER_CYCLE");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_ENABLED", "true");
+            Environment.SetEnvironmentVariable("POLYMARKET_EXECUTION_MODE", "paper");
+            Environment.SetEnvironmentVariable("POLYMARKET_MAX_TRADE_USD", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_STARTING_BALANCE_USD", "10");
+            Environment.SetEnvironmentVariable("POLYMARKET_DAILY_LOSS_LIMIT_USD", "5");
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_EVALUATION_SECONDS", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_REPORT_TIMEZONE", "UTC");
+            Environment.SetEnvironmentVariable("POLYMARKET_MAX_NEW_TRADES_PER_CYCLE", "2");
+
+            var live = new StaticPolymarketBotLiveService(BuildLiveSnapshot(
+                BuildSignal("BTC-TRESH-1", "BTC", "Will Bitcoin be above $80,000 in 20 minutes?", "Buy Yes", 0.42, 0.58, 0.57, 0.43, 20, 72, 81),
+                BuildDirectionalSignal("BTC-UPDOWN-1", "BTC", "Bitcoin Up or Down - April 8, 2:00PM-2:05PM ET", "Buy Up", 0.46, 0.54, 0.61, 0.39, 5, 76, 88, 81_250)));
+            var telegram = new CaptureTelegramService();
+            var service = BuildPolymarketBotService(tempRoot, live, telegram, AtlasRuntimeRole.All);
+
+            PolymarketLiveSnapshot snapshot = await service.RunAutopilotAsync();
+
+            Assert.Equal(2, snapshot.OpenPositions.Count);
+            Assert.Equal(2, snapshot.OpenPositions.Count(position => position.Asset == "BTC"));
+            Assert.Contains(snapshot.OpenPositions, position => position.SignalCategory == "threshold");
+            Assert.Contains(snapshot.OpenPositions, position => position.SignalCategory == "directional");
+        }
+        finally
+        {
+            RestoreEnvironment(previous);
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task PolymarketBot_ApiRole_ReadsPersistedPortfolioState()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-poly-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        var previous = CaptureEnvironment(
+            "POLYMARKET_BOT_ENABLED",
+            "POLYMARKET_EXECUTION_MODE",
+            "POLYMARKET_MAX_TRADE_USD",
+            "POLYMARKET_STARTING_BALANCE_USD",
+            "POLYMARKET_DAILY_LOSS_LIMIT_USD",
+            "POLYMARKET_BOT_EVALUATION_SECONDS",
+            "POLYMARKET_REPORT_TIMEZONE");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_ENABLED", "true");
+            Environment.SetEnvironmentVariable("POLYMARKET_EXECUTION_MODE", "paper");
+            Environment.SetEnvironmentVariable("POLYMARKET_MAX_TRADE_USD", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_STARTING_BALANCE_USD", "12");
+            Environment.SetEnvironmentVariable("POLYMARKET_DAILY_LOSS_LIMIT_USD", "5");
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_EVALUATION_SECONDS", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_REPORT_TIMEZONE", "UTC");
+
+            var live = new StaticPolymarketBotLiveService(BuildLiveSnapshot(
+                BuildSignal("MKT-1", "SOL", "Will Solana be above $160 in 15 minutes?", "Buy Yes", 0.37, 0.63, 0.59, 0.41, 15, 71, 84)));
+            var worker = BuildPolymarketBotService(tempRoot, live, new CaptureTelegramService(), AtlasRuntimeRole.BotWorker);
+            await worker.RunAutopilotAsync();
+
+            var apiService = BuildPolymarketBotService(tempRoot, live, new CaptureTelegramService(), AtlasRuntimeRole.Api);
+            PolymarketLiveSnapshot snapshot = await apiService.GetSnapshotAsync();
+
+            Assert.Single(snapshot.OpenPositions);
+            Assert.Equal(11, snapshot.Portfolio.CashBalanceUsd, 10);
+            Assert.Equal("live-ready", snapshot.Status switch
+            {
+                "live-trading" => "live-ready",
+                var other => other
+            });
+        }
+        finally
+        {
+            RestoreEnvironment(previous);
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    private static PolymarketBotService BuildPolymarketBotService(
+        string tempRoot,
+        IPolymarketLiveService liveService,
+        ITelegramSignalService telegram,
+        AtlasRuntimeRole role)
+    {
+        var repository = new FileBotStateRepository(new RuntimeFakeHostEnvironment(tempRoot), NullLogger<FileBotStateRepository>.Instance);
+        var runtime = new AtlasRuntimeContext(role, $"poly-{role.ToString().ToLowerInvariant()}", "unit-test");
+        return new PolymarketBotService(
+            liveService,
+            repository,
+            runtime,
+            telegram,
+            NullLogger<PolymarketBotService>.Instance);
+    }
+
+    private static PolymarketLiveSnapshot BuildLiveSnapshot(params PolymarketMarketSignal[] opportunities)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        return new PolymarketLiveSnapshot(
+            Status: "analysis-ready",
+            Summary: "Test snapshot",
+            Runtime: new PolymarketRuntimeStatus(
+                TradingEnabled: false,
+                SignerConfigured: false,
+                TelegramConfigured: false,
+                ExecutionArmed: false,
+                DailyLossLockActive: false,
+                RuntimeMode: "analysis-only",
+                WalletAddressHint: "not-configured",
+                MaxTradeUsd: 1,
+                DailyLossLimitUsd: 5,
+                Summary: "test"),
+            Assets: new[]
+            {
+                new PolymarketReferenceAssetSnapshot("BTC", 81_250, 0.55, "Momentum", 77, 18, "Bullish", now),
+                new PolymarketReferenceAssetSnapshot("ETH", 3_480, 0.63, "Compression", 69, -12, "Bearish", now),
+                new PolymarketReferenceAssetSnapshot("SOL", 161, 0.78, "Expansion", 74, 21, "Bullish", now)
+            },
+            BotTiers: [],
+            Opportunities: opportunities,
+            Stats: new PolymarketScanStats(1, 1, opportunities.Length, opportunities.Length, opportunities.Count(x => x.MinutesToExpiry <= 30), opportunities.Length),
+            Notes: ["test"],
+            Portfolio: new PolymarketBotPortfolioSnapshot(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, now),
+            OpenPositions: [],
+            RecentClosedPositions: [],
+            Journal: [],
+            Timestamp: now);
+    }
+
+    private static PolymarketMarketSignal BuildSignal(
+        string marketId,
+        string asset,
+        string question,
+        string side,
+        double marketYes,
+        double marketNo,
+        double fairYes,
+        double fairNo,
+        double minutes,
+        double quality,
+        double conviction)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        return new PolymarketMarketSignal(
+            EventId: $"EV-{marketId}",
+            MarketId: marketId,
+            Asset: asset,
+            Question: question,
+            Slug: marketId.ToLowerInvariant(),
+            Expiry: now.AddMinutes(minutes),
+            MinutesToExpiry: minutes,
+            Spot: asset == "ETH" ? 3_480 : asset == "SOL" ? 161 : 81_250,
+            StrikeLow: asset == "ETH" ? 3_500 : asset == "SOL" ? 160 : 80_000,
+            StrikeHigh: null,
+            ThresholdType: "Above",
+            SignalCategory: "threshold",
+            DisplayLabel: $"{asset} above {(asset == "ETH" ? 3_500 : asset == "SOL" ? 160 : 80_000):0}",
+            PrimaryOutcomeLabel: "Yes",
+            SecondaryOutcomeLabel: "No",
+            MarketYesPrice: marketYes,
+            MarketNoPrice: marketNo,
+            BestBid: Math.Max(0, marketYes - 0.02),
+            BestAsk: marketYes + 0.02,
+            Spread: 0.04,
+            LiquidityUsd: 2_000,
+            Volume24hUsd: 750,
+            FairYesProbability: fairYes,
+            FairNoProbability: fairNo,
+            EdgeYesPct: fairYes - marketYes,
+            EdgeNoPct: fairNo - marketNo,
+            DistanceToStrikePct: 0.01,
+            VolInput: 0.55,
+            QualityScore: quality,
+            ConvictionScore: conviction,
+            RecommendedSide: side,
+            Summary: $"{asset} test edge",
+            MacroReasoning: "macro test",
+            MicroReasoning: "micro test",
+            MathReasoning: "math test",
+            ExecutionPlan: new PolymarketExecutionPlan(
+                Side: side,
+                OrderStyle: "passive-limit",
+                IndicativeEntryPrice: side == "Buy Yes" ? marketYes : marketNo,
+                MaxPositionPct: 0.01,
+                TimeStopMinutes: (int)Math.Round(minutes * 0.5),
+                ExitPlan: "exit test",
+                RiskPlan: "risk test"));
+    }
+
+    private static PolymarketMarketSignal BuildDirectionalSignal(
+        string marketId,
+        string asset,
+        string question,
+        string side,
+        double marketYes,
+        double marketNo,
+        double fairYes,
+        double fairNo,
+        double minutes,
+        double quality,
+        double conviction,
+        double referencePrice)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        return new PolymarketMarketSignal(
+            EventId: $"EV-{marketId}",
+            MarketId: marketId,
+            Asset: asset,
+            Question: question,
+            Slug: marketId.ToLowerInvariant(),
+            Expiry: now.AddMinutes(minutes),
+            MinutesToExpiry: minutes,
+            Spot: referencePrice,
+            StrikeLow: referencePrice,
+            StrikeHigh: null,
+            ThresholdType: "Above",
+            SignalCategory: "directional",
+            DisplayLabel: $"{asset} 5m up/down",
+            PrimaryOutcomeLabel: "Up",
+            SecondaryOutcomeLabel: "Down",
+            MarketYesPrice: marketYes,
+            MarketNoPrice: marketNo,
+            BestBid: Math.Max(0, marketYes - 0.02),
+            BestAsk: marketYes + 0.02,
+            Spread: 0.04,
+            LiquidityUsd: 2_500,
+            Volume24hUsd: 900,
+            FairYesProbability: fairYes,
+            FairNoProbability: fairNo,
+            EdgeYesPct: fairYes - marketYes,
+            EdgeNoPct: fairNo - marketNo,
+            DistanceToStrikePct: 0.002,
+            VolInput: 0.55,
+            QualityScore: quality,
+            ConvictionScore: conviction,
+            RecommendedSide: side,
+            Summary: $"{asset} directional test edge",
+            MacroReasoning: "macro test",
+            MicroReasoning: "micro test",
+            MathReasoning: "math test",
+            ExecutionPlan: new PolymarketExecutionPlan(
+                Side: side,
+                OrderStyle: "join-best-or-better",
+                IndicativeEntryPrice: side == "Buy Up" ? marketYes : marketNo,
+                MaxPositionPct: 0.01,
+                TimeStopMinutes: (int)Math.Round(minutes * 0.5),
+                ExitPlan: "exit test",
+                RiskPlan: "risk test"));
+    }
+
+    private static Dictionary<string, string?> CaptureEnvironment(params string[] keys) =>
+        keys.ToDictionary(key => key, Environment.GetEnvironmentVariable);
+
+    private static void RestoreEnvironment(Dictionary<string, string?> values)
+    {
+        foreach ((string key, string? value) in values)
+            Environment.SetEnvironmentVariable(key, value);
+    }
+
+    private sealed class StaticPolymarketBotLiveService : IPolymarketLiveService
+    {
+        private readonly Func<PolymarketLiveSnapshot> _factory;
+
+        public StaticPolymarketBotLiveService(PolymarketLiveSnapshot snapshot)
+        {
+            _factory = () => snapshot;
+        }
+
+        public Task<PolymarketLiveSnapshot> GetLiveSnapshotAsync(int lookaheadMinutes = 24 * 60, int maxMarkets = 24, CancellationToken ct = default) =>
+            Task.FromResult(_factory());
+    }
+
+    private sealed class CaptureTelegramService : ITelegramSignalService
+    {
+        public bool IsConfigured => true;
+        public List<string> Messages { get; } = [];
+
+        public Task SendAsync(string message, CancellationToken ct = default)
+        {
+            Messages.Add(message);
+            return Task.CompletedTask;
+        }
+    }
+
+    private sealed class RuntimeFakeHostEnvironment : IHostEnvironment
+    {
+        public RuntimeFakeHostEnvironment(string contentRootPath)
         {
             ContentRootPath = contentRootPath;
             ApplicationName = "Atlas.Tests";

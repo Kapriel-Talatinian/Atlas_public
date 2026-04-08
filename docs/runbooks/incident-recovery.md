@@ -18,6 +18,8 @@ Restore trading safety and service health with minimal risk while preserving aud
 4. Capture current state snapshot:
    - `/api/system/ops`
    - `/api/trading/history`
+   - `/api/experimental/runtime`
+   - `/api/experimental/runtime/health`
 
 ## OMS Integrity
 1. Run `GET /api/trading/orders/reconcile?limit=500`.
@@ -40,7 +42,8 @@ Restore trading safety and service health with minimal risk while preserving aud
 1. Backend health endpoint must be green.
 2. No new critical alerts for at least 10 minutes.
 3. Reconcile OMS and verify no critical issues.
-4. Disable kill-switch only after risk manager approval.
+4. Confirm a single bot leader lease is active and `LastCycleStatus` is healthy.
+5. Disable kill-switch only after risk manager approval.
 
 ## Post-Incident (T+30+)
 1. Export persisted audit trail from `/api/trading/history`.

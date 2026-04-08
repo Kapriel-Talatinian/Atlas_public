@@ -47,6 +47,38 @@ body {
   padding: 24px 0 36px;
 }
 
+.app-shell-polymarket {
+  width: min(1920px, calc(100vw - 18px));
+  padding-top: 12px;
+}
+
+.polymarket-route-nav {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 16px;
+  margin-bottom: 16px;
+  padding: 8px 6px 0;
+}
+
+.polymarket-route-kicker {
+  font-size: 0.72rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.polymarket-route-title {
+  margin: 6px 0 0;
+  font-size: clamp(1.2rem, 2vw, 1.65rem);
+  letter-spacing: -0.02em;
+}
+
+.polymarket-route-tabs {
+  display: flex;
+  justify-content: flex-end;
+}
+
 .hero {
   position: relative;
   overflow: hidden;
@@ -1046,6 +1078,11 @@ body {
   .app-shell {
     width: min(96vw, 100%);
     padding-top: 14px;
+  }
+
+  .polymarket-route-nav {
+    flex-direction: column;
+    align-items: flex-start;
   }
 
   .hero {

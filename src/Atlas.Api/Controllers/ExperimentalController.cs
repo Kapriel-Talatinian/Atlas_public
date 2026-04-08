@@ -39,8 +39,15 @@ public sealed class ExperimentalController : ControllerBase
         [FromBody] ExperimentalBotConfigRequest? request = null,
         CancellationToken ct = default)
     {
-        var snapshot = await _autoTrader.ConfigureAsync(asset, request ?? new ExperimentalBotConfigRequest(), ct);
-        return Ok(snapshot);
+        try
+        {
+            var snapshot = await _autoTrader.ConfigureAsync(asset, request ?? new ExperimentalBotConfigRequest(), ct);
+            return Ok(snapshot);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { accepted = false, reason = ex.Message });
+        }
     }
 
     [HttpPost("run")]
@@ -49,8 +56,15 @@ public sealed class ExperimentalController : ControllerBase
         [FromQuery] int cycles = 1,
         CancellationToken ct = default)
     {
-        var snapshot = await _autoTrader.RunCycleAsync(asset, cycles, ct);
-        return Ok(snapshot);
+        try
+        {
+            var snapshot = await _autoTrader.RunCycleAsync(asset, cycles, ct);
+            return Ok(snapshot);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { accepted = false, reason = ex.Message });
+        }
     }
 
     [HttpPost("reset")]
@@ -58,7 +72,14 @@ public sealed class ExperimentalController : ControllerBase
         [FromQuery] string asset = "BTC",
         CancellationToken ct = default)
     {
-        var snapshot = await _autoTrader.ResetAsync(asset, ct);
-        return Ok(snapshot);
+        try
+        {
+            var snapshot = await _autoTrader.ResetAsync(asset, ct);
+            return Ok(snapshot);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return Conflict(new { accepted = false, reason = ex.Message });
+        }
     }
 }

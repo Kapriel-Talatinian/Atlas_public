@@ -15,9 +15,12 @@ Deploy API/UI without interrupting order/risk visibility.
 ## Deployment Strategy
 - Use rolling or blue/green deployment.
 - Keep at least one healthy API instance during rollout.
-- Preserve persistent volumes for:
+- Keep a single active bot worker during rollout.
+- Preserve persistent storage for:
   - `TRADING_DB_PATH`
-  - `EXPERIMENTAL_BOT_STATE_DIR`
+- Preserve central bot runtime storage:
+  - `BOT_RUNTIME_DB_CONNECTION_STRING`
+- Keep `ATLAS_RUNTIME_ROLE=api` on HTTP replicas and `ATLAS_RUNTIME_ROLE=bot-worker` on the dedicated worker.
 
 ## Health Gate
 After deploy, verify:
@@ -25,6 +28,8 @@ After deploy, verify:
 2. `/api/system/health` => not degraded
 3. `/api/system/slo` => no active 5m breach
 4. `/api/trading/orders/reconcile` => no critical mismatch
+5. `/api/experimental/runtime` => expected role / backend wiring
+6. `/api/experimental/runtime/health` => leader healthy, lease valid
 
 ## Rollback Criteria
 Rollback immediately if any of:
