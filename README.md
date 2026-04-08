@@ -1,7 +1,7 @@
 # Atlas — Institutional Crypto Options Desk
 
 [![CI](https://github.com/Kapriel-Talatinian/Atlas_public/actions/workflows/ci.yml/badge.svg)](https://github.com/Kapriel-Talatinian/Atlas_public/actions/workflows/ci.yml)
-![Tests](https://img.shields.io/badge/tests-49%20passing-11a36a)
+![Tests](https://img.shields.io/badge/tests-54%20passing-11a36a)
 ![UI Screens](https://img.shields.io/badge/screenshots-4%20captured-0ea5e9)
 ![License](https://img.shields.io/badge/license-Proprietary-111827)
 
@@ -44,7 +44,7 @@ Deep links utiles pour partager une vue précise:
 
 ## Test Surface
 
-Atlas expose aujourd’hui **49 tests backend xUnit** sur les briques qui comptent le plus pour la crédibilité quant/risk du projet:
+Atlas expose aujourd’hui **54 tests backend xUnit** sur les briques qui comptent le plus pour la crédibilité quant/risk du projet:
 
 - pricing et Greeks: Black-Scholes, IV solver, convergence Monte Carlo / binomial, stabilité numérique
 - tests ciblés quant: parity BS, deep OTM IV convergence, zero-vol boundary, SABR ATM, Heston finite outputs

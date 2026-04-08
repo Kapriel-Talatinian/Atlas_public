@@ -55,9 +55,10 @@ builder.Services.AddHttpClient("deribit-options", client =>
 builder.Services.AddSingleton<ISystemMonitoringService, SystemMonitoringService>();
 builder.Services.AddSingleton<ITradingPersistenceService, SqliteTradingPersistenceService>();
 builder.Services.AddSingleton<IOptionsMarketDataService, ResilientOptionsMarketDataService>();
-builder.Services.AddScoped<IOptionsAnalyticsService, OptionsAnalyticsService>();
+builder.Services.AddSingleton<IOptionsAnalyticsService, OptionsAnalyticsService>();
+builder.Services.AddSingleton<INeuralTradingBrainService, NeuralTradingBrainService>();
 builder.Services.AddSingleton<IPaperTradingService, PaperTradingService>();
-builder.Services.AddSingleton<IExperimentalAutoTraderService, ExperimentalAutoTraderService>();
+builder.Services.AddSingleton<IExperimentalAutoTraderService, SharedPortfolioExperimentalAutoTraderService>();
 builder.Services.AddSingleton<IIncidentRecoveryService, IncidentRecoveryService>();
 builder.Services.AddHostedService<ExperimentalBotHostedService>();
 

@@ -19,11 +19,16 @@ public class OptionsController : ControllerBase
 
     private readonly IOptionsAnalyticsService _analytics;
     private readonly IOptionsMarketDataService _marketData;
+    private readonly INeuralTradingBrainService _brain;
 
-    public OptionsController(IOptionsAnalyticsService analytics, IOptionsMarketDataService marketData)
+    public OptionsController(
+        IOptionsAnalyticsService analytics,
+        IOptionsMarketDataService marketData,
+        INeuralTradingBrainService brain)
     {
         _analytics = analytics;
         _marketData = marketData;
+        _brain = brain;
     }
 
     [HttpGet("assets")]
@@ -195,6 +200,36 @@ public class OptionsController : ControllerBase
             targetTheta,
             ct);
         return Ok(board);
+    }
+
+    [HttpGet("rv-board")]
+    public async Task<ActionResult<RelativeValueBoard>> GetRelativeValueBoard(
+        [FromQuery] string asset = "BTC",
+        [FromQuery] string? expiry = null,
+        [FromQuery] int limit = 18,
+        CancellationToken ct = default)
+    {
+        if (!TryParseExpiry(expiry, out var parsedExpiry))
+            return BadRequest("expiry must be in yyyy-MM-dd format");
+        var board = await _analytics.GetRelativeValueBoardAsync(asset, parsedExpiry, limit, ct);
+        return Ok(board);
+    }
+
+    [HttpGet("neural-brain")]
+    public async Task<ActionResult<NeuralSignalSnapshot>> GetNeuralBrain(
+        [FromQuery] string asset = "BTC",
+        CancellationToken ct = default)
+    {
+        var snapshot = await _brain.GetAssetSignalAsync(asset, ct);
+        return Ok(snapshot);
+    }
+
+    [HttpGet("neural-brain/portfolio")]
+    public async Task<ActionResult<IReadOnlyList<NeuralSignalSnapshot>>> GetPortfolioNeuralBrain(
+        CancellationToken ct = default)
+    {
+        var snapshots = await _brain.GetPortfolioSignalsAsync(ct);
+        return Ok(snapshots);
     }
 
     [HttpGet("exposure-grid")]

@@ -246,6 +246,63 @@ public sealed record StrategyOptimizationBoard(
     IReadOnlyList<StrategyOptimizationEntry> Entries,
     DateTimeOffset Timestamp);
 
+public sealed record FairSurfaceNode(
+    DateTimeOffset Expiry,
+    int DaysToExpiry,
+    double Strike,
+    double Moneyness,
+    double MarketIv,
+    double FairIv,
+    double ResidualVolPoints,
+    double ConfidenceScore,
+    double LiquidityScore,
+    int SupportCount);
+
+public sealed record RelativeValueSignal(
+    string Symbol,
+    DateTimeOffset Expiry,
+    int DaysToExpiry,
+    double Strike,
+    OptionRight Right,
+    double Mid,
+    double MarkIv,
+    double FairIv,
+    double ResidualVolPoints,
+    double ResidualZScore,
+    double EdgeVsFairPct,
+    double LiquidityScore,
+    double ConfidenceScore,
+    double TradeabilityScore,
+    string Action,
+    string StructureHint,
+    string Thesis);
+
+public sealed record RelativeValueTradeIdea(
+    string SignalSymbol,
+    string Name,
+    string Action,
+    double Score,
+    double ResidualVolPoints,
+    double TradeabilityScore,
+    double ConfidenceScore,
+    string RiskLabel,
+    string Thesis,
+    StrategyAnalysisResult Analysis);
+
+public sealed record RelativeValueBoard(
+    string Asset,
+    double Spot,
+    string Regime,
+    double SurfaceQualityScore,
+    double AvgAbsResidualVolPoints,
+    double MaxRichVolPoints,
+    double MaxCheapVolPoints,
+    IReadOnlyList<FairSurfaceNode> SurfaceNodes,
+    IReadOnlyList<RelativeValueSignal> TopCheapVol,
+    IReadOnlyList<RelativeValueSignal> TopRichVol,
+    IReadOnlyList<RelativeValueTradeIdea> TradeIdeas,
+    DateTimeOffset Timestamp);
+
 public sealed record GreeksExposureCell(
     DateTimeOffset Expiry,
     int DaysToExpiry,

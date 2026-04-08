@@ -28,13 +28,11 @@ import {
   getOptionSignals,
   getArbitrageScan,
   getGreeksExposureGrid,
+  getRelativeValueBoard,
   getStrategyOptimizer,
   getStrategyRecommendations,
   getPresetStrategies,
   getExperimentalBotSnapshot,
-  configureExperimentalBot,
-  runExperimentalBotCycles,
-  resetExperimentalBot,
   getKillSwitchState,
   retryOpenOrders,
   setKillSwitchState,
@@ -68,6 +66,7 @@ import VolRegimePanel from "./components/market/VolRegimePanel";
 import LiveBiasPanel from "./components/market/LiveBiasPanel";
 import ArbitrageScannerPanel from "./components/market/ArbitrageScannerPanel";
 import GreeksExposureHeatmapPanel from "./components/market/GreeksExposureHeatmapPanel";
+import RelativeValueBoardPanel from "./components/market/RelativeValueBoardPanel";
 import ModelCalibrationPanel from "./components/market/ModelCalibrationPanel";
 import MarketStatsStrip from "./components/market/MarketStatsStrip";
 import OverviewMetrics from "./components/market/OverviewMetrics";
@@ -157,6 +156,7 @@ function App() {
   const [loadingLiveBias, setLoadingLiveBias] = useState(false);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [loadingOptimizer, setLoadingOptimizer] = useState(false);
+  const [loadingRelativeValue, setLoadingRelativeValue] = useState(false);
   const [loadingExposure, setLoadingExposure] = useState(false);
   const [loadingArbitrage, setLoadingArbitrage] = useState(false);
   const [loadingBot, setLoadingBot] = useState(false);
@@ -168,9 +168,6 @@ function App() {
   const [togglingKillSwitch, setTogglingKillSwitch] = useState(false);
   const [runningTwap, setRunningTwap] = useState(false);
   const [runningAutoHedge, setRunningAutoHedge] = useState(false);
-  const [runningBotCycle, setRunningBotCycle] = useState(false);
-  const [applyingBotConfig, setApplyingBotConfig] = useState(false);
-  const [resettingBot, setResettingBot] = useState(false);
   const [error, setError] = useState("");
   const [preview, setPreview] = useState(null);
   const [stress, setStress] = useState(null);
@@ -182,11 +179,11 @@ function App() {
   const [liveBias, setLiveBias] = useState(null);
   const [recommendationBoard, setRecommendationBoard] = useState(null);
   const [optimizerBoard, setOptimizerBoard] = useState(null);
+  const [relativeValueBoard, setRelativeValueBoard] = useState(null);
   const [exposureGrid, setExposureGrid] = useState(null);
   const [exposureMetric, setExposureMetric] = useState("gamma");
   const [arbitrageScan, setArbitrageScan] = useState(null);
   const [botSnapshot, setBotSnapshot] = useState(null);
-  const [botConfigDraft, setBotConfigDraft] = useState(null);
   const [riskProfile, setRiskProfile] = useState("balanced");
   const [optimizerTargets, setOptimizerTargets] = useState({
     targetDelta: 0,
@@ -410,10 +407,11 @@ function App() {
     setLoadingRegime(true);
     setLoadingRecommendations(true);
     setLoadingOptimizer(true);
+    setLoadingRelativeValue(true);
     setLoadingExposure(true);
     setLoadingArbitrage(true);
     try {
-      const [calibrationResp, regimeResp, recoResp, optimizerResp, exposureResp, arbResp] = await Promise.all([
+      const [calibrationResp, regimeResp, recoResp, optimizerResp, rvResp, exposureResp, arbResp] = await Promise.all([
         getModelCalibration({ asset, expiry: selectedExpiry }),
         getVolRegime(asset),
         getStrategyRecommendations({
@@ -431,6 +429,11 @@ function App() {
           targetVega: optimizerTargets.targetVega,
           targetTheta: optimizerTargets.targetTheta,
         }),
+        getRelativeValueBoard({
+          asset,
+          expiry: selectedExpiry,
+          limit: 18,
+        }),
         getGreeksExposureGrid({
           asset,
           maxExpiries: 6,
@@ -446,6 +449,7 @@ function App() {
       setRegime(regimeResp);
       setRecommendationBoard(recoResp);
       setOptimizerBoard(optimizerResp);
+      setRelativeValueBoard(rvResp);
       setExposureGrid(exposureResp);
       setArbitrageScan(arbResp);
     } catch (err) {
@@ -455,6 +459,7 @@ function App() {
       setLoadingRegime(false);
       setLoadingRecommendations(false);
       setLoadingOptimizer(false);
+      setLoadingRelativeValue(false);
       setLoadingExposure(false);
       setLoadingArbitrage(false);
     }
@@ -471,58 +476,14 @@ function App() {
   const refreshExperimentalBot = useCallback(async () => {
     setLoadingBot(true);
     try {
-      const snapshot = await getExperimentalBotSnapshot(asset);
+      const snapshot = await getExperimentalBotSnapshot();
       setBotSnapshot(snapshot);
-      setBotConfigDraft((prev) => prev || snapshot?.config || null);
     } catch (err) {
       setError(err.message);
     } finally {
       setLoadingBot(false);
     }
-  }, [asset]);
-
-  const runExperimentalCycle = useCallback(async () => {
-    setRunningBotCycle(true);
-    try {
-      setError("");
-      const snapshot = await runExperimentalBotCycles(asset, 1);
-      setBotSnapshot(snapshot);
-      setBotConfigDraft(snapshot?.config || null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setRunningBotCycle(false);
-    }
-  }, [asset]);
-
-  const applyExperimentalConfig = useCallback(async () => {
-    if (!botConfigDraft) return;
-    setApplyingBotConfig(true);
-    try {
-      setError("");
-      const snapshot = await configureExperimentalBot(asset, botConfigDraft);
-      setBotSnapshot(snapshot);
-      setBotConfigDraft(snapshot?.config || botConfigDraft);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setApplyingBotConfig(false);
-    }
-  }, [asset, botConfigDraft]);
-
-  const resetExperimentalState = useCallback(async () => {
-    setResettingBot(true);
-    try {
-      setError("");
-      const snapshot = await resetExperimentalBot(asset);
-      setBotSnapshot(snapshot);
-      setBotConfigDraft(snapshot?.config || null);
-    } catch (err) {
-      setError(err.message);
-    } finally {
-      setResettingBot(false);
-    }
-  }, [asset]);
+  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -575,9 +536,8 @@ function App() {
   }, [refreshAlphaData, selectedExpiry]);
 
   useEffect(() => {
-    setBotConfigDraft(null);
     refreshExperimentalBot().catch(() => null);
-  }, [asset, refreshExperimentalBot]);
+  }, [refreshExperimentalBot]);
 
   useEffect(() => {
     if (activeTab !== "experimental") return undefined;
@@ -1489,6 +1449,15 @@ function App() {
               <ModelCalibrationPanel calibration={calibration} loading={loadingCalibration} />
             </SectionCard>
 
+            <SectionCard title="Relative Value Engine" className="mt12">
+              <RelativeValueBoardPanel
+                board={relativeValueBoard}
+                loading={loadingRelativeValue}
+                onSelectSymbol={selectSymbolFromSignals}
+                onLoad={loadRecommendedStrategy}
+              />
+            </SectionCard>
+
             <SectionCard title="Vol Regime Engine" className="mt12">
               <VolRegimePanel regime={regime} loading={loadingRegime} />
             </SectionCard>
@@ -1545,24 +1514,10 @@ function App() {
       {activeTab === "experimental" && (
         <section className="desk-grid">
           <div style={{ gridColumn: "1 / -1" }}>
-            <SectionCard title="Experimental Auto Trader (Paper)">
+            <SectionCard title="Autopilot Portfolio">
               <ExperimentalBotPanel
-                asset={asset}
                 snapshot={botSnapshot}
                 loading={loadingBot}
-                configDraft={botConfigDraft}
-                onConfigChange={(patch) =>
-                  setBotConfigDraft((prev) => ({
-                    ...(prev || botSnapshot?.config || {}),
-                    ...patch,
-                  }))
-                }
-                onApplyConfig={applyExperimentalConfig}
-                applyingConfig={applyingBotConfig}
-                onRunCycle={runExperimentalCycle}
-                runningCycle={runningBotCycle}
-                onReset={resetExperimentalState}
-                resetting={resettingBot}
                 onRefresh={() => refreshExperimentalBot()}
               />
             </SectionCard>

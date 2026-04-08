@@ -48,6 +48,11 @@ public interface IOptionsAnalyticsService
         double targetVega = 0,
         double targetTheta = 0,
         CancellationToken ct = default);
+    Task<RelativeValueBoard> GetRelativeValueBoardAsync(
+        string asset,
+        DateTimeOffset? expiry = null,
+        int limit = 18,
+        CancellationToken ct = default);
     Task<GreeksExposureGrid> GetGreeksExposureGridAsync(
         string asset,
         DateTimeOffset? expiry = null,
@@ -98,6 +103,23 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
         SabrParams SabrParams,
         double ConfidenceScore,
         IReadOnlyList<ModelFitMetric> FitMetrics);
+    private sealed record RelativeValueQuoteState(
+        LiveOptionQuote Quote,
+        OptionModelSnapshot Snapshot,
+        double SpreadPct,
+        double RawFairIv,
+        double LiquidityScore,
+        double ConfidenceScore);
+    private sealed record SurfaceNodeInternal(
+        DateTimeOffset Expiry,
+        int DaysToExpiry,
+        double Strike,
+        double Moneyness,
+        double MarketIv,
+        double FairIv,
+        double ConfidenceScore,
+        double LiquidityScore,
+        int SupportCount);
 
     public OptionsAnalyticsService(IOptionsMarketDataService marketData)
     {
@@ -1010,6 +1032,196 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
             TargetVega: targetVega,
             TargetTheta: targetTheta,
             Entries: entries,
+            Timestamp: DateTimeOffset.UtcNow);
+    }
+
+    public async Task<RelativeValueBoard> GetRelativeValueBoardAsync(
+        string asset,
+        DateTimeOffset? expiry = null,
+        int limit = 18,
+        CancellationToken ct = default)
+    {
+        int safeLimit = Math.Clamp(limit, 6, 32);
+        var fullChain = await _marketData.GetOptionChainAsync(asset, ct);
+        if (fullChain.Count == 0)
+        {
+            return new RelativeValueBoard(
+                Asset: asset.ToUpperInvariant(),
+                Spot: 0,
+                Regime: "Unavailable",
+                SurfaceQualityScore: 0,
+                AvgAbsResidualVolPoints: 0,
+                MaxRichVolPoints: 0,
+                MaxCheapVolPoints: 0,
+                SurfaceNodes: [],
+                TopCheapVol: [],
+                TopRichVol: [],
+                TradeIdeas: [],
+                Timestamp: DateTimeOffset.UtcNow);
+        }
+
+        var chain = expiry.HasValue
+            ? fullChain.Where(q => q.Expiry.Date == expiry.Value.Date).ToList()
+            : fullChain.ToList();
+        if (chain.Count == 0)
+            chain = fullChain.ToList();
+
+        double spot = ReferenceSpot(chain);
+        if (spot <= 0) spot = ReferenceSpot(fullChain);
+        if (spot <= 0) spot = 1;
+
+        var calibration = BuildAssetModelCalibration(fullChain, expiry);
+        var regime = await GetRegimeAsync(asset, ct);
+        var micro = ComputeMarketMicroFactors(chain, spot);
+
+        var states = chain
+            .Select(q => BuildRelativeValueQuoteState(q, spot, calibration))
+            .Where(s => s is not null)
+            .Select(s => s!)
+            .ToList();
+
+        if (states.Count == 0)
+        {
+            return new RelativeValueBoard(
+                Asset: asset.ToUpperInvariant(),
+                Spot: spot,
+                Regime: regime.Regime,
+                SurfaceQualityScore: 0,
+                AvgAbsResidualVolPoints: 0,
+                MaxRichVolPoints: 0,
+                MaxCheapVolPoints: 0,
+                SurfaceNodes: [],
+                TopCheapVol: [],
+                TopRichVol: [],
+                TradeIdeas: [],
+                Timestamp: DateTimeOffset.UtcNow);
+        }
+
+        var surfaceNodes = BuildFairSurfaceNodes(states, spot);
+        var nodeMap = surfaceNodes.ToDictionary(
+            node => SurfaceKey(node.Expiry, node.Strike),
+            StringComparer.OrdinalIgnoreCase);
+
+        double globalResidualStd = ComputeResidualStdDev(states, nodeMap, 1.25);
+        var byExpiryResidualStd = states
+            .GroupBy(s => s.Quote.Expiry.Date)
+            .ToDictionary(
+                g => g.Key,
+                g => ComputeResidualStdDev(g.ToList(), nodeMap, globalResidualStd),
+                comparer: EqualityComparer<DateTime>.Default);
+
+        var signals = states
+            .Select(state =>
+            {
+                nodeMap.TryGetValue(SurfaceKey(state.Quote.Expiry, state.Quote.Strike), out var node);
+                double fairIv = node?.FairIv ?? state.RawFairIv;
+                double residualVolPoints = (state.Quote.MarkIv - fairIv) * 100.0;
+                double residualStd = byExpiryResidualStd.TryGetValue(state.Quote.Expiry.Date, out var value)
+                    ? value
+                    : globalResidualStd;
+                double residualZ = residualStd > 1e-9 ? residualVolPoints / residualStd : 0;
+                double tradeability = ComputeRelativeTradeabilityScore(state.SpreadPct, state.LiquidityScore, state.ConfidenceScore);
+                double edgeVsFairPct = ComputeSurfaceEdgePct(state.Quote, fairIv, state.Snapshot.Spot, state.Snapshot.TimeToExpiryYears);
+                string action = residualVolPoints <= -1.2
+                    ? "Buy vol"
+                    : residualVolPoints >= 1.2
+                        ? "Sell vol"
+                        : "Watch";
+                string structureHint = BuildStructureHint(state.Quote, action, regime, micro, spot);
+                string thesis = BuildRelativeValueThesis(
+                    state.Quote,
+                    fairIv,
+                    residualVolPoints,
+                    residualZ,
+                    action,
+                    regime.Regime,
+                    tradeability,
+                    micro);
+
+                return new RelativeValueSignal(
+                    Symbol: state.Quote.Symbol,
+                    Expiry: state.Quote.Expiry,
+                    DaysToExpiry: Math.Max(0, (int)Math.Round((state.Quote.Expiry - DateTimeOffset.UtcNow).TotalDays)),
+                    Strike: state.Quote.Strike,
+                    Right: state.Quote.Right,
+                    Mid: EffectiveMid(state.Quote),
+                    MarkIv: state.Quote.MarkIv,
+                    FairIv: fairIv,
+                    ResidualVolPoints: residualVolPoints,
+                    ResidualZScore: residualZ,
+                    EdgeVsFairPct: edgeVsFairPct,
+                    LiquidityScore: state.LiquidityScore,
+                    ConfidenceScore: state.ConfidenceScore,
+                    TradeabilityScore: tradeability,
+                    Action: action,
+                    StructureHint: structureHint,
+                    Thesis: thesis);
+            })
+            .ToList();
+
+        int perSide = Math.Clamp(safeLimit / 2, 4, 12);
+        var topCheap = signals
+            .Where(s => s.ResidualVolPoints < -0.15)
+            .OrderByDescending(s => (-s.ResidualVolPoints) * 0.62 + s.TradeabilityScore * 0.22 + s.ConfidenceScore * 0.16)
+            .Take(perSide)
+            .ToList();
+        if (topCheap.Count == 0)
+        {
+            topCheap = signals
+                .OrderBy(s => s.ResidualVolPoints)
+                .ThenByDescending(s => s.TradeabilityScore)
+                .ThenByDescending(s => s.ConfidenceScore)
+                .Take(perSide)
+                .ToList();
+        }
+
+        var topRich = signals
+            .Where(s => s.ResidualVolPoints > 0.15)
+            .OrderByDescending(s => s.ResidualVolPoints * 0.62 + s.TradeabilityScore * 0.22 + s.ConfidenceScore * 0.16)
+            .Take(perSide)
+            .ToList();
+        if (topRich.Count == 0)
+        {
+            topRich = signals
+                .OrderByDescending(s => s.ResidualVolPoints)
+                .ThenByDescending(s => s.TradeabilityScore)
+                .ThenByDescending(s => s.ConfidenceScore)
+                .Take(perSide)
+                .ToList();
+        }
+
+        double avgAbsResidual = signals.Count > 0 ? signals.Average(s => Math.Abs(s.ResidualVolPoints)) : 0;
+        double maxRich = signals.Count > 0 ? signals.Max(s => s.ResidualVolPoints) : 0;
+        double maxCheap = signals.Count > 0 ? signals.Min(s => s.ResidualVolPoints) : 0;
+        double surfaceQuality = ComputeSurfaceQualityScore(surfaceNodes, signals, calibration.ConfidenceScore);
+        var tradeIdeas = BuildRelativeValueTradeIdeas(asset, chain, topCheap, topRich, regime, spot);
+
+        var fairNodes = surfaceNodes
+            .Select(node => new FairSurfaceNode(
+                Expiry: node.Expiry,
+                DaysToExpiry: node.DaysToExpiry,
+                Strike: node.Strike,
+                Moneyness: node.Moneyness,
+                MarketIv: node.MarketIv,
+                FairIv: node.FairIv,
+                ResidualVolPoints: (node.MarketIv - node.FairIv) * 100.0,
+                ConfidenceScore: node.ConfidenceScore,
+                LiquidityScore: node.LiquidityScore,
+                SupportCount: node.SupportCount))
+            .ToList();
+
+        return new RelativeValueBoard(
+            Asset: asset.ToUpperInvariant(),
+            Spot: spot,
+            Regime: regime.Regime,
+            SurfaceQualityScore: surfaceQuality,
+            AvgAbsResidualVolPoints: avgAbsResidual,
+            MaxRichVolPoints: maxRich,
+            MaxCheapVolPoints: maxCheap,
+            SurfaceNodes: fairNodes,
+            TopCheapVol: topCheap,
+            TopRichVol: topRich,
+            TradeIdeas: tradeIdeas,
             Timestamp: DateTimeOffset.UtcNow);
     }
 
@@ -2242,6 +2454,654 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
         double thetaDist = Math.Abs(projectedGreeks.Theta - targetTheta) / Math.Max(8, Math.Abs(targetTheta) + 8);
         double rawDistance = deltaDist + vegaDist + thetaDist;
         return MathUtils.Clamp(100 / (1 + rawDistance * 1.35), 1, 99);
+    }
+
+    private static RelativeValueQuoteState? BuildRelativeValueQuoteState(
+        LiveOptionQuote quote,
+        double fallbackSpot,
+        AssetModelCalibration calibration)
+    {
+        double mid = EffectiveMid(quote);
+        if (mid <= 0 || quote.MarkIv <= 0)
+            return null;
+
+        var snapshot = BuildModelSnapshot(quote, fallbackSpot, calibration);
+        double spreadPct = quote.Ask > 0 && quote.Bid > 0 && mid > 0
+            ? MathUtils.Clamp((quote.Ask - quote.Bid) / mid, 0, 5)
+            : 1.25;
+        OptionType optionType = quote.Right == OptionRight.Call ? OptionType.Call : OptionType.Put;
+        double rawFairIv = SolveFairIv(
+            snapshot.FairComposite,
+            snapshot.Spot,
+            quote.Strike,
+            snapshot.TimeToExpiryYears,
+            optionType,
+            quote.MarkIv);
+
+        return new RelativeValueQuoteState(
+            Quote: quote,
+            Snapshot: snapshot,
+            SpreadPct: spreadPct,
+            RawFairIv: rawFairIv,
+            LiquidityScore: snapshot.LiquidityScore,
+            ConfidenceScore: snapshot.ConfidenceScore);
+    }
+
+    private static List<SurfaceNodeInternal> BuildFairSurfaceNodes(
+        IReadOnlyList<RelativeValueQuoteState> states,
+        double spot)
+    {
+        if (states.Count == 0)
+            return [];
+
+        var now = DateTimeOffset.UtcNow;
+        var grouped = states
+            .GroupBy(s => new { s.Quote.Expiry, Strike = Math.Round(s.Quote.Strike, 8) })
+            .Select(group =>
+            {
+                var list = group.ToList();
+                double weightSum = list.Sum(SurfaceAggregationWeight);
+                if (weightSum <= 0) weightSum = list.Count;
+
+                double marketIv = list.Sum(x => x.Quote.MarkIv * SurfaceAggregationWeight(x)) / Math.Max(weightSum, 1e-9);
+                double fairIv = list.Sum(x => x.RawFairIv * SurfaceAggregationWeight(x)) / Math.Max(weightSum, 1e-9);
+                double confidence = list.Sum(x => x.ConfidenceScore * SurfaceAggregationWeight(x)) / Math.Max(weightSum, 1e-9);
+                double liquidity = list.Sum(x => x.LiquidityScore * SurfaceAggregationWeight(x)) / Math.Max(weightSum, 1e-9);
+                int dte = Math.Max(0, (int)Math.Round((group.Key.Expiry - now).TotalDays));
+
+                return new SurfaceNodeInternal(
+                    Expiry: group.Key.Expiry,
+                    DaysToExpiry: dte,
+                    Strike: group.Key.Strike,
+                    Moneyness: spot > 0 ? group.Key.Strike / spot : 0,
+                    MarketIv: marketIv,
+                    FairIv: MathUtils.Clamp(fairIv, 0.05, 3.5),
+                    ConfidenceScore: MathUtils.Clamp(confidence, 1, 99),
+                    LiquidityScore: MathUtils.Clamp(liquidity, 1, 99),
+                    SupportCount: list.Count);
+            })
+            .OrderBy(n => n.Expiry)
+            .ThenBy(n => n.Strike)
+            .ToList();
+
+        var smoothed = new List<SurfaceNodeInternal>(grouped.Count);
+        foreach (var expiryGroup in grouped.GroupBy(n => n.Expiry))
+        {
+            var list = expiryGroup.OrderBy(n => n.Strike).ToList();
+            for (int i = 0; i < list.Count; i++)
+            {
+                double weightedIv = 0;
+                double totalWeight = 0;
+                for (int j = Math.Max(0, i - 1); j <= Math.Min(list.Count - 1, i + 1); j++)
+                {
+                    int distance = Math.Abs(i - j);
+                    double kernel = distance == 0 ? 0.60 : 0.20;
+                    double liquidityWeight = Math.Max(0.25, list[j].LiquidityScore / 100.0);
+                    double confidenceWeight = Math.Max(0.25, list[j].ConfidenceScore / 100.0);
+                    double weight = kernel * liquidityWeight * confidenceWeight;
+                    weightedIv += list[j].FairIv * weight;
+                    totalWeight += weight;
+                }
+
+                double fairIv = totalWeight > 0 ? weightedIv / totalWeight : list[i].FairIv;
+                smoothed.Add(list[i] with { FairIv = MathUtils.Clamp(fairIv, 0.05, 3.5) });
+            }
+        }
+
+        var adjusted = smoothed.ToList();
+        var bucketToIndices = adjusted
+            .Select((node, index) => new
+            {
+                Index = index,
+                Bucket = spot > 0
+                    ? (int)Math.Round(Math.Log(Math.Max(node.Strike, 1e-9) / Math.Max(spot, 1e-9)) * 16)
+                    : index
+            })
+            .GroupBy(x => x.Bucket)
+            .ToList();
+
+        foreach (var bucket in bucketToIndices)
+        {
+            double prevTotalVariance = 0;
+            foreach (var item in bucket
+                .OrderBy(x => adjusted[x.Index].Expiry)
+                .ThenBy(x => adjusted[x.Index].Strike))
+            {
+                var node = adjusted[item.Index];
+                double t = Math.Max((node.Expiry - now).TotalDays / 365.25, 1.0 / 365.25);
+                double totalVariance = node.FairIv * node.FairIv * t;
+                if (totalVariance < prevTotalVariance)
+                    totalVariance = prevTotalVariance;
+                prevTotalVariance = totalVariance;
+
+                double calendarAdjustedIv = Math.Sqrt(totalVariance / t);
+                adjusted[item.Index] = node with { FairIv = MathUtils.Clamp(calendarAdjustedIv, 0.05, 3.5) };
+            }
+        }
+
+        return adjusted
+            .OrderBy(n => n.Expiry)
+            .ThenBy(n => n.Strike)
+            .ToList();
+    }
+
+    private static double SurfaceAggregationWeight(RelativeValueQuoteState state)
+    {
+        double baseWeight =
+            1.0 +
+            Math.Log(1 + Math.Max(0, state.Quote.OpenInterest)) * 0.55 +
+            Math.Log(1 + Math.Max(0, state.Quote.Volume24h)) * 0.45 +
+            Math.Log(1 + Math.Max(0, state.Quote.Turnover24h)) * 0.12;
+        double confidenceWeight = 0.45 + state.ConfidenceScore / 100.0;
+        double spreadPenalty = 1.0 / (1.0 + state.SpreadPct * 5.0);
+        return Math.Max(0.05, baseWeight * confidenceWeight * spreadPenalty);
+    }
+
+    private static string SurfaceKey(DateTimeOffset expiry, double strike) =>
+        $"{expiry:O}|{Math.Round(strike, 8):F8}";
+
+    private static double ComputeResidualStdDev(
+        IReadOnlyList<RelativeValueQuoteState> states,
+        IReadOnlyDictionary<string, SurfaceNodeInternal> nodeMap,
+        double fallback)
+    {
+        var residuals = states
+            .Select(state =>
+            {
+                nodeMap.TryGetValue(SurfaceKey(state.Quote.Expiry, state.Quote.Strike), out var node);
+                double fairIv = node?.FairIv ?? state.RawFairIv;
+                return (state.Quote.MarkIv - fairIv) * 100.0;
+            })
+            .Where(double.IsFinite)
+            .ToList();
+
+        if (residuals.Count <= 1)
+            return fallback;
+
+        double mean = residuals.Average();
+        double std = ComputeStdDev(residuals, mean);
+        return Math.Max(std, 0.35);
+    }
+
+    private static double ComputeRelativeTradeabilityScore(
+        double spreadPct,
+        double liquidityScore,
+        double confidenceScore)
+    {
+        double spreadPenalty = MathUtils.Clamp(spreadPct * 100, 0, 100);
+        return MathUtils.Clamp(
+            liquidityScore * 0.42 +
+            confidenceScore * 0.33 +
+            (100 - spreadPenalty) * 0.25,
+            1,
+            99);
+    }
+
+    private static double ComputeSurfaceEdgePct(
+        LiveOptionQuote quote,
+        double fairIv,
+        double spot,
+        double t)
+    {
+        double mid = EffectiveMid(quote);
+        if (mid <= 0 || fairIv <= 0 || spot <= 0 || quote.Strike <= 0 || t <= 0)
+            return 0;
+
+        OptionType optionType = quote.Right == OptionRight.Call ? OptionType.Call : OptionType.Put;
+        double fairPrice = SafePrice(() => BlackScholes.Price(spot, quote.Strike, fairIv, t, DefaultRiskFreeRate, optionType));
+        if (fairPrice <= 0)
+            return 0;
+
+        return MathUtils.Clamp((fairPrice - mid) / mid * 100.0, -250, 250);
+    }
+
+    private static double SolveFairIv(
+        double fairPrice,
+        double spot,
+        double strike,
+        double t,
+        OptionType optionType,
+        double fallbackIv)
+    {
+        double fallback = MathUtils.Clamp(fallbackIv > 0 ? fallbackIv : 0.65, 0.05, 3.5);
+        if (fairPrice <= 0 || spot <= 0 || strike <= 0 || t <= 0)
+            return fallback;
+
+        double solved = ImpliedVolSolver.Solve(fairPrice, spot, strike, DefaultRiskFreeRate, t, optionType);
+        if (!double.IsFinite(solved) || solved <= 0)
+            solved = ImpliedVolSolver.SolveBrent(fairPrice, spot, strike, DefaultRiskFreeRate, t, optionType);
+        if (!double.IsFinite(solved) || solved <= 0)
+            return fallback;
+
+        return MathUtils.Clamp(solved, 0.05, 3.5);
+    }
+
+    private static string BuildStructureHint(
+        LiveOptionQuote quote,
+        string action,
+        VolRegimeSnapshot regime,
+        MarketMicroFactors micro,
+        double spot)
+    {
+        double distancePct = spot > 0 ? quote.Strike / spot - 1.0 : 0;
+        bool nearAtm = Math.Abs(distancePct) <= 0.06;
+
+        if (action == "Buy vol")
+        {
+            if (nearAtm && regime.AtmIv30D <= 0.55)
+                return "Long gamma clip / calendar against the next tenor";
+            if (quote.Right == OptionRight.Put)
+                return micro.FlowPressure < -0.10
+                    ? "Long downside convexity or put spread"
+                    : "Long put fly / defined-risk downside convexity";
+            return micro.FlowPressure > 0.10
+                ? "Long call or call spread into upside flow"
+                : "Long call diagonal / call spread";
+        }
+
+        if (action == "Sell vol")
+        {
+            if (nearAtm && regime.AtmIv30D >= 0.55)
+                return "Short premium via butterfly / iron fly";
+            if (quote.Right == OptionRight.Put)
+                return micro.FlowPressure < -0.10
+                    ? "Short put spread only; avoid naked downside vol"
+                    : "Short downside skew via put spread";
+            return "Call spread / overwrite / financed call fly";
+        }
+
+        return "Watchlist only; wait for cleaner entry or tighter spreads";
+    }
+
+    private static string BuildRelativeValueThesis(
+        LiveOptionQuote quote,
+        double fairIv,
+        double residualVolPoints,
+        double residualZScore,
+        string action,
+        string regime,
+        double tradeability,
+        MarketMicroFactors micro)
+    {
+        string signedResidual = $"{(residualVolPoints > 0 ? "+" : string.Empty)}{residualVolPoints:F1}";
+        string signedZ = $"{(residualZScore > 0 ? "+" : string.Empty)}{residualZScore:F2}";
+        string flowTag = micro.FlowPressure switch
+        {
+            > 0.12 => "upside flow pressure",
+            < -0.12 => "downside flow pressure",
+            _ => "balanced flow"
+        };
+
+        return
+            $"{action}: market IV {quote.MarkIv:P1} vs fair {fairIv:P1} ({signedResidual} vol pts, z {signedZ}), " +
+            $"regime {regime}, {flowTag}, tradeability {tradeability:F1}.";
+    }
+
+    private static List<RelativeValueTradeIdea> BuildRelativeValueTradeIdeas(
+        string asset,
+        IReadOnlyList<LiveOptionQuote> chain,
+        IReadOnlyList<RelativeValueSignal> topCheap,
+        IReadOnlyList<RelativeValueSignal> topRich,
+        VolRegimeSnapshot regime,
+        double spot)
+    {
+        if (chain.Count == 0)
+            return [];
+
+        var bySymbol = chain
+            .GroupBy(q => q.Symbol, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(
+                g => g.Key,
+                g => g
+                    .OrderByDescending(x => x.Turnover24h)
+                    .ThenByDescending(x => x.SourceTimestamp ?? x.Timestamp)
+                    .First(),
+                StringComparer.OrdinalIgnoreCase);
+
+        var rankedSignals = topCheap
+            .Concat(topRich)
+            .OrderByDescending(signal =>
+                Math.Abs(signal.ResidualVolPoints) * 0.60 +
+                signal.TradeabilityScore * 0.24 +
+                signal.ConfidenceScore * 0.16)
+            .Take(10)
+            .ToList();
+
+        var ideas = new List<RelativeValueTradeIdea>(8);
+        var seenFingerprints = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        foreach (var signal in rankedSignals)
+        {
+            if (!bySymbol.TryGetValue(signal.Symbol, out var quote))
+                continue;
+
+            bool nearAtm = spot > 0 && Math.Abs(quote.Strike / spot - 1.0) <= 0.055;
+            if (signal.Action == "Buy vol")
+            {
+                if (nearAtm && TryBuildCalendarLegs(quote, chain, out string calendarName, out var calendarLegs))
+                {
+                    TryAddRelativeValueIdea(
+                        ideas,
+                        seenFingerprints,
+                        asset,
+                        chain,
+                        signal,
+                        regime,
+                        calendarName,
+                        "Exploit cheap vol",
+                        calendarLegs);
+                }
+
+                if (TryBuildVerticalSpreadLegs(quote, chain, spot, longVol: true, out string spreadName, out var spreadLegs))
+                {
+                    TryAddRelativeValueIdea(
+                        ideas,
+                        seenFingerprints,
+                        asset,
+                        chain,
+                        signal,
+                        regime,
+                        spreadName,
+                        "Express cheap vol with defined risk",
+                        spreadLegs);
+                }
+            }
+            else if (signal.Action == "Sell vol")
+            {
+                if (nearAtm && TryBuildButterflyLegs(quote, chain, spot, out string butterflyName, out var butterflyLegs))
+                {
+                    TryAddRelativeValueIdea(
+                        ideas,
+                        seenFingerprints,
+                        asset,
+                        chain,
+                        signal,
+                        regime,
+                        butterflyName,
+                        "Harvest rich vol with capped wings",
+                        butterflyLegs);
+                }
+
+                if (TryBuildVerticalSpreadLegs(quote, chain, spot, longVol: false, out string spreadName, out var spreadLegs))
+                {
+                    TryAddRelativeValueIdea(
+                        ideas,
+                        seenFingerprints,
+                        asset,
+                        chain,
+                        signal,
+                        regime,
+                        spreadName,
+                        "Monetize rich vol with defined risk",
+                        spreadLegs);
+                }
+            }
+        }
+
+        return ideas
+            .OrderByDescending(idea => idea.Score)
+            .Take(6)
+            .ToList();
+    }
+
+    private static bool TryBuildCalendarLegs(
+        LiveOptionQuote quote,
+        IReadOnlyList<LiveOptionQuote> chain,
+        out string name,
+        out List<StrategyLegDefinition> legs)
+    {
+        name = string.Empty;
+        legs = [];
+
+        DateTimeOffset? farExpiry = chain
+            .Where(q => q.Right == quote.Right && q.Expiry > quote.Expiry)
+            .Select(q => (DateTimeOffset?)q.Expiry)
+            .Distinct()
+            .OrderBy(e => e)
+            .FirstOrDefault();
+        if (!farExpiry.HasValue)
+            return false;
+
+        var farQuote = chain
+            .Where(q => q.Right == quote.Right && q.Expiry == farExpiry.Value)
+            .OrderBy(q => Math.Abs(q.Strike - quote.Strike))
+            .ThenByDescending(q => q.Turnover24h)
+            .FirstOrDefault();
+        if (farQuote is null || farQuote.Symbol.Equals(quote.Symbol, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        name = quote.Right == OptionRight.Call ? "RV Call Calendar" : "RV Put Calendar";
+        legs =
+        [
+            new StrategyLegDefinition(quote.Symbol, TradeDirection.Sell, 1),
+            new StrategyLegDefinition(farQuote.Symbol, TradeDirection.Buy, 1)
+        ];
+        return true;
+    }
+
+    private static bool TryBuildVerticalSpreadLegs(
+        LiveOptionQuote quote,
+        IReadOnlyList<LiveOptionQuote> chain,
+        double spot,
+        bool longVol,
+        out string name,
+        out List<StrategyLegDefinition> legs)
+    {
+        name = string.Empty;
+        legs = [];
+
+        double targetWingWidth = Math.Max(Math.Max(Math.Abs(quote.Strike) * 0.05, spot * 0.05), 1);
+        LiveOptionQuote? hedge = quote.Right switch
+        {
+            OptionRight.Call => ClosestWingQuote(
+                chain,
+                quote.Expiry,
+                quote.Right,
+                quote.Strike,
+                minStrike: quote.Strike + 1e-9,
+                maxStrike: null,
+                targetDistance: targetWingWidth),
+            _ => ClosestWingQuote(
+                chain,
+                quote.Expiry,
+                quote.Right,
+                quote.Strike,
+                minStrike: null,
+                maxStrike: quote.Strike - 1e-9,
+                targetDistance: targetWingWidth)
+        };
+
+        if (hedge is null || hedge.Symbol.Equals(quote.Symbol, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        bool nearAtm = spot > 0 && Math.Abs(quote.Strike / spot - 1.0) <= 0.055;
+        if (quote.Right == OptionRight.Call)
+        {
+            name = longVol
+                ? (nearAtm ? "RV Bull Call Spread" : "RV Call Debit Spread")
+                : (nearAtm ? "RV Bear Call Spread" : "RV Call Credit Spread");
+            legs =
+            [
+                new StrategyLegDefinition(quote.Symbol, longVol ? TradeDirection.Buy : TradeDirection.Sell, 1),
+                new StrategyLegDefinition(hedge.Symbol, longVol ? TradeDirection.Sell : TradeDirection.Buy, 1)
+            ];
+        }
+        else
+        {
+            name = longVol
+                ? (nearAtm ? "RV Bear Put Spread" : "RV Put Debit Spread")
+                : (nearAtm ? "RV Bull Put Spread" : "RV Put Credit Spread");
+            legs =
+            [
+                new StrategyLegDefinition(quote.Symbol, longVol ? TradeDirection.Buy : TradeDirection.Sell, 1),
+                new StrategyLegDefinition(hedge.Symbol, longVol ? TradeDirection.Sell : TradeDirection.Buy, 1)
+            ];
+        }
+
+        return true;
+    }
+
+    private static bool TryBuildButterflyLegs(
+        LiveOptionQuote quote,
+        IReadOnlyList<LiveOptionQuote> chain,
+        double spot,
+        out string name,
+        out List<StrategyLegDefinition> legs)
+    {
+        name = string.Empty;
+        legs = [];
+
+        double targetWingWidth = Math.Max(Math.Max(Math.Abs(quote.Strike) * 0.05, spot * 0.05), 1);
+        var lowerWing = ClosestWingQuote(
+            chain,
+            quote.Expiry,
+            quote.Right,
+            quote.Strike,
+            minStrike: null,
+            maxStrike: quote.Strike - 1e-9,
+            targetDistance: targetWingWidth);
+        var upperWing = ClosestWingQuote(
+            chain,
+            quote.Expiry,
+            quote.Right,
+            quote.Strike,
+            minStrike: quote.Strike + 1e-9,
+            maxStrike: null,
+            targetDistance: targetWingWidth);
+
+        if (lowerWing is null || upperWing is null)
+            return false;
+        if (lowerWing.Symbol.Equals(quote.Symbol, StringComparison.OrdinalIgnoreCase) ||
+            upperWing.Symbol.Equals(quote.Symbol, StringComparison.OrdinalIgnoreCase) ||
+            lowerWing.Symbol.Equals(upperWing.Symbol, StringComparison.OrdinalIgnoreCase))
+            return false;
+
+        name = quote.Right == OptionRight.Call ? "RV Call Butterfly" : "RV Put Butterfly";
+        legs =
+        [
+            new StrategyLegDefinition(lowerWing.Symbol, TradeDirection.Buy, 1),
+            new StrategyLegDefinition(quote.Symbol, TradeDirection.Sell, 2),
+            new StrategyLegDefinition(upperWing.Symbol, TradeDirection.Buy, 1)
+        ];
+        return true;
+    }
+
+    private static LiveOptionQuote? ClosestWingQuote(
+        IReadOnlyList<LiveOptionQuote> chain,
+        DateTimeOffset expiry,
+        OptionRight right,
+        double centerStrike,
+        double? minStrike,
+        double? maxStrike,
+        double targetDistance)
+    {
+        return chain
+            .Where(q => q.Expiry == expiry && q.Right == right)
+            .Where(q => !minStrike.HasValue || q.Strike >= minStrike.Value)
+            .Where(q => !maxStrike.HasValue || q.Strike <= maxStrike.Value)
+            .Where(q => q.Mark > 0 || q.Bid > 0 || q.Ask > 0)
+            .OrderBy(q => Math.Abs(Math.Abs(q.Strike - centerStrike) - targetDistance))
+            .ThenBy(q => Math.Abs(q.Strike - centerStrike))
+            .ThenByDescending(q => q.Turnover24h)
+            .FirstOrDefault();
+    }
+
+    private static void TryAddRelativeValueIdea(
+        IList<RelativeValueTradeIdea> sink,
+        ISet<string> seenFingerprints,
+        string asset,
+        IReadOnlyList<LiveOptionQuote> chain,
+        RelativeValueSignal signal,
+        VolRegimeSnapshot regime,
+        string name,
+        string action,
+        IReadOnlyList<StrategyLegDefinition> legs)
+    {
+        if (legs.Count == 0 || legs.Any(leg => string.IsNullOrWhiteSpace(leg.Symbol) || leg.Quantity <= 0))
+            return;
+
+        string fingerprint = $"{signal.Symbol}|{name}|{string.Join("|", legs.Select(leg => $"{leg.Symbol}:{leg.Direction}:{leg.Quantity:F4}"))}";
+        if (!seenFingerprints.Add(fingerprint))
+            return;
+
+        try
+        {
+            var analysis = AnalyzeFromChain(name, asset, chain, legs);
+            if (analysis.Legs.Count == 0)
+                return;
+
+            double regimeFit = ComputeRegimeFit(analysis, regime, "balanced");
+            double expectedEdgeScore = MathUtils.Clamp(
+                Math.Abs(analysis.ExpectedValue) /
+                Math.Max(Math.Max(Math.Abs(analysis.MaxLoss), Math.Abs(analysis.NetPremium)), 1) * 100.0,
+                0,
+                99);
+            double convexityScore = MathUtils.Clamp(
+                Math.Abs(analysis.AggregateGreeks.Vega) * 0.10 +
+                Math.Abs(analysis.AggregateGreeks.Gamma) * 2400.0,
+                0,
+                20);
+            double score = MathUtils.Clamp(
+                Math.Abs(signal.ResidualVolPoints) * 0.54 +
+                signal.TradeabilityScore * 0.17 +
+                signal.ConfidenceScore * 0.14 +
+                regimeFit * 0.09 +
+                expectedEdgeScore * 0.04 +
+                convexityScore * 0.02,
+                1,
+                99);
+
+            string thesis =
+                $"{signal.Thesis} Structure {name} converts the RV gap into defined risk: " +
+                $"premium {analysis.NetPremium:F0}, max loss {analysis.MaxLoss:F0}, max profit {analysis.MaxProfit:F0}, " +
+                $"PoP~{analysis.ProbabilityOfProfitApprox:P0}.";
+
+            sink.Add(new RelativeValueTradeIdea(
+                SignalSymbol: signal.Symbol,
+                Name: name,
+                Action: action,
+                Score: score,
+                ResidualVolPoints: signal.ResidualVolPoints,
+                TradeabilityScore: signal.TradeabilityScore,
+                ConfidenceScore: signal.ConfidenceScore,
+                RiskLabel: ComputeRiskLabel(analysis),
+                Thesis: thesis,
+                Analysis: analysis));
+        }
+        catch
+        {
+            // Ignore ideas that cannot be built from a sparse chain.
+        }
+    }
+
+    private static double ComputeSurfaceQualityScore(
+        IReadOnlyList<SurfaceNodeInternal> surfaceNodes,
+        IReadOnlyList<RelativeValueSignal> signals,
+        double calibrationConfidence)
+    {
+        if (surfaceNodes.Count == 0)
+            return 0;
+
+        double avgSupport = surfaceNodes.Average(n => Math.Min(n.SupportCount, 2)) / 2.0;
+        double supportScore = avgSupport * 16.0;
+        double residualNoise = signals.Count > 0 ? signals.Average(s => Math.Abs(s.ResidualVolPoints)) : 0;
+
+        var roughnessSamples = new List<double>();
+        foreach (var expiryGroup in surfaceNodes.GroupBy(n => n.Expiry))
+        {
+            var list = expiryGroup.OrderBy(n => n.Strike).ToList();
+            for (int i = 1; i < list.Count; i++)
+                roughnessSamples.Add(Math.Abs(list[i].FairIv - list[i - 1].FairIv) * 100.0);
+        }
+
+        double roughness = roughnessSamples.Count > 0 ? roughnessSamples.Average() : 0;
+        return MathUtils.Clamp(
+            calibrationConfidence * 0.58 +
+            supportScore +
+            Math.Max(0, 16.0 - roughness * 1.35) +
+            Math.Max(0, 18.0 - residualNoise * 2.1),
+            1,
+            99);
     }
 
     private static (double LiquidityScore, double EstimatedCostPct, double TradeabilityScore) ComputeExecutionMetrics(

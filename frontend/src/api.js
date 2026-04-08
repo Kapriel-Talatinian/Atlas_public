@@ -298,6 +298,19 @@ export function getGreeksExposureGrid({
   return request(`/api/options/exposure-grid?${params.toString()}`);
 }
 
+export function getRelativeValueBoard({
+  asset,
+  expiry,
+  limit = 18,
+}) {
+  const params = new URLSearchParams({
+    asset,
+    limit: String(limit),
+  });
+  if (expiry) params.set("expiry", expiry);
+  return request(`/api/options/rv-board?${params.toString()}`);
+}
+
 export function getArbitrageScan({ asset, expiry, limit = 120 }) {
   const params = new URLSearchParams({
     asset,
@@ -415,25 +428,25 @@ export function getTradingHistory({ orderLimit = 250, positionLimit = 250, riskL
   return request(`/api/trading/history?${params.toString()}`);
 }
 
-export function getExperimentalBotSnapshot(asset = "BTC") {
+export function getExperimentalBotSnapshot(asset = "MULTI") {
   return request(`/api/experimental/bot/snapshot?asset=${encodeURIComponent(asset)}`);
 }
 
-export function configureExperimentalBot(asset = "BTC", payload = {}) {
+export function configureExperimentalBot(asset = "MULTI", payload = {}) {
   return request(`/api/experimental/bot/configure?asset=${encodeURIComponent(asset)}`, {
     method: "POST",
     body: JSON.stringify(payload),
   });
 }
 
-export function runExperimentalBotCycles(asset = "BTC", cycles = 1) {
+export function runExperimentalBotCycles(asset = "MULTI", cycles = 1) {
   return request(
     `/api/experimental/bot/run?asset=${encodeURIComponent(asset)}&cycles=${encodeURIComponent(String(cycles))}`,
     { method: "POST" }
   );
 }
 
-export function resetExperimentalBot(asset = "BTC") {
+export function resetExperimentalBot(asset = "MULTI") {
   return request(`/api/experimental/bot/reset?asset=${encodeURIComponent(asset)}`, {
     method: "POST",
   });

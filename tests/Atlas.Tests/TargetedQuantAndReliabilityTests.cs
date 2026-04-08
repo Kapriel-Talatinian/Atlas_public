@@ -5,6 +5,7 @@ using Atlas.Api.Models;
 using Atlas.Api.Services;
 using Atlas.Core.Common;
 using Atlas.Core.Models;
+using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging.Abstractions;
 using Xunit;
 
@@ -164,6 +165,63 @@ public class OptionsAnalyticsExposureTests
         Assert.True(grid.TopHotspots[0].PinRiskScore > 0);
     }
 
+    [Fact]
+    public async Task RelativeValueBoard_DetectsCheapAndRichVolDislocations()
+    {
+        DateTimeOffset expiry = new(DateTime.UtcNow.Date.AddDays(21).AddHours(8), TimeSpan.Zero);
+        var quotes = new[]
+        {
+            BuildRelativeValueQuote("BTC-TEST-90-C", OptionRight.Call, expiry, strike: 90_000, markIv: 0.40, delta: 0.78),
+            BuildRelativeValueQuote("BTC-TEST-90-P", OptionRight.Put, expiry, strike: 90_000, markIv: 0.40, delta: -0.22),
+            BuildRelativeValueQuote("BTC-TEST-100-C", OptionRight.Call, expiry, strike: 100_000, markIv: 0.55, delta: 0.52),
+            BuildRelativeValueQuote("BTC-TEST-100-P", OptionRight.Put, expiry, strike: 100_000, markIv: 0.55, delta: -0.48),
+            BuildRelativeValueQuote("BTC-TEST-110-C", OptionRight.Call, expiry, strike: 110_000, markIv: 0.90, delta: 0.26),
+            BuildRelativeValueQuote("BTC-TEST-110-P", OptionRight.Put, expiry, strike: 110_000, markIv: 0.90, delta: -0.74),
+        };
+
+        var analytics = new OptionsAnalyticsService(new StaticMarketDataService(quotes));
+
+        RelativeValueBoard board = await analytics.GetRelativeValueBoardAsync("BTC", expiry, limit: 12);
+
+        Assert.NotEmpty(board.SurfaceNodes);
+        Assert.NotEmpty(board.TopCheapVol);
+        Assert.NotEmpty(board.TopRichVol);
+        Assert.True(board.MaxRichVolPoints > board.MaxCheapVolPoints);
+        Assert.True(board.TopCheapVol[0].ResidualVolPoints <= board.TopRichVol[0].ResidualVolPoints);
+        Assert.Contains(board.TopCheapVol, signal => signal.Strike == 90_000 || signal.Strike == 100_000);
+        Assert.Contains(board.TopRichVol, signal => signal.Strike == 110_000);
+        Assert.True(board.SurfaceQualityScore > 0);
+    }
+
+    [Fact]
+    public async Task RelativeValueBoard_BuildsTradeIdeas_WithDefinedRiskStructures()
+    {
+        DateTimeOffset expiry = new(DateTime.UtcNow.Date.AddDays(21).AddHours(8), TimeSpan.Zero);
+        var quotes = new[]
+        {
+            BuildRelativeValueQuote("BTC-TEST-90-C", OptionRight.Call, expiry, strike: 90_000, markIv: 0.40, delta: 0.78),
+            BuildRelativeValueQuote("BTC-TEST-90-P", OptionRight.Put, expiry, strike: 90_000, markIv: 0.40, delta: -0.22),
+            BuildRelativeValueQuote("BTC-TEST-100-C", OptionRight.Call, expiry, strike: 100_000, markIv: 0.55, delta: 0.52),
+            BuildRelativeValueQuote("BTC-TEST-100-P", OptionRight.Put, expiry, strike: 100_000, markIv: 0.55, delta: -0.48),
+            BuildRelativeValueQuote("BTC-TEST-110-C", OptionRight.Call, expiry, strike: 110_000, markIv: 0.90, delta: 0.26),
+            BuildRelativeValueQuote("BTC-TEST-110-P", OptionRight.Put, expiry, strike: 110_000, markIv: 0.90, delta: -0.74),
+        };
+
+        var analytics = new OptionsAnalyticsService(new StaticMarketDataService(quotes));
+
+        RelativeValueBoard board = await analytics.GetRelativeValueBoardAsync("BTC", expiry, limit: 12);
+
+        Assert.NotEmpty(board.TradeIdeas);
+        Assert.All(board.TradeIdeas, idea =>
+        {
+            Assert.False(string.IsNullOrWhiteSpace(idea.Name));
+            Assert.True(idea.Score > 0);
+            Assert.NotEmpty(idea.Analysis.Legs);
+            Assert.True(Math.Abs(idea.Analysis.MaxLoss) >= 0);
+        });
+        Assert.Contains(board.TradeIdeas, idea => idea.Name.Contains("Spread", StringComparison.OrdinalIgnoreCase) || idea.Name.Contains("Butterfly", StringComparison.OrdinalIgnoreCase));
+    }
+
     private static LiveOptionQuote BuildExposureQuote(
         string symbol,
         OptionRight right,
@@ -196,6 +254,265 @@ public class OptionsAnalyticsExposureTests
             Venue: "UNIT",
             SourceTimestamp: DateTimeOffset.UtcNow,
             IsStale: false);
+    }
+
+    private static LiveOptionQuote BuildRelativeValueQuote(
+        string symbol,
+        OptionRight right,
+        DateTimeOffset expiry,
+        double strike,
+        double markIv,
+        double delta)
+    {
+        double spot = 100_000;
+        double t = Math.Max((expiry - DateTimeOffset.UtcNow).TotalDays / 365.25, 1.0 / 365.25);
+        OptionType optionType = right == OptionRight.Call ? OptionType.Call : OptionType.Put;
+        double mid = BlackScholes.Price(spot, strike, markIv, t, 0.03, optionType);
+        double spread = Math.Max(mid * 0.01, 5);
+        return new LiveOptionQuote(
+            Symbol: symbol,
+            Asset: "BTC",
+            Expiry: expiry,
+            Strike: strike,
+            Right: right,
+            Bid: Math.Max(0, mid - spread / 2.0),
+            Ask: mid + spread / 2.0,
+            Mark: mid,
+            Mid: mid,
+            MarkIv: markIv,
+            Delta: delta,
+            Gamma: 0.002,
+            Vega: 4.5,
+            Theta: -1.8,
+            OpenInterest: 1_500,
+            Volume24h: 240,
+            Turnover24h: mid * 240,
+            UnderlyingPrice: spot,
+            Timestamp: DateTimeOffset.UtcNow,
+            Venue: "UNIT",
+            SourceTimestamp: DateTimeOffset.UtcNow,
+            IsStale: false);
+    }
+}
+
+public class SharedExperimentalAutopilotTests
+{
+    [Fact]
+    public async Task SharedPortfolioSnapshot_ReturnsMultiAssetBook()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-bot-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var service = BuildExperimentalService(tempRoot);
+
+            ExperimentalBotSnapshot snapshot = await service.GetSnapshotAsync("BTC");
+
+            Assert.Equal("MULTI", snapshot.Asset);
+            Assert.NotNull(snapshot.Assets);
+            Assert.Contains("BTC", snapshot.Assets!);
+            Assert.Contains("ETH", snapshot.Assets!);
+            Assert.Contains("SOL", snapshot.Assets!);
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task SharedPortfolioAutopilot_OpensOnlyStructuredTrades()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-bot-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var service = BuildExperimentalService(tempRoot);
+            await service.ConfigureAsync("MULTI", new ExperimentalBotConfigRequest(
+                Enabled: true,
+                AutoTrade: true,
+                MinConfidence: 40,
+                StartingCapitalUsd: 5_000,
+                MaxTradeRiskPct: 0.25,
+                PortfolioRiskBudgetPct: 0.90));
+
+            ExperimentalBotSnapshot snapshot = await service.RunCycleAsync("MULTI", cycles: 2);
+
+            Assert.NotEmpty(snapshot.OpenTrades);
+            Assert.All(snapshot.OpenTrades, trade =>
+            {
+                Assert.Equal("MULTI", snapshot.Asset);
+                Assert.True((trade.Legs?.Count ?? 0) >= 2);
+                Assert.False(string.IsNullOrWhiteSpace(trade.Asset));
+                Assert.False(string.IsNullOrWhiteSpace(trade.StrategyTemplate));
+                Assert.False(string.IsNullOrWhiteSpace(trade.MathSummary));
+                Assert.True(Math.Abs(trade.MaxLoss) > 0);
+            });
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task SharedPortfolioSnapshot_EmbedsNeuralSignalsAndReasoning()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-bot-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        try
+        {
+            var service = BuildExperimentalService(tempRoot);
+            await service.ConfigureAsync("MULTI", new ExperimentalBotConfigRequest(
+                Enabled: true,
+                AutoTrade: true,
+                MinConfidence: 40,
+                StartingCapitalUsd: 5_000,
+                MaxTradeRiskPct: 0.25,
+                PortfolioRiskBudgetPct: 0.90));
+
+            ExperimentalBotSnapshot snapshot = await service.RunCycleAsync("MULTI", cycles: 2);
+
+            Assert.NotNull(snapshot.NeuralSignals);
+            Assert.NotEmpty(snapshot.NeuralSignals!);
+            Assert.All(snapshot.NeuralSignals!, signal =>
+            {
+                Assert.False(string.IsNullOrWhiteSpace(signal.RecommendedStructure));
+                Assert.False(string.IsNullOrWhiteSpace(signal.MacroReasoning));
+                Assert.False(string.IsNullOrWhiteSpace(signal.MicroReasoning));
+                Assert.False(string.IsNullOrWhiteSpace(signal.MathReasoning));
+            });
+
+            Assert.NotEmpty(snapshot.OpenTrades);
+            Assert.Contains(snapshot.OpenTrades, trade =>
+                trade.Rationale.Contains("Macro:", StringComparison.OrdinalIgnoreCase) &&
+                trade.Rationale.Contains("Micro:", StringComparison.OrdinalIgnoreCase) &&
+                trade.MathSummary.Contains("neuralScore", StringComparison.OrdinalIgnoreCase));
+        }
+        finally
+        {
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    private static SharedPortfolioExperimentalAutoTraderService BuildExperimentalService(string tempRoot)
+    {
+        DateTimeOffset near = new(DateTime.UtcNow.Date.AddDays(21).AddHours(8), TimeSpan.Zero);
+        DateTimeOffset far = new(DateTime.UtcNow.Date.AddDays(49).AddHours(8), TimeSpan.Zero);
+
+        var quotes = new List<LiveOptionQuote>();
+        quotes.AddRange(BuildBotAssetQuotes("BTC", 100_000, near, far));
+        quotes.AddRange(BuildBotAssetQuotes("ETH", 4_000, near, far));
+        quotes.AddRange(BuildBotAssetQuotes("SOL", 180, near, far));
+
+        var marketData = new StaticMarketDataService(quotes);
+        var analytics = new OptionsAnalyticsService(marketData);
+        var brain = new NeuralTradingBrainService(analytics, marketData);
+        var monitoring = new SystemMonitoringService();
+        var env = new BotFakeHostEnvironment(tempRoot);
+
+        return new SharedPortfolioExperimentalAutoTraderService(
+            marketData,
+            analytics,
+            brain,
+            monitoring,
+            env,
+            NullLogger<SharedPortfolioExperimentalAutoTraderService>.Instance);
+    }
+
+    private static IEnumerable<LiveOptionQuote> BuildBotAssetQuotes(string asset, double spot, DateTimeOffset near, DateTimeOffset far)
+    {
+        double[] strikes = [spot * 0.85, spot * 0.95, spot, spot * 1.05, spot * 1.15];
+
+        foreach (DateTimeOffset expiry in new[] { near, far })
+        {
+            double expiryBias = expiry == near ? 0.0 : 0.04;
+            foreach (double strike in strikes)
+            {
+                double moneyness = strike / spot;
+                double baseIv = 0.52 + expiryBias + Math.Abs(moneyness - 1.0) * 0.28;
+                yield return BuildPortfolioBotQuote(asset, expiry, strike, OptionRight.Call, baseIv + (moneyness >= 1.05 ? 0.10 : -0.04), GuessDelta(moneyness, OptionRight.Call));
+                yield return BuildPortfolioBotQuote(asset, expiry, strike, OptionRight.Put, baseIv + (moneyness <= 0.95 ? 0.12 : -0.02), GuessDelta(moneyness, OptionRight.Put));
+            }
+        }
+    }
+
+    private static LiveOptionQuote BuildPortfolioBotQuote(
+        string asset,
+        DateTimeOffset expiry,
+        double strike,
+        OptionRight right,
+        double markIv,
+        double delta)
+    {
+        double spot = asset switch
+        {
+            "ETH" => 4_000,
+            "SOL" => 180,
+            _ => 100_000
+        };
+
+        double t = Math.Max((expiry - DateTimeOffset.UtcNow).TotalDays / 365.25, 1.0 / 365.25);
+        OptionType optionType = right == OptionRight.Call ? OptionType.Call : OptionType.Put;
+        double mid = BlackScholes.Price(spot, strike, markIv, t, 0.03, optionType);
+        double spread = Math.Max(mid * 0.012, asset == "SOL" ? 0.25 : asset == "ETH" ? 2 : 15);
+
+        return new LiveOptionQuote(
+            Symbol: $"{asset}-{expiry:ddMMMyy}-{strike:F0}-{(right == OptionRight.Call ? "C" : "P")}",
+            Asset: asset,
+            Expiry: expiry,
+            Strike: strike,
+            Right: right,
+            Bid: Math.Max(0, mid - spread / 2.0),
+            Ask: mid + spread / 2.0,
+            Mark: mid,
+            Mid: mid,
+            MarkIv: markIv,
+            Delta: delta,
+            Gamma: 0.002,
+            Vega: Math.Max(1.5, mid * 0.01),
+            Theta: -Math.Max(0.2, mid * 0.002),
+            OpenInterest: 1_800,
+            Volume24h: 320,
+            Turnover24h: mid * 320,
+            UnderlyingPrice: spot,
+            Timestamp: DateTimeOffset.UtcNow,
+            Venue: "UNIT",
+            SourceTimestamp: DateTimeOffset.UtcNow,
+            IsStale: false);
+    }
+
+    private static double GuessDelta(double moneyness, OptionRight right)
+    {
+        double callDelta = moneyness switch
+        {
+            <= 0.85 => 0.84,
+            <= 0.95 => 0.66,
+            <= 1.02 => 0.52,
+            <= 1.08 => 0.34,
+            _ => 0.18
+        };
+
+        return right == OptionRight.Call ? callDelta : callDelta - 1.0;
+    }
+
+    private sealed class BotFakeHostEnvironment : IHostEnvironment
+    {
+        public BotFakeHostEnvironment(string contentRootPath)
+        {
+            ContentRootPath = contentRootPath;
+            ApplicationName = "Atlas.Tests";
+            EnvironmentName = "Development";
+            ContentRootFileProvider = null!;
+        }
+
+        public string EnvironmentName { get; set; }
+        public string ApplicationName { get; set; }
+        public string ContentRootPath { get; set; }
+        public Microsoft.Extensions.FileProviders.IFileProvider ContentRootFileProvider { get; set; }
     }
 }
 
