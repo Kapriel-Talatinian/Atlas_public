@@ -12,5 +12,10 @@ npm-debug.log*
 **/obj/
 *.user
 *.suo
+
+# Python
+__pycache__/
+*.pyc
+
 # Runtime bot state
 src/Atlas.Api/data/
