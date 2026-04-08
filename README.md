@@ -85,17 +85,6 @@ dotnet run --project src/Atlas.Api
 python3 examples/pricing_demo.py --asset BTC --right call
 ```
 
-## GitHub Metadata
-
-Le code du repo peut être renforcé directement depuis GitHub pour mieux performer en partage/portfolio:
-
-- nom recommandé: `Atlas`
-- description recommandée: `Institutional crypto options desk: paper trading, risk engine, multi-source market data, quant analytics`
-- website recommandé: ton futur déploiement public Atlas, pas un placeholder Railway générique
-- social preview recommandé: une bannière dérivée de `docs/screenshots/market-overview.png`
-
-Le texte exact prêt à copier est documenté dans [docs/github-metadata.md](docs/github-metadata.md).
-
 ## 1) Vue d'ensemble
 
 ### 1.1 Architecture globale
