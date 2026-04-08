@@ -18,6 +18,9 @@ public class TradingController : ControllerBase
     [HttpGet("limits")]
     public ActionResult<RiskLimitConfig> GetLimits() => Ok(_paperTrading.Limits);
 
+    [HttpGet("margin-rules")]
+    public ActionResult<MarginRulebook> GetMarginRules() => Ok(_paperTrading.MarginRules);
+
     [HttpGet("orders")]
     public async Task<ActionResult<IReadOnlyList<TradingOrderReport>>> GetOrders(
         [FromQuery] int limit = 200,
@@ -43,6 +46,42 @@ public class TradingController : ControllerBase
     {
         var reports = await _paperTrading.RetryOpenOrdersAsync(maxOrders, ct);
         return Ok(reports);
+    }
+
+    [HttpPost("orders/cancel")]
+    public async Task<ActionResult<TradingOrderReport>> CancelOrder(
+        [FromBody] CancelOrderRequest request,
+        CancellationToken ct = default)
+    {
+        var report = await _paperTrading.CancelOrderAsync(request, ct);
+        if (report.Status == OrderStatus.Rejected)
+            return BadRequest(report);
+        return Ok(report);
+    }
+
+    [HttpPost("orders/replace")]
+    public async Task<ActionResult<OrderReplaceResult>> ReplaceOrder(
+        [FromBody] ReplaceOrderRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var result = await _paperTrading.ReplaceOrderAsync(request, ct);
+            return Ok(result);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpGet("orders/reconcile")]
+    public async Task<ActionResult<OmsReconciliationReport>> ReconcileOrders(
+        [FromQuery] int limit = 400,
+        CancellationToken ct = default)
+    {
+        var report = await _paperTrading.ReconcileOrdersAsync(limit, ct);
+        return Ok(report);
     }
 
     [HttpGet("killswitch")]
@@ -114,6 +153,61 @@ public class TradingController : ControllerBase
     {
         var result = await _paperTrading.RunStressTestAsync(request, ct);
         return Ok(result);
+    }
+
+    [HttpPost("algo/execute")]
+    public async Task<ActionResult<AlgoExecutionReport>> ExecuteAlgo(
+        [FromBody] AlgoExecutionRequest request,
+        CancellationToken ct = default)
+    {
+        try
+        {
+            var report = await _paperTrading.ExecuteAlgoOrderAsync(request, ct);
+            return Ok(report);
+        }
+        catch (Exception ex)
+        {
+            return BadRequest(new { error = ex.Message });
+        }
+    }
+
+    [HttpPost("hedge/suggest")]
+    public async Task<ActionResult<HedgeSuggestionResponse>> SuggestHedge(
+        [FromBody] HedgeSuggestionRequest? request,
+        CancellationToken ct = default)
+    {
+        var response = await _paperTrading.GetHedgeSuggestionAsync(request ?? new HedgeSuggestionRequest(), ct);
+        return Ok(response);
+    }
+
+    [HttpPost("hedge/auto")]
+    public async Task<ActionResult<AutoHedgeReport>> RunAutoHedge(
+        [FromBody] AutoHedgeRequest? request,
+        CancellationToken ct = default)
+    {
+        var response = await _paperTrading.RunAutoHedgeAsync(request ?? new AutoHedgeRequest(), ct);
+        return Ok(response);
+    }
+
+    [HttpPost("portfolio/optimize")]
+    public async Task<ActionResult<PortfolioOptimizationResponse>> OptimizePortfolio(
+        [FromBody] PortfolioOptimizationRequest? request,
+        CancellationToken ct = default)
+    {
+        var response = await _paperTrading.OptimizePortfolioAsync(request ?? new PortfolioOptimizationRequest(), ct);
+        return Ok(response);
+    }
+
+    [HttpGet("history")]
+    public async Task<ActionResult<TradingHistorySnapshot>> GetHistory(
+        [FromQuery] int orderLimit = 250,
+        [FromQuery] int positionLimit = 250,
+        [FromQuery] int riskLimit = 250,
+        [FromQuery] int auditLimit = 250,
+        CancellationToken ct = default)
+    {
+        var snapshot = await _paperTrading.GetHistoryAsync(orderLimit, positionLimit, riskLimit, auditLimit, ct);
+        return Ok(snapshot);
     }
 
     [HttpPost("reset")]

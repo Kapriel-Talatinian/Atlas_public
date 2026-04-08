@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using Atlas.Api.Models;
+using Atlas.Core.Common;
 
 namespace Atlas.Api.Services;
 
@@ -12,6 +13,7 @@ public interface ISystemMonitoringService
     void PublishAlert(string source, NotificationSeverity severity, string message, TimeSpan? dedupWindow = null);
     IReadOnlyList<ApiMetricSnapshot> GetMetrics();
     IReadOnlyList<OpsAlert> GetActiveAlerts();
+    SloReport GetSloReport();
     OpsSnapshot BuildSnapshot(IReadOnlyList<MarketDataCompositeStatus> marketData);
 }
 
@@ -21,13 +23,19 @@ public sealed class SystemMonitoringService : ISystemMonitoringService
 
     private const int MaxAlerts = 500;
     private const int MaxRouteLatencySamples = 400;
+    private const int MaxRequestSamples = 20000;
+    private const double AvailabilityObjective = 0.995;
+    private const double P95LatencyObjectiveMs = 450;
 
     private readonly ConcurrentDictionary<string, MetricState> _metrics = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, ConcurrentQueue<double>> _routeLatencies = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, DateTimeOffset> _alertDedup = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentQueue<OpsAlert> _alerts = new();
+    private readonly ConcurrentQueue<RequestSample> _requestSamples = new();
+    private long _requestCounter;
 
     private sealed record MetricState(double Value, DateTimeOffset UpdatedAt, string Unit);
+    private sealed record RequestSample(DateTimeOffset Timestamp, int StatusCode, double DurationMs);
 
     public void IncrementCounter(string name, double delta = 1, string unit = "count")
     {
@@ -67,6 +75,22 @@ public sealed class SystemMonitoringService : ISystemMonitoringService
             PublishAlert("http", NotificationSeverity.Critical, $"{route} responded {statusCode}");
         else if (durationMs >= 1200)
             PublishAlert("http", NotificationSeverity.Warning, $"Slow endpoint {route}: {durationMs:F0}ms");
+
+        _requestSamples.Enqueue(new RequestSample(DateTimeOffset.UtcNow, statusCode, durationMs));
+        while (_requestSamples.Count > MaxRequestSamples && _requestSamples.TryDequeue(out _)) { }
+
+        if (Interlocked.Increment(ref _requestCounter) % 50 == 0)
+        {
+            SloReport slo = GetSloReport();
+            if (slo.Breached)
+            {
+                PublishAlert(
+                    "slo",
+                    NotificationSeverity.Warning,
+                    $"SLO breach detected: {string.Join(", ", slo.Flags)}",
+                    dedupWindow: TimeSpan.FromMinutes(5));
+            }
+        }
     }
 
     public void PublishAlert(string source, NotificationSeverity severity, string message, TimeSpan? dedupWindow = null)
@@ -119,13 +143,47 @@ public sealed class SystemMonitoringService : ISystemMonitoringService
             .ToList();
     }
 
+    public SloReport GetSloReport()
+    {
+        var targets = new List<SloTarget>
+        {
+            new SloTarget("availability", AvailabilityObjective, ">=", "ratio"),
+            new SloTarget("latency_p95_ms", P95LatencyObjectiveMs, "<=", "ms")
+        };
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        var windows = new List<SloWindowSnapshot>
+        {
+            BuildSloWindow(now, TimeSpan.FromMinutes(5), "5m"),
+            BuildSloWindow(now, TimeSpan.FromHours(1), "1h")
+        };
+
+        var flags = new List<string>();
+        foreach (var window in windows)
+        {
+            if (window.AvailabilityBreached)
+                flags.Add($"availability-{window.Window}");
+            if (window.LatencyBreached)
+                flags.Add($"latency-p95-{window.Window}");
+        }
+
+        return new SloReport(
+            Targets: targets,
+            Windows: windows,
+            Breached: flags.Count > 0,
+            Flags: flags,
+            Timestamp: DateTimeOffset.UtcNow);
+    }
+
     public OpsSnapshot BuildSnapshot(IReadOnlyList<MarketDataCompositeStatus> marketData)
     {
         var metrics = GetMetrics();
         var alerts = GetActiveAlerts();
+        SloReport slo = GetSloReport();
 
         bool degraded = alerts.Any(a => a.Severity == NotificationSeverity.Critical) ||
-                        marketData.Any(m => m.IsStale || m.QuoteCount <= 0);
+                        marketData.Any(m => m.IsStale || m.QuoteCount <= 0) ||
+                        slo.Breached;
 
         return new OpsSnapshot(
             Timestamp: DateTimeOffset.UtcNow,
@@ -133,6 +191,49 @@ public sealed class SystemMonitoringService : ISystemMonitoringService
             ActiveAlerts: alerts,
             MarketData: marketData,
             Degraded: degraded);
+    }
+
+    private SloWindowSnapshot BuildSloWindow(DateTimeOffset now, TimeSpan lookback, string label)
+    {
+        DateTimeOffset cutoff = now - lookback;
+        var sample = _requestSamples
+            .Where(s => s.Timestamp >= cutoff)
+            .ToList();
+
+        if (sample.Count == 0)
+        {
+            return new SloWindowSnapshot(
+                Window: label,
+                RequestCount: 0,
+                AvailabilityRatio: 1,
+                ErrorRate: 0,
+                P95LatencyMs: 0,
+                AvailabilityBreached: false,
+                LatencyBreached: false);
+        }
+
+        double requests = sample.Count;
+        int errors = sample.Count(s => s.StatusCode >= 500);
+        double availability = MathUtils.Clamp((requests - errors) / requests, 0, 1);
+        double errorRate = MathUtils.Clamp(errors / requests, 0, 1);
+        double[] latency = sample
+            .Select(s => s.DurationMs)
+            .Where(double.IsFinite)
+            .OrderBy(v => v)
+            .ToArray();
+        double p95 = latency.Length > 0 ? Percentile(latency, 0.95) : 0;
+
+        bool availabilityBreached = sample.Count >= 20 && availability < AvailabilityObjective;
+        bool latencyBreached = sample.Count >= 20 && p95 > P95LatencyObjectiveMs;
+
+        return new SloWindowSnapshot(
+            Window: label,
+            RequestCount: requests,
+            AvailabilityRatio: availability,
+            ErrorRate: errorRate,
+            P95LatencyMs: p95,
+            AvailabilityBreached: availabilityBreached,
+            LatencyBreached: latencyBreached);
     }
 
     private static double Percentile(double[] sortedValues, double percentile)

@@ -24,6 +24,15 @@ public sealed class ExperimentalController : ControllerBase
         return Ok(snapshot);
     }
 
+    [HttpGet("explain")]
+    public async Task<ActionResult<ExperimentalBotModelExplainSnapshot>> GetModelExplain(
+        [FromQuery] string asset = "BTC",
+        CancellationToken ct = default)
+    {
+        var explain = await _autoTrader.GetModelExplainAsync(asset, ct);
+        return Ok(explain);
+    }
+
     [HttpPost("configure")]
     public async Task<ActionResult<ExperimentalBotSnapshot>> Configure(
         [FromQuery] string asset = "BTC",

@@ -53,10 +53,12 @@ builder.Services.AddHttpClient("deribit-options", client =>
     client.DefaultRequestHeaders.UserAgent.ParseAdd("Atlas.Api/1.0 (+https://github.com/Kapriel-Talatinian/Atlas_public)");
 });
 builder.Services.AddSingleton<ISystemMonitoringService, SystemMonitoringService>();
+builder.Services.AddSingleton<ITradingPersistenceService, SqliteTradingPersistenceService>();
 builder.Services.AddSingleton<IOptionsMarketDataService, ResilientOptionsMarketDataService>();
 builder.Services.AddScoped<IOptionsAnalyticsService, OptionsAnalyticsService>();
 builder.Services.AddSingleton<IPaperTradingService, PaperTradingService>();
 builder.Services.AddSingleton<IExperimentalAutoTraderService, ExperimentalAutoTraderService>();
+builder.Services.AddSingleton<IIncidentRecoveryService, IncidentRecoveryService>();
 builder.Services.AddHostedService<ExperimentalBotHostedService>();
 
 builder.Services.AddCors(options =>

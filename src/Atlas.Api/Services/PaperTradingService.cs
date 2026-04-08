@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text.Json;
 using Atlas.Api.Models;
 using Atlas.Core.Common;
 
@@ -7,8 +8,16 @@ namespace Atlas.Api.Services;
 public interface IPaperTradingService
 {
     RiskLimitConfig Limits { get; }
+    MarginRulebook MarginRules { get; }
     Task<TradingOrderReport> PlaceOrderAsync(TradingOrderRequest request, CancellationToken ct = default);
     Task<PreTradePreviewResult> PreviewOrderAsync(TradingOrderRequest request, CancellationToken ct = default);
+    Task<TradingOrderReport> CancelOrderAsync(CancelOrderRequest request, CancellationToken ct = default);
+    Task<OrderReplaceResult> ReplaceOrderAsync(ReplaceOrderRequest request, CancellationToken ct = default);
+    Task<OmsReconciliationReport> ReconcileOrdersAsync(int limit = 400, CancellationToken ct = default);
+    Task<AlgoExecutionReport> ExecuteAlgoOrderAsync(AlgoExecutionRequest request, CancellationToken ct = default);
+    Task<HedgeSuggestionResponse> GetHedgeSuggestionAsync(HedgeSuggestionRequest request, CancellationToken ct = default);
+    Task<AutoHedgeReport> RunAutoHedgeAsync(AutoHedgeRequest request, CancellationToken ct = default);
+    Task<PortfolioOptimizationResponse> OptimizePortfolioAsync(PortfolioOptimizationRequest request, CancellationToken ct = default);
     Task<IReadOnlyList<TradingOrderReport>> GetOrdersAsync(int limit = 200, CancellationToken ct = default);
     Task<IReadOnlyList<TradingPosition>> GetPositionsAsync(CancellationToken ct = default);
     Task<PortfolioRiskSnapshot> GetRiskAsync(CancellationToken ct = default);
@@ -18,6 +27,7 @@ public interface IPaperTradingService
     Task<KillSwitchState> SetKillSwitchAsync(KillSwitchRequest request, CancellationToken ct = default);
     Task<IReadOnlyList<TradingOrderReport>> RetryOpenOrdersAsync(int maxOrders = 25, CancellationToken ct = default);
     Task<IReadOnlyList<TradingNotification>> GetNotificationsAsync(int limit = 120, CancellationToken ct = default);
+    Task<TradingHistorySnapshot> GetHistoryAsync(int orderLimit = 250, int positionLimit = 250, int riskLimit = 250, int auditLimit = 250, CancellationToken ct = default);
     void Reset();
 }
 
@@ -60,6 +70,8 @@ public sealed class PaperTradingService : IPaperTradingService
         public int RetryCount { get; set; }
         public double RemainingQuantity { get; set; }
         public string? LastRejectReason { get; set; }
+        public bool IsCancelled { get; set; }
+        public string? CancelReason { get; set; }
         public DateTimeOffset UpdatedAt { get; set; }
         public List<string> StateTrace { get; } = ["Received"];
         public List<TradingOrderFillExecution> Fills { get; } = [];
@@ -88,6 +100,9 @@ public sealed class PaperTradingService : IPaperTradingService
     private readonly IOptionsMarketDataService _marketData;
     private readonly ILogger<PaperTradingService> _logger;
     private readonly ISystemMonitoringService _monitoring;
+    private readonly ITradingPersistenceService _persistence;
+    private readonly object _positionPersistGate = new();
+    private DateTimeOffset _lastPositionPersistAt = DateTimeOffset.MinValue;
 
     private readonly AccountState _account;
     private KillSwitchState _killSwitch;
@@ -99,11 +114,13 @@ public sealed class PaperTradingService : IPaperTradingService
     public PaperTradingService(
         IOptionsMarketDataService marketData,
         ILogger<PaperTradingService> logger,
-        ISystemMonitoringService monitoring)
+        ISystemMonitoringService monitoring,
+        ITradingPersistenceService persistence)
     {
         _marketData = marketData;
         _logger = logger;
         _monitoring = monitoring;
+        _persistence = persistence;
 
         const double startingEquity = 2_500_000;
         var today = DateOnly.FromDateTime(DateTime.UtcNow);
@@ -119,9 +136,22 @@ public sealed class PaperTradingService : IPaperTradingService
             Reason: null,
             UpdatedAt: DateTimeOffset.UtcNow,
             UpdatedBy: "system");
+
+        _persistence.AppendAuditEvent("startup", "Paper trading service initialized.");
     }
 
     public RiskLimitConfig Limits { get; } = new();
+    public MarginRulebook MarginRules { get; } = new(
+        PortfolioInitialRate: 0.12,
+        PortfolioMaintenanceRate: 0.72,
+        PositionFloorInitial: 50,
+        PositionFloorMaintenance: 35,
+        GammaAddOn: 250,
+        VegaAddOn: 3.0,
+        ThetaAddOnRate: 0.02,
+        LiquidationBufferPct: 0.08,
+        Description: "Initial margin = gross*12% + |delta|*1.4 + |gamma|*250 + |vega|*3 + |theta|*0.02",
+        Timestamp: DateTimeOffset.UtcNow);
 
     public async Task<TradingOrderReport> PlaceOrderAsync(TradingOrderRequest request, CancellationToken ct = default)
     {
@@ -236,6 +266,597 @@ public sealed class PaperTradingService : IPaperTradingService
                 : 0);
     }
 
+    public Task<TradingOrderReport> CancelOrderAsync(CancelOrderRequest request, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        if (request is null || string.IsNullOrWhiteSpace(request.OrderId))
+            return Task.FromResult(BuildRejectedOrder(new TradingOrderRequest("-", TradeDirection.Buy, 0), "cancel-order-id-required"));
+
+        TradingOrderReport? existing;
+        WorkingOrderState? openState;
+        lock (_gate)
+        {
+            _ordersById.TryGetValue(request.OrderId.Trim(), out existing);
+            _openOrders.TryGetValue(request.OrderId.Trim(), out openState);
+        }
+
+        if (openState is null)
+        {
+            if (existing is not null)
+                return Task.FromResult(existing);
+
+            return Task.FromResult(BuildRejectedOrder(new TradingOrderRequest(request.OrderId, TradeDirection.Buy, 0), "unknown-order-id"));
+        }
+
+        openState.IsCancelled = true;
+        openState.CancelReason = string.IsNullOrWhiteSpace(request.Reason) ? "manual-cancel" : request.Reason.Trim();
+        openState.RemainingQuantity = 0;
+        openState.StateTrace.Add("Cancelled");
+        openState.UpdatedAt = DateTimeOffset.UtcNow;
+
+        TradingOrderReport report = ToOrderReport(openState);
+        lock (_gate)
+        {
+            _openOrders.Remove(openState.OrderId);
+        }
+
+        AddNotification(NotificationSeverity.Info, "order-cancel", $"Order {openState.OrderId} cancelled by {request.UpdatedBy}");
+        PersistOrder(report);
+        RecordOrderMonitoring(report);
+        _persistence.AppendAuditEvent("oms", $"Order cancelled {openState.OrderId}", JsonSerializer.Serialize(request));
+        return Task.FromResult(report);
+    }
+
+    public async Task<OrderReplaceResult> ReplaceOrderAsync(ReplaceOrderRequest request, CancellationToken ct = default)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.OrderId))
+            throw new ArgumentException("orderId is required");
+
+        TradingOrderReport cancelled = await CancelOrderAsync(
+            new CancelOrderRequest(request.OrderId, request.Reason, request.UpdatedBy),
+            ct);
+
+        if (cancelled.Status is not OrderStatus.Cancelled and not OrderStatus.PartiallyFilled and not OrderStatus.Accepted)
+            throw new InvalidOperationException($"cannot replace order in status {cancelled.Status}");
+
+        double baseQty = Math.Max(cancelled.RemainingQuantity, 0);
+        if (baseQty <= 1e-12)
+            baseQty = Math.Max(cancelled.Quantity - cancelled.FilledQuantity, 0);
+        if (baseQty <= 1e-12)
+            throw new InvalidOperationException("no remaining quantity to replace");
+
+        var replacement = new TradingOrderRequest(
+            Symbol: cancelled.Symbol,
+            Side: cancelled.Side,
+            Quantity: request.Quantity ?? baseQty,
+            Type: request.Type ?? cancelled.Type,
+            LimitPrice: (request.Type ?? cancelled.Type) == OrderType.Limit
+                ? (request.LimitPrice ?? (cancelled.Type == OrderType.Limit ? cancelled.RequestedPrice : null))
+                : null,
+            ClientOrderId: request.OrderId + "-R-" + Guid.NewGuid().ToString("N")[..6].ToUpperInvariant(),
+            MaxRetries: request.MaxRetries ?? Math.Max(cancelled.RetryCount, 1),
+            AllowPartialFill: request.AllowPartialFill ?? true,
+            MaxSlippagePct: request.MaxSlippagePct > 0 ? request.MaxSlippagePct : null);
+
+        TradingOrderReport created = await PlaceOrderAsync(replacement, ct);
+        var result = new OrderReplaceResult(
+            CancelledOrder: cancelled,
+            NewOrder: created,
+            Timestamp: DateTimeOffset.UtcNow,
+            Reason: request.Reason);
+
+        _persistence.AppendAuditEvent("oms", $"Order replaced {request.OrderId} -> {created.OrderId}", JsonSerializer.Serialize(result));
+        return result;
+    }
+
+    public Task<OmsReconciliationReport> ReconcileOrdersAsync(int limit = 400, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        int safeLimit = Math.Clamp(limit, 10, 5000);
+
+        List<TradingOrderReport> orders;
+        List<TradingOrderReport> open;
+        lock (_gate)
+        {
+            orders = _orders
+                .OrderByDescending(o => o.Timestamp)
+                .Take(safeLimit)
+                .ToList();
+            open = _openOrders.Values.Select(ToOrderReport).ToList();
+        }
+
+        var issues = new List<OmsReconciliationIssue>();
+        var duplicates = orders
+            .GroupBy(o => o.OrderId, StringComparer.OrdinalIgnoreCase)
+            .Where(g => g.Count() > 1)
+            .ToList();
+
+        foreach (var duplicate in duplicates)
+        {
+            issues.Add(new OmsReconciliationIssue(
+                Severity: "critical",
+                Category: "duplicate-order-id",
+                OrderId: duplicate.Key,
+                Message: $"Duplicate order id detected ({duplicate.Count()})",
+                Timestamp: DateTimeOffset.UtcNow));
+        }
+
+        foreach (var order in orders)
+        {
+            double fillQty = order.Fills?.Sum(f => f.Quantity) ?? 0;
+            if (Math.Abs(fillQty - order.FilledQuantity) > 1e-6)
+            {
+                issues.Add(new OmsReconciliationIssue(
+                    Severity: "critical",
+                    Category: "filled-quantity-mismatch",
+                    OrderId: order.OrderId,
+                    Message: $"filledQuantity={order.FilledQuantity:F6} but sum(fills)={fillQty:F6}",
+                    Timestamp: DateTimeOffset.UtcNow));
+            }
+
+            double feeFromFills = order.Fills?.Sum(f => f.Fees) ?? 0;
+            if (Math.Abs(feeFromFills - order.Fees) > 1e-6)
+            {
+                issues.Add(new OmsReconciliationIssue(
+                    Severity: "warning",
+                    Category: "fees-mismatch",
+                    OrderId: order.OrderId,
+                    Message: $"fees={order.Fees:F6} but sum(fillFees)={feeFromFills:F6}",
+                    Timestamp: DateTimeOffset.UtcNow));
+            }
+        }
+
+        foreach (var openOrder in open)
+        {
+            if (openOrder.Status is OrderStatus.Filled or OrderStatus.Rejected or OrderStatus.Cancelled or OrderStatus.Expired)
+            {
+                issues.Add(new OmsReconciliationIssue(
+                    Severity: "critical",
+                    Category: "terminal-open-order",
+                    OrderId: openOrder.OrderId,
+                    Message: $"Open orders set contains terminal status {openOrder.Status}",
+                    Timestamp: DateTimeOffset.UtcNow));
+            }
+        }
+
+        int critical = issues.Count(i => i.Severity.Equals("critical", StringComparison.OrdinalIgnoreCase));
+        bool healthy = issues.Count == 0;
+        var report = new OmsReconciliationReport(
+            TotalOrdersChecked: orders.Count,
+            OpenOrdersChecked: open.Count,
+            IssueCount: issues.Count,
+            CriticalCount: critical,
+            Healthy: healthy,
+            Issues: issues,
+            Timestamp: DateTimeOffset.UtcNow);
+
+        if (!healthy)
+        {
+            _monitoring.PublishAlert("oms", NotificationSeverity.Warning, $"OMS reconciliation found {issues.Count} issues ({critical} critical)");
+            _persistence.AppendAuditEvent("oms-reconciliation", "issues-detected", JsonSerializer.Serialize(report));
+        }
+
+        return Task.FromResult(report);
+    }
+
+    public async Task<AlgoExecutionReport> ExecuteAlgoOrderAsync(AlgoExecutionRequest request, CancellationToken ct = default)
+    {
+        if (request is null || string.IsNullOrWhiteSpace(request.Symbol))
+            throw new ArgumentException("symbol is required");
+        if (!double.IsFinite(request.Quantity) || request.Quantity <= 0)
+            throw new ArgumentException("quantity must be > 0");
+
+        string algoId = $"ALG-{Guid.NewGuid().ToString("N")[..10].ToUpperInvariant()}";
+        int slices = Math.Clamp(request.Slices, 1, 64);
+        double remaining = request.Quantity;
+        double[] weights = BuildSliceWeights(request.Style, slices);
+        var children = new List<AlgoExecutionChild>(slices);
+        DateTimeOffset start = DateTimeOffset.UtcNow;
+        var routeQty = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var routeNotional = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var routeSlippageNotional = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+        var routeQualityQty = new Dictionary<string, double>(StringComparer.OrdinalIgnoreCase);
+
+        LiveOptionQuote? refQuote = await TryFindQuoteAsync(request.Symbol, ct);
+        double refVolume = Math.Max(1, refQuote?.Volume24h ?? 0);
+        bool enforceParticipation = request.Style == AlgoExecutionStyle.Pov;
+        double maxParticipation = MathUtils.Clamp(request.MaxParticipationPct, 0.01, 1.0);
+
+        for (int i = 0; i < slices; i++)
+        {
+            ct.ThrowIfCancellationRequested();
+            int left = slices - i;
+            double plannedQty = left <= 1
+                ? remaining
+                : MathUtils.Clamp(request.Quantity * weights[i], 0.0001, remaining);
+
+            if (enforceParticipation)
+            {
+                // POV caps child quantity by expected turnover participation.
+                double expectedSliceFlow = Math.Max(0.5, refVolume / Math.Max(slices, 1));
+                double participationCap = expectedSliceFlow * maxParticipation;
+                plannedQty = Math.Min(plannedQty, participationCap);
+            }
+
+            double sliceQty = MathUtils.Clamp(plannedQty, 0.0001, remaining);
+            if (sliceQty <= 1e-12)
+                break;
+
+            string venue = await EstimateBestVenueAsync(request.Symbol, sliceQty, request.Side, ct);
+            var childRequest = new TradingOrderRequest(
+                Symbol: request.Symbol,
+                Side: request.Side,
+                Quantity: sliceQty,
+                Type: request.LimitPrice.HasValue ? OrderType.Limit : OrderType.Market,
+                LimitPrice: request.LimitPrice,
+                ClientOrderId: (request.ClientOrderId ?? algoId) + $"-S{i + 1:D2}",
+                MaxRetries: Math.Clamp(request.MaxRetriesPerSlice, 0, 8),
+                AllowPartialFill: request.AllowPartialFill,
+                MaxSlippagePct: null);
+
+            TradingOrderReport report = await PlaceOrderAsync(childRequest, ct);
+            children.Add(new AlgoExecutionChild(
+                Slice: i + 1,
+                ScheduledAt: start.AddSeconds(i * Math.Max(1, request.IntervalSeconds)),
+                Venue: venue,
+                RequestedQuantity: sliceQty,
+                Report: report,
+                ParticipationPct: refVolume > 0 ? MathUtils.Clamp(report.FilledQuantity / refVolume, 0, 1) : 0,
+                SliceWeight: weights[i]));
+
+            remaining = Math.Max(0, remaining - report.FilledQuantity);
+            routeQty[venue] = (routeQty.TryGetValue(venue, out var q) ? q : 0) + report.FilledQuantity;
+            routeNotional[venue] = (routeNotional.TryGetValue(venue, out var n) ? n : 0) + report.Notional;
+            routeSlippageNotional[venue] = (routeSlippageNotional.TryGetValue(venue, out var sn) ? sn : 0) + (report.SlippagePct * report.Notional);
+            routeQualityQty[venue] = (routeQualityQty.TryGetValue(venue, out var qq) ? qq : 0) + (report.ExecutionQualityScore * Math.Max(report.FilledQuantity, 0));
+            if (remaining <= 1e-12)
+                break;
+
+            if (i < slices - 1 && request.IntervalSeconds > 0)
+                await Task.Delay(TimeSpan.FromSeconds(Math.Max(1, request.IntervalSeconds)), ct);
+        }
+
+        double filled = children.Sum(c => c.Report.FilledQuantity);
+        double totalFees = children.Sum(c => c.Report.Fees);
+        double notional = children.Sum(c => c.Report.Notional);
+        double avgFill = filled > 0 ? notional / filled : 0;
+        double weightedSlippage = notional > 0
+            ? children.Sum(c => c.Report.SlippagePct * c.Report.Notional) / notional
+            : 0;
+        double quality = children.Count > 0
+            ? children.Average(c => c.Report.ExecutionQualityScore)
+            : 0;
+
+        var routing = routeNotional.Keys
+            .OrderByDescending(venue => routeNotional[venue])
+            .Select(venue =>
+            {
+                double qty = routeQty.GetValueOrDefault(venue, 0);
+                double venueNotional = routeNotional.GetValueOrDefault(venue, 0);
+                double slip = venueNotional > 0
+                    ? routeSlippageNotional.GetValueOrDefault(venue, 0) / venueNotional
+                    : 0;
+                double venueQuality = qty > 0
+                    ? routeQualityQty.GetValueOrDefault(venue, 0) / qty
+                    : 0;
+                return new AlgoRouteAllocation(
+                    Venue: venue,
+                    FilledQuantity: qty,
+                    Notional: venueNotional,
+                    AvgSlippagePct: slip,
+                    AvgQualityScore: venueQuality);
+            })
+            .ToList();
+
+        string notes = request.Style switch
+        {
+            AlgoExecutionStyle.Twap => "TWAP schedule with equalized time slices and routing by source health.",
+            AlgoExecutionStyle.Vwap => "VWAP curve with liquidity-skewed slice weights and routing by source health.",
+            AlgoExecutionStyle.Pov => $"POV schedule with max participation {maxParticipation:P1} per expected flow slice.",
+            _ => "Algo execution."
+        };
+
+        var result = new AlgoExecutionReport(
+            AlgoOrderId: algoId,
+            Style: request.Style,
+            Symbol: request.Symbol,
+            Side: request.Side,
+            RequestedQuantity: request.Quantity,
+            FilledQuantity: filled,
+            RemainingQuantity: Math.Max(0, request.Quantity - filled),
+            AvgFillPrice: avgFill,
+            TotalFees: totalFees,
+            AggregateSlippagePct: weightedSlippage,
+            ExecutionQualityScore: quality,
+            Children: children,
+            Timestamp: DateTimeOffset.UtcNow,
+            Routing: routing,
+            ExecutionNotes: notes);
+
+        _persistence.AppendAuditEvent("algo-execution", $"Algo {algoId} executed", JsonSerializer.Serialize(result));
+        return result;
+    }
+
+    public async Task<HedgeSuggestionResponse> GetHedgeSuggestionAsync(HedgeSuggestionRequest request, CancellationToken ct = default)
+    {
+        var before = await GetRiskAsync(ct);
+        var positions = await GetPositionsAsync(ct);
+        string[] assets = string.IsNullOrWhiteSpace(request.Asset)
+            ? positions.Select(p => p.Asset).Distinct(StringComparer.OrdinalIgnoreCase).DefaultIfEmpty("BTC").ToArray()
+            : [request.Asset!.Trim().ToUpperInvariant()];
+
+        var legs = new List<HedgeLegSuggestion>();
+        foreach (string asset in assets)
+        {
+            if (legs.Count >= Math.Clamp(request.MaxLegs, 1, 6))
+                break;
+
+            var chain = await _marketData.GetOptionChainAsync(asset, ct);
+            if (chain.Count == 0)
+                continue;
+
+            double deltaNeed = request.TargetDelta - before.NetDelta;
+            double vegaNeed = request.TargetVega - before.NetVega;
+            bool needPositiveDelta = deltaNeed > 0;
+            OptionRight right = needPositiveDelta ? OptionRight.Call : OptionRight.Put;
+            TradeDirection side = needPositiveDelta ? TradeDirection.Buy : TradeDirection.Buy;
+
+            var candidate = chain
+                .Where(q => q.Right == right && q.Expiry > DateTimeOffset.UtcNow.AddDays(3) && q.Mark > 0)
+                .OrderBy(q => Math.Abs(q.Delta - (needPositiveDelta ? 0.35 : -0.35)))
+                .ThenByDescending(q => q.OpenInterest + q.Volume24h)
+                .FirstOrDefault();
+            if (candidate is null)
+                continue;
+
+            double deltaPer = candidate.Delta;
+            double qtyByDelta = Math.Abs(deltaPer) > 1e-6 ? Math.Abs(deltaNeed / deltaPer) : 0;
+            double qtyByVega = Math.Abs(candidate.Vega) > 1e-6 ? Math.Abs(vegaNeed / candidate.Vega) : qtyByDelta;
+            double qty = MathUtils.Clamp(
+                Math.Max(0.1, Math.Min(qtyByDelta > 0 ? qtyByDelta : double.MaxValue, qtyByVega > 0 ? qtyByVega : double.MaxValue)),
+                0.1,
+                80);
+
+            double px = FirstPositive(candidate.Ask, candidate.Mid, candidate.Mark, candidate.Bid);
+            double notional = px * qty;
+            if (notional > request.MaxNotionalPerLeg && notional > 0)
+                qty = MathUtils.Clamp(request.MaxNotionalPerLeg / notional * qty, 0.1, qty);
+
+            legs.Add(new HedgeLegSuggestion(
+                Symbol: candidate.Symbol,
+                Venue: candidate.Venue,
+                Side: side,
+                Quantity: qty,
+                EstimatedPrice: px,
+                EstimatedNotional: px * qty,
+                DeltaImpact: candidate.Delta * qty,
+                VegaImpact: candidate.Vega * qty,
+                GammaImpact: candidate.Gamma * qty,
+                Rationale: $"Reduce net delta/vega drift on {asset} with liquid {(right == OptionRight.Call ? "call" : "put")} strike"));
+        }
+
+        double projectedDelta = before.NetDelta + legs.Sum(l => l.Side == TradeDirection.Buy ? l.DeltaImpact : -l.DeltaImpact);
+        double projectedVega = before.NetVega + legs.Sum(l => l.Side == TradeDirection.Buy ? l.VegaImpact : -l.VegaImpact);
+        double projectedGamma = before.NetGamma + legs.Sum(l => l.Side == TradeDirection.Buy ? l.GammaImpact : -l.GammaImpact);
+
+        var projected = before with
+        {
+            NetDelta = projectedDelta,
+            NetVega = projectedVega,
+            NetGamma = projectedGamma,
+            Timestamp = DateTimeOffset.UtcNow
+        };
+
+        return new HedgeSuggestionResponse(
+            BeforeRisk: before,
+            ProjectedRisk: projected,
+            Legs: legs,
+            Summary: legs.Count == 0
+                ? "No hedge candidate found with current constraints."
+                : $"Generated {legs.Count} hedge legs; projected delta {projectedDelta:F2}, vega {projectedVega:F2}.",
+            Timestamp: DateTimeOffset.UtcNow);
+    }
+
+    public async Task<AutoHedgeReport> RunAutoHedgeAsync(AutoHedgeRequest request, CancellationToken ct = default)
+    {
+        request ??= new AutoHedgeRequest();
+        int maxLegs = Math.Clamp(request.MaxLegs, 1, 6);
+        double maxNotional = Math.Max(100, request.MaxNotionalPerLeg);
+
+        var hedgeRequest = new HedgeSuggestionRequest(
+            Asset: request.Asset,
+            TargetDelta: request.TargetDelta,
+            TargetVega: request.TargetVega,
+            TargetGamma: request.TargetGamma,
+            MaxLegs: maxLegs,
+            MaxNotionalPerLeg: maxNotional);
+
+        HedgeSuggestionResponse suggestion = await GetHedgeSuggestionAsync(hedgeRequest, ct);
+        PortfolioRiskSnapshot before = suggestion.BeforeRisk;
+        var executions = new List<AutoHedgeLegExecution>(suggestion.Legs.Count);
+
+        if (!request.Execute || suggestion.Legs.Count == 0)
+        {
+            PortfolioRiskSnapshot projected = suggestion.ProjectedRisk;
+            string drySummary = request.Execute
+                ? "No hedge leg available for execution under current constraints."
+                : "Dry-run hedge plan generated (no execution requested).";
+
+            return new AutoHedgeReport(
+                Suggestion: suggestion,
+                Executions: [],
+                BeforeRisk: before,
+                AfterRisk: projected,
+                Executed: false,
+                Summary: drySummary,
+                Timestamp: DateTimeOffset.UtcNow);
+        }
+
+        foreach (var leg in suggestion.Legs.Take(maxLegs))
+        {
+            ct.ThrowIfCancellationRequested();
+
+            if (request.UseAlgoExecution)
+            {
+                try
+                {
+                    var algo = await ExecuteAlgoOrderAsync(
+                        new AlgoExecutionRequest(
+                            Symbol: leg.Symbol,
+                            Side: leg.Side,
+                            Quantity: Math.Max(0.01, leg.Quantity),
+                            Style: request.AlgoStyle,
+                            Slices: Math.Clamp(request.AlgoSlices, 1, 24),
+                            IntervalSeconds: Math.Clamp(request.AlgoIntervalSeconds, 1, 30),
+                            MaxParticipationPct: 0.2,
+                            LimitPrice: null,
+                            AllowPartialFill: true,
+                            MaxRetriesPerSlice: 1,
+                            ClientOrderId: $"AUTO-HEDGE-{request.RequestedBy}-{Guid.NewGuid():N}"[..28]),
+                        ct);
+
+                    bool accepted = algo.Children.Any(c =>
+                        c.Report.Status is OrderStatus.Filled or OrderStatus.PartiallyFilled or OrderStatus.Accepted);
+                    string? reason = accepted
+                        ? null
+                        : algo.Children.Select(c => c.Report.RejectReason).FirstOrDefault(r => !string.IsNullOrWhiteSpace(r)) ?? "algo-no-fill";
+
+                    executions.Add(new AutoHedgeLegExecution(
+                        Suggestion: leg,
+                        Order: null,
+                        AlgoOrder: algo,
+                        Accepted: accepted,
+                        RejectReason: reason));
+                }
+                catch (Exception ex)
+                {
+                    executions.Add(new AutoHedgeLegExecution(
+                        Suggestion: leg,
+                        Order: null,
+                        AlgoOrder: null,
+                        Accepted: false,
+                        RejectReason: ex.Message));
+                }
+
+                continue;
+            }
+
+            TradingOrderReport report = await PlaceOrderAsync(
+                new TradingOrderRequest(
+                    Symbol: leg.Symbol,
+                    Side: leg.Side,
+                    Quantity: Math.Max(0.01, leg.Quantity),
+                    Type: OrderType.Market,
+                    LimitPrice: null,
+                    ClientOrderId: $"AUTO-HEDGE-{request.RequestedBy}-{Guid.NewGuid():N}"[..28],
+                    MaxRetries: 2,
+                    AllowPartialFill: true,
+                    MaxSlippagePct: Limits.MaxSlippagePct),
+                ct);
+
+            executions.Add(new AutoHedgeLegExecution(
+                Suggestion: leg,
+                Order: report,
+                AlgoOrder: null,
+                Accepted: report.Status is OrderStatus.Filled or OrderStatus.PartiallyFilled or OrderStatus.Accepted,
+                RejectReason: report.RejectReason));
+        }
+
+        PortfolioRiskSnapshot after = await GetRiskAsync(ct);
+        int acceptedCount = executions.Count(x => x.Accepted);
+        bool executed = acceptedCount > 0;
+        string summary = $"Auto-hedge {acceptedCount}/{executions.Count} legs accepted | " +
+                         $"delta {before.NetDelta:F2} -> {after.NetDelta:F2}, vega {before.NetVega:F2} -> {after.NetVega:F2}.";
+
+        var result = new AutoHedgeReport(
+            Suggestion: suggestion,
+            Executions: executions,
+            BeforeRisk: before,
+            AfterRisk: after,
+            Executed: executed,
+            Summary: summary,
+            Timestamp: DateTimeOffset.UtcNow);
+
+        _persistence.AppendAuditEvent("auto-hedge", summary, JsonSerializer.Serialize(result));
+        return result;
+    }
+
+    public async Task<PortfolioOptimizationResponse> OptimizePortfolioAsync(PortfolioOptimizationRequest request, CancellationToken ct = default)
+    {
+        var positions = await GetPositionsAsync(ct);
+        double gross = positions.Sum(p => p.Notional);
+        double capital = Math.Max(request.CapitalBudget, 1);
+
+        var byAsset = positions
+            .GroupBy(p => p.Asset, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new
+            {
+                Asset = g.Key,
+                Notional = g.Sum(x => x.Notional),
+                Delta = g.Sum(x => x.Greeks.Delta),
+                Vega = g.Sum(x => x.Greeks.Vega),
+                Gamma = g.Sum(x => x.Greeks.Gamma)
+            })
+            .OrderByDescending(x => x.Notional)
+            .ToList();
+
+        if (byAsset.Count == 0)
+        {
+            return new PortfolioOptimizationResponse(
+                CapitalBudget: capital,
+                GrossNotional: 0,
+                Budgets: [],
+                Summary: "No open positions to optimize.",
+                Timestamp: DateTimeOffset.UtcNow);
+        }
+
+        double deltaAbs = byAsset.Sum(x => Math.Abs(x.Delta));
+        double vegaAbs = byAsset.Sum(x => Math.Abs(x.Vega));
+        double gammaAbs = byAsset.Sum(x => Math.Abs(x.Gamma));
+
+        var budgets = new List<AssetRiskBudget>(byAsset.Count);
+        foreach (var row in byAsset)
+        {
+            double currentWeight = gross > 0 ? row.Notional / gross : 0;
+            double deltaShare = deltaAbs > 0 ? Math.Abs(row.Delta) / deltaAbs : 0;
+            double vegaShare = vegaAbs > 0 ? Math.Abs(row.Vega) / vegaAbs : 0;
+            double gammaShare = gammaAbs > 0 ? Math.Abs(row.Gamma) / gammaAbs : 0;
+
+            double riskWeight =
+                deltaShare * request.MaxDeltaBudget +
+                vegaShare * request.MaxVegaBudget +
+                gammaShare * request.MaxGammaBudget;
+            double cappedWeight = Math.Min(request.MaxAssetWeight, Math.Max(0.05, riskWeight));
+            double targetNotional = capital * cappedWeight;
+            double adjust = targetNotional - row.Notional;
+
+            budgets.Add(new AssetRiskBudget(
+                Asset: row.Asset,
+                CurrentNotional: row.Notional,
+                TargetNotional: targetNotional,
+                Adjustment: adjust,
+                Weight: currentWeight,
+                DeltaShare: deltaShare,
+                VegaShare: vegaShare,
+                GammaShare: gammaShare,
+                Action: adjust > 0 ? "increase-risk-budget" : "decrease-risk-budget"));
+        }
+
+        string summary = string.Join(
+            " | ",
+            budgets
+                .OrderByDescending(b => Math.Abs(b.Adjustment))
+                .Take(3)
+                .Select(b => $"{b.Asset}:{(b.Adjustment >= 0 ? "+" : string.Empty)}{b.Adjustment:F0}"));
+
+        return new PortfolioOptimizationResponse(
+            CapitalBudget: capital,
+            GrossNotional: gross,
+            Budgets: budgets.OrderByDescending(x => x.CurrentNotional).ToList(),
+            Summary: string.IsNullOrWhiteSpace(summary) ? "Portfolio near target risk budget." : summary,
+            Timestamp: DateTimeOffset.UtcNow);
+    }
+
     public async Task<IReadOnlyList<TradingOrderReport>> RetryOpenOrdersAsync(int maxOrders = 25, CancellationToken ct = default)
     {
         List<string> toRetry;
@@ -290,6 +911,11 @@ public sealed class PaperTradingService : IPaperTradingService
             request.IsActive
                 ? $"Kill-switch enabled by {actor}: {reason}"
                 : $"Kill-switch disabled by {actor}: {reason}");
+
+        _persistence.AppendAuditEvent(
+            "kill-switch",
+            request.IsActive ? "enabled" : "disabled",
+            JsonSerializer.Serialize(_killSwitch));
 
         return Task.FromResult(_killSwitch);
     }
@@ -353,15 +979,20 @@ public sealed class PaperTradingService : IPaperTradingService
                 MarginMode: "Portfolio"));
         }
 
-        return result
+        var snapshot = result
             .OrderByDescending(p => p.Notional)
             .ToList();
+
+        MaybePersistPositionSnapshot(snapshot, "positions-query");
+        return snapshot;
     }
 
     public async Task<PortfolioRiskSnapshot> GetRiskAsync(CancellationToken ct = default)
     {
         var positions = await GetPositionsAsync(ct);
-        return BuildRiskSnapshot(positions);
+        PortfolioRiskSnapshot snapshot = BuildRiskSnapshot(positions);
+        _persistence.AppendRiskEvent(snapshot, "risk-query");
+        return snapshot;
     }
 
     public async Task<TradingBookSnapshot> GetBookAsync(int orderLimit = 150, CancellationToken ct = default)
@@ -403,6 +1034,23 @@ public sealed class PaperTradingService : IPaperTradingService
                     .Take(safe)
                     .ToList());
         }
+    }
+
+    public Task<TradingHistorySnapshot> GetHistoryAsync(
+        int orderLimit = 250,
+        int positionLimit = 250,
+        int riskLimit = 250,
+        int auditLimit = 250,
+        CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+        var history = new TradingHistorySnapshot(
+            Orders: _persistence.GetOrderEvents(orderLimit),
+            Positions: _persistence.GetPositionEvents(positionLimit),
+            Risks: _persistence.GetRiskEvents(riskLimit),
+            AuditTrail: _persistence.GetAuditEvents(auditLimit),
+            Timestamp: DateTimeOffset.UtcNow);
+        return Task.FromResult(history);
     }
 
     public async Task<StressTestResult> RunStressTestAsync(StressTestRequest? request, CancellationToken ct = default)
@@ -508,6 +1156,7 @@ public sealed class PaperTradingService : IPaperTradingService
         }
 
         _monitoring.PublishAlert("trading", NotificationSeverity.Info, "Paper trading state reset.");
+        _persistence.AppendAuditEvent("reset", "Paper trading state reset by API.");
     }
 
     private async Task<TradingOrderReport> ExecuteWorkingOrderAsync(string orderId, CancellationToken ct)
@@ -526,7 +1175,7 @@ public sealed class PaperTradingService : IPaperTradingService
         }
 
         int attempts = 0;
-        while (state.RemainingQuantity > 1e-12 && attempts <= state.MaxRetries)
+        while (state.RemainingQuantity > 1e-12 && attempts <= state.MaxRetries && !state.IsCancelled)
         {
             ct.ThrowIfCancellationRequested();
 
@@ -625,7 +1274,12 @@ public sealed class PaperTradingService : IPaperTradingService
         OrderStatus status;
         string? rejectReason = null;
 
-        if (filledQty <= 1e-12)
+        if (state.IsCancelled)
+        {
+            status = OrderStatus.Cancelled;
+            rejectReason = state.CancelReason;
+        }
+        else if (filledQty <= 1e-12)
         {
             if (!string.IsNullOrWhiteSpace(state.LastRejectReason))
             {
@@ -1221,6 +1875,8 @@ public sealed class PaperTradingService : IPaperTradingService
                 _orders.RemoveRange(0, _orders.Count - MaxStoredOrders);
         }
 
+        _persistence.AppendOrderEvent(report, "oms");
+
         return report;
     }
 
@@ -1341,6 +1997,111 @@ public sealed class PaperTradingService : IPaperTradingService
 
         double absTolerance = Math.Max(0.02, parsedStrike * 0.015);
         return nearest.StrikeDiff <= absTolerance ? nearest.Quote : null;
+    }
+
+    private async Task<string> EstimateBestVenueAsync(
+        string symbol,
+        double intendedQuantity,
+        TradeDirection side,
+        CancellationToken ct)
+    {
+        _ = side;
+        string asset = ExtractAsset(symbol);
+        LiveOptionQuote? quote = await TryFindQuoteAsync(symbol, ct);
+        MarketDataCompositeStatus? status = null;
+
+        try
+        {
+            status = await _marketData.GetStatusAsync(asset, ct);
+        }
+        catch
+        {
+            // Route fallback remains available via quote venue when status endpoint is degraded.
+        }
+
+        string quoteVenue = NormalizeVenueName(quote?.Venue);
+        double requiredDepth = Math.Max(0.01, intendedQuantity);
+        if (status is not null && status.Sources.Count > 0)
+        {
+            var ranked = status.Sources
+                .OrderByDescending(s => s.Healthy && !s.IsStale)
+                .ThenByDescending(s => s.Healthy)
+                .ThenByDescending(s => s.QuoteCount >= requiredDepth)
+                .ThenBy(s => s.IsFallback)
+                .ThenBy(s => s.IsStale)
+                .ThenByDescending(s => s.QuoteCount)
+                .ThenBy(s => s.LastLatencyMs)
+                .ToList();
+
+            if (!string.IsNullOrWhiteSpace(quoteVenue))
+            {
+                var venueSource = ranked.FirstOrDefault(s =>
+                    NormalizeVenueName(s.Source).Equals(quoteVenue, StringComparison.OrdinalIgnoreCase));
+                if (venueSource is not null && venueSource.Healthy && !venueSource.IsStale)
+                    return venueSource.Source;
+            }
+
+            var best = ranked.FirstOrDefault();
+            if (best is not null)
+                return best.Source;
+        }
+
+        if (!string.IsNullOrWhiteSpace(quoteVenue))
+            return quoteVenue;
+
+        return "SYNTHETIC";
+    }
+
+    private static double[] BuildSliceWeights(AlgoExecutionStyle style, int slices)
+    {
+        int safeSlices = Math.Clamp(slices, 1, 64);
+        if (safeSlices == 1)
+            return [1.0];
+
+        var weights = new double[safeSlices];
+        switch (style)
+        {
+            case AlgoExecutionStyle.Twap:
+                for (int i = 0; i < safeSlices; i++)
+                    weights[i] = 1.0;
+                break;
+
+            case AlgoExecutionStyle.Vwap:
+                for (int i = 0; i < safeSlices; i++)
+                {
+                    // Simple U-curve profile (more expected flow at open/close buckets).
+                    double x = safeSlices == 1 ? 0 : i / (double)(safeSlices - 1);
+                    double edge = Math.Abs(2 * x - 1);
+                    weights[i] = 0.75 + edge * 0.65;
+                }
+                break;
+
+            case AlgoExecutionStyle.Pov:
+                for (int i = 0; i < safeSlices; i++)
+                    weights[i] = 1.0;
+                break;
+
+            default:
+                for (int i = 0; i < safeSlices; i++)
+                    weights[i] = 1.0;
+                break;
+        }
+
+        double sum = weights.Sum();
+        if (sum <= 1e-12)
+            return Enumerable.Repeat(1.0 / safeSlices, safeSlices).ToArray();
+        return weights.Select(w => w / sum).ToArray();
+    }
+
+    private static string NormalizeVenueName(string? raw)
+    {
+        if (string.IsNullOrWhiteSpace(raw))
+            return string.Empty;
+
+        string value = raw.Trim().ToUpperInvariant();
+        if (value == "SYNTH")
+            return "SYNTHETIC";
+        return value;
     }
 
     private static string ExtractAsset(string symbol)
@@ -1582,43 +2343,123 @@ public sealed class PaperTradingService : IPaperTradingService
 
     private static IReadOnlyList<StressScenario> NormalizeScenarios(StressTestRequest? request)
     {
+        var scenarios = new List<StressScenario>();
+
         if (request?.Scenarios is { Count: > 0 })
         {
-            return request.Scenarios
-                .Where(s => !string.IsNullOrWhiteSpace(s.Name))
-                .Select(s => new StressScenario(
-                    Name: s.Name.Trim(),
-                    UnderlyingShockPct: MathUtils.Clamp(s.UnderlyingShockPct, -0.9, 1.5),
-                    IvShockPct: MathUtils.Clamp(s.IvShockPct, -0.95, 2.0),
-                    DaysForward: Math.Clamp(s.DaysForward, 0, 365)))
+            scenarios.AddRange(
+                request.Scenarios
+                    .Where(s => !string.IsNullOrWhiteSpace(s.Name))
+                    .Select(s => new StressScenario(
+                        Name: s.Name.Trim(),
+                        UnderlyingShockPct: MathUtils.Clamp(s.UnderlyingShockPct, -0.9, 1.5),
+                        IvShockPct: MathUtils.Clamp(s.IvShockPct, -0.95, 2.0),
+                        DaysForward: Math.Clamp(s.DaysForward, 0, 365))));
+        }
+        else
+        {
+            scenarios.AddRange(
+            [
+                new StressScenario("Spot -10%", -0.10, 0),
+                new StressScenario("Spot +10%", 0.10, 0),
+                new StressScenario("Vol +20%", 0, 0.20),
+                new StressScenario("Spot -15% / Vol +25%", -0.15, 0.25),
+                new StressScenario("Spot +15% / Vol -20%", 0.15, -0.20)
+            ]);
+        }
+
+        if (request?.IncludeIntradaySet == true)
+        {
+            scenarios.AddRange(
+            [
+                new StressScenario("Intraday risk-off pulse", -0.035, 0.07, 0),
+                new StressScenario("Intraday squeeze", 0.028, -0.04, 0),
+                new StressScenario("Orderbook vacuum down", -0.055, 0.11, 0),
+                new StressScenario("Macro event shock", -0.08, 0.16, 1)
+            ]);
+        }
+
+        if (request?.Macro is not null)
+        {
+            scenarios = scenarios
+                .Select(s => ApplyMacroToScenario(s, request.Macro))
                 .ToList();
         }
 
-        return
-        [
-            new StressScenario("Spot -10%", -0.10, 0),
-            new StressScenario("Spot +10%", 0.10, 0),
-            new StressScenario("Vol +20%", 0, 0.20),
-            new StressScenario("Spot -15% / Vol +25%", -0.15, 0.25),
-            new StressScenario("Spot +15% / Vol -20%", 0.15, -0.20)
-        ];
+        return scenarios
+            .GroupBy(s => s.Name, StringComparer.OrdinalIgnoreCase)
+            .Select(g => g.First())
+            .ToList();
+    }
+
+    private static StressScenario ApplyMacroToScenario(StressScenario scenario, MacroStressConfig macro)
+    {
+        double growth = MathUtils.Clamp(macro.GrowthShock, -1, 1);
+        double inflation = MathUtils.Clamp(macro.InflationShock, -1, 1);
+        double policy = MathUtils.Clamp(macro.PolicyShock, -1, 1);
+        double usd = MathUtils.Clamp(macro.UsdShock, -1, 1);
+        double liq = MathUtils.Clamp(macro.LiquidityShock, -1, 1);
+        double risk = MathUtils.Clamp(macro.RiskAversionShock, -1, 1);
+
+        double spotAdj =
+            growth * 0.035 -
+            inflation * 0.012 -
+            policy * 0.018 -
+            usd * 0.020 +
+            liq * 0.030 -
+            risk * 0.028;
+
+        double ivAdj =
+            inflation * 0.035 +
+            policy * 0.040 -
+            growth * 0.015 -
+            liq * 0.030 +
+            risk * 0.055 +
+            usd * 0.015;
+
+        return scenario with
+        {
+            UnderlyingShockPct = MathUtils.Clamp(scenario.UnderlyingShockPct + spotAdj, -0.9, 1.5),
+            IvShockPct = MathUtils.Clamp(scenario.IvShockPct + ivAdj, -0.95, 2.0)
+        };
+    }
+
+    private void MaybePersistPositionSnapshot(IReadOnlyList<TradingPosition> positions, string source)
+    {
+        if (positions.Count == 0)
+            return;
+
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        lock (_positionPersistGate)
+        {
+            if (now - _lastPositionPersistAt < TimeSpan.FromSeconds(6))
+                return;
+            _lastPositionPersistAt = now;
+        }
+
+        _persistence.AppendPositionSnapshot(positions, source);
     }
 
     private void AddNotification(NotificationSeverity severity, string category, string message)
     {
+        TradingNotification notification;
         lock (_gate)
         {
-            _notifications.Add(new TradingNotification(
+            notification = new TradingNotification(
                 Id: $"NTF-{Guid.NewGuid().ToString("N")[..10].ToUpperInvariant()}",
                 Severity: severity,
                 Category: category,
                 Message: message,
                 Timestamp: DateTimeOffset.UtcNow,
-                Acknowledged: false));
+                Acknowledged: false);
+
+            _notifications.Add(notification);
 
             if (_notifications.Count > MaxStoredNotifications)
                 _notifications.RemoveRange(0, _notifications.Count - MaxStoredNotifications);
         }
+
+        _persistence.AppendNotificationEvent(notification);
     }
 
     private static double EffectiveMark(LiveOptionQuote? quote, double fallback)

@@ -8,6 +8,7 @@ namespace Atlas.Api.Services;
 public interface IExperimentalAutoTraderService
 {
     Task<ExperimentalBotSnapshot> GetSnapshotAsync(string asset, CancellationToken ct = default);
+    Task<ExperimentalBotModelExplainSnapshot> GetModelExplainAsync(string asset, CancellationToken ct = default);
     Task<ExperimentalBotSnapshot> ConfigureAsync(string asset, ExperimentalBotConfigRequest request, CancellationToken ct = default);
     Task<ExperimentalBotSnapshot> RunCycleAsync(string asset, int cycles = 1, CancellationToken ct = default);
     Task<ExperimentalBotSnapshot> ResetAsync(string asset, CancellationToken ct = default);
@@ -107,8 +108,6 @@ public sealed class ExperimentalAutoTraderService : IExperimentalAutoTraderServi
         ["term_slope"] = 0.58
     };
 
-    private static readonly string[] SupportedAssets = ["BTC", "ETH", "SOL", "WTI"];
-
     private const double LearningRate = 0.035;
     private readonly ConcurrentDictionary<string, BotState> _states = new(StringComparer.OrdinalIgnoreCase);
     private readonly IOptionsMarketDataService _marketData;
@@ -145,6 +144,74 @@ public sealed class ExperimentalAutoTraderService : IExperimentalAutoTraderServi
         BotState state = GetOrCreateState(normalizedAsset);
         await EvaluateIfDueAsync(normalizedAsset, state, force: false, cycles: 1, ct);
         return await BuildSnapshotThreadSafeAsync(normalizedAsset, state, ct);
+    }
+
+    public async Task<ExperimentalBotModelExplainSnapshot> GetModelExplainAsync(string asset, CancellationToken ct = default)
+    {
+        string normalizedAsset = NormalizeAsset(asset);
+        BotState state = GetOrCreateState(normalizedAsset);
+        await EvaluateIfDueAsync(normalizedAsset, state, force: false, cycles: 1, ct);
+
+        await state.Gate.WaitAsync(ct);
+        try
+        {
+            ExperimentalBotSignal signal = state.LastSignal ?? new ExperimentalBotSignal(
+                Bias: "Neutral",
+                Score: 0,
+                Confidence: 0,
+                StrategyTemplate: "N/A",
+                Summary: "No active signal.",
+                Drivers: [],
+                Features: new ExperimentalBotFeatureVector(0, 0, 0, 0, 0, 0, 0, 0),
+                Timestamp: DateTimeOffset.UtcNow);
+
+            Dictionary<string, double> featureMap = ExtractFeatureMap(signal.Features);
+            var contributions = featureMap
+                .Select(kv =>
+                {
+                    double weight = state.Weights.TryGetValue(kv.Key, out var w) ? w : 1;
+                    double contribution = weight * kv.Value;
+                    return new ExperimentalBotFeatureContribution(
+                        Feature: kv.Key,
+                        Weight: weight,
+                        FeatureValue: kv.Value,
+                        Contribution: contribution);
+                })
+                .OrderByDescending(c => Math.Abs(c.Contribution))
+                .ToList();
+
+            var positives = contributions
+                .Where(c => c.Contribution >= 0)
+                .OrderByDescending(c => c.Contribution)
+                .Take(4)
+                .ToList();
+            var negatives = contributions
+                .Where(c => c.Contribution < 0)
+                .OrderBy(c => c.Contribution)
+                .Take(4)
+                .ToList();
+
+            var audits = state.Audits
+                .OrderByDescending(a => a.Timestamp)
+                .Take(20)
+                .ToList();
+
+            string narrative = BuildExplainNarrative(signal, positives, negatives, audits);
+            return new ExperimentalBotModelExplainSnapshot(
+                Asset: normalizedAsset,
+                Bias: signal.Bias,
+                Score: signal.Score,
+                Confidence: signal.Confidence,
+                TopPositiveContributors: positives,
+                TopNegativeContributors: negatives,
+                LatestAuditSamples: audits,
+                Narrative: narrative,
+                Timestamp: DateTimeOffset.UtcNow);
+        }
+        finally
+        {
+            state.Gate.Release();
+        }
     }
 
     public async Task<ExperimentalBotSnapshot> ConfigureAsync(string asset, ExperimentalBotConfigRequest request, CancellationToken ct = default)
@@ -223,9 +290,29 @@ public sealed class ExperimentalAutoTraderService : IExperimentalAutoTraderServi
 
     public async Task RunAutopilotAsync(CancellationToken ct = default)
     {
-        foreach (string asset in SupportedAssets)
+        var states = _states.ToArray();
+        if (states.Length == 0)
+            return;
+
+        foreach (var kv in states)
         {
-            BotState state = GetOrCreateState(asset);
+            string asset = kv.Key;
+            BotState state = kv.Value;
+
+            bool shouldRun;
+            await state.Gate.WaitAsync(ct);
+            try
+            {
+                shouldRun = state.Config.Enabled || state.Config.AutoTrade || state.OpenTrades.Count > 0;
+            }
+            finally
+            {
+                state.Gate.Release();
+            }
+
+            if (!shouldRun)
+                continue;
+
             try
             {
                 await EvaluateIfDueAsync(asset, state, force: false, cycles: 1, ct);
@@ -890,6 +977,30 @@ public sealed class ExperimentalAutoTraderService : IExperimentalAutoTraderServi
             ordered = features.OrderByDescending(kv => Math.Abs(kv.Value)).Take(2).ToList();
 
         return string.Join(", ", ordered.Select(kv => $"{kv.Key}={(kv.Value >= 0 ? "+" : string.Empty)}{kv.Value:F2}"));
+    }
+
+    private static string BuildExplainNarrative(
+        ExperimentalBotSignal signal,
+        IReadOnlyList<ExperimentalBotFeatureContribution> positives,
+        IReadOnlyList<ExperimentalBotFeatureContribution> negatives,
+        IReadOnlyList<ExperimentalBotAuditEntry> audits)
+    {
+        string pos = positives.Count > 0
+            ? string.Join(", ", positives.Select(p => $"{p.Feature}({p.Contribution:+0.00;-0.00})"))
+            : "none";
+        string neg = negatives.Count > 0
+            ? string.Join(", ", negatives.Select(p => $"{p.Feature}({p.Contribution:+0.00;-0.00})"))
+            : "none";
+
+        int wins = audits.Count(a => a.Win);
+        int losses = audits.Count(a => !a.Win);
+        double wr = audits.Count > 0 ? wins / (double)audits.Count : 0;
+
+        return
+            $"Bias {signal.Bias} | score {signal.Score:F1} | conf {signal.Confidence:F1}. " +
+            $"Top positive drivers: {pos}. " +
+            $"Top negative drivers: {neg}. " +
+            $"Recent audited trades={audits.Count} (wins={wins}, losses={losses}, wr={wr:P1}).";
     }
 
     private static Dictionary<string, double> ExtractFeatureMap(ExperimentalBotFeatureVector features)

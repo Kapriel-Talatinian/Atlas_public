@@ -142,7 +142,7 @@ async function request(path, options = {}) {
 
   const hint = IS_DEV
     ? `Check that API is running on ${LOCAL_FALLBACK_BASES.join(" / ")} or set VITE_API_BASE_URL.`
-    : "Set VITE_API_BASE_URL to your deployed API URL (for example https://atlas-api.up.railway.app).";
+    : "Set VITE_API_BASE_URL to your deployed API URL (for example https://<atlas-api>.up.railway.app).";
 
   throw new Error(`${lastError?.message || "Request failed"}\n${hint}`);
 }
@@ -363,6 +363,20 @@ export function placePaperOrder(payload) {
   });
 }
 
+export function executeAlgoOrder(payload) {
+  return request("/api/trading/algo/execute", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export function runAutoHedge(payload) {
+  return request("/api/trading/hedge/auto", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 export function previewPaperOrder(payload) {
   return request("/api/trading/preview", {
     method: "POST",
@@ -385,6 +399,20 @@ export function resetPaperBook() {
 
 export function getSystemOps() {
   return request("/api/system/ops");
+}
+
+export function getSystemSlo() {
+  return request("/api/system/slo");
+}
+
+export function getTradingHistory({ orderLimit = 250, positionLimit = 250, riskLimit = 250, auditLimit = 250 } = {}) {
+  const params = new URLSearchParams({
+    orderLimit: String(orderLimit),
+    positionLimit: String(positionLimit),
+    riskLimit: String(riskLimit),
+    auditLimit: String(auditLimit),
+  });
+  return request(`/api/trading/history?${params.toString()}`);
 }
 
 export function getExperimentalBotSnapshot(asset = "BTC") {

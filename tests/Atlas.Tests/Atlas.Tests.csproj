@@ -13,5 +13,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Atlas.Core\Atlas.Core.csproj" />
     <ProjectReference Include="..\..\src\Atlas.ToxicFlow\Atlas.ToxicFlow.csproj" />
+    <ProjectReference Include="..\..\src\Atlas.Api\Atlas.Api.csproj" />
   </ItemGroup>
 </Project>

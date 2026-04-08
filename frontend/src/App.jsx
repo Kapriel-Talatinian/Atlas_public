@@ -44,6 +44,8 @@ import {
   getVolSurface,
   previewPaperOrder,
   placePaperOrder,
+  executeAlgoOrder,
+  runAutoHedge,
   runTradingStress,
   resetPaperBook,
 } from "./api";
@@ -84,6 +86,35 @@ import "./App.css";
 const ASSETS = ["BTC", "ETH", "SOL", "WTI"];
 const OPTION_TYPE_FILTERS = ["all", "call", "put"];
 
+function readInitialUiState() {
+  if (typeof window === "undefined") {
+    return { tab: "market", asset: "BTC", preset: "" };
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const rawTab = String(params.get("tab") || "").trim().toLowerCase();
+  const rawAsset = String(params.get("asset") || "").trim().toUpperCase();
+  const rawPreset = String(params.get("preset") || "").trim().toLowerCase();
+
+  const allowedTabs = new Set(["market", "execution", "strategy", "alpha", "experimental"]);
+  const tab = allowedTabs.has(rawTab) ? rawTab : "market";
+  const asset = ASSETS.includes(rawAsset) ? rawAsset : "BTC";
+  const preset = rawPreset === "first" ? "first" : "";
+
+  return { tab, asset, preset };
+}
+
+function syncUiStateToUrl(activeTab, asset, presetDirective = "") {
+  if (typeof window === "undefined") return;
+
+  const url = new URL(window.location.href);
+  url.searchParams.set("tab", activeTab);
+  url.searchParams.set("asset", asset);
+  if (presetDirective === "first") url.searchParams.set("preset", "first");
+  else url.searchParams.delete("preset");
+  window.history.replaceState({}, "", url);
+}
+
 function normalizeDirection(direction) {
   if (direction === "Sell" || direction === "sell" || direction === 1) return "Sell";
   return "Buy";
@@ -101,8 +132,10 @@ function filterByOptionType(rows, optionType) {
 }
 
 function App() {
-  const [activeTab, setActiveTab] = useState("market");
-  const [asset, setAsset] = useState("BTC");
+  const [initialUiState] = useState(() => readInitialUiState());
+  const [activeTab, setActiveTab] = useState(initialUiState.tab);
+  const [asset, setAsset] = useState(initialUiState.asset);
+  const [initialPresetDirective, setInitialPresetDirective] = useState(initialUiState.preset);
   const [overview, setOverview] = useState([]);
   const [expiries, setExpiries] = useState([]);
   const [selectedExpiry, setSelectedExpiry] = useState("");
@@ -134,6 +167,7 @@ function App() {
   const [retryingOpenOrders, setRetryingOpenOrders] = useState(false);
   const [togglingKillSwitch, setTogglingKillSwitch] = useState(false);
   const [runningTwap, setRunningTwap] = useState(false);
+  const [runningAutoHedge, setRunningAutoHedge] = useState(false);
   const [runningBotCycle, setRunningBotCycle] = useState(false);
   const [applyingBotConfig, setApplyingBotConfig] = useState(false);
   const [resettingBot, setResettingBot] = useState(false);
@@ -293,6 +327,10 @@ function App() {
     const stillExists = focusUniverse.some((quote) => quote.symbol === selectedOptionSymbol);
     if (!stillExists) setSelectedOptionSymbol(focusUniverse[0].symbol);
   }, [focusUniverse, selectedOptionSymbol]);
+
+  useEffect(() => {
+    syncUiStateToUrl(activeTab, asset, initialPresetDirective);
+  }, [activeTab, asset, initialPresetDirective]);
 
   useEffect(() => {
     if (!selectedOption?.symbol) {
@@ -743,6 +781,7 @@ function App() {
 
   const loadPreset = useCallback((preset) => {
     setStrategyName(preset.name);
+    setInitialPresetDirective("");
     setCustomLegs(
       preset.legs.map((leg) => ({
         symbol: leg.symbol,
@@ -758,6 +797,17 @@ function App() {
     loadPreset(strategyAnalysis);
     setActiveTab("strategy");
   }, [loadPreset]);
+
+  useEffect(() => {
+    if (initialPresetDirective !== "first") return;
+    if (presets.length === 0) return;
+    if (customLegs.length > 0 || analysis) {
+      setInitialPresetDirective("");
+      return;
+    }
+
+    loadPreset(presets[0]);
+  }, [analysis, customLegs.length, initialPresetDirective, loadPreset, presets]);
 
   const analyzeCustom = useCallback(async () => {
     try {
@@ -846,42 +896,79 @@ function App() {
     await submitOrderPayload(payload);
   }, [submitOrderPayload]);
 
-  const runTwapExecution = useCallback(async ({ side, totalQty, slices, intervalSec }) => {
+  const runAlgoExecution = useCallback(async ({
+    side,
+    style,
+    totalQty,
+    slices,
+    intervalSec,
+    maxParticipationPct,
+    limitPrice,
+  }) => {
     const symbol = orderForm.symbol.trim() || selectedOption?.symbol || "";
     if (!symbol) {
-      setError("Set a symbol before TWAP execution.");
+      setError("Set a symbol before algo execution.");
       return;
     }
 
     const safeTotalQty = Number(totalQty);
     const safeSlices = Math.max(1, Math.floor(Number(slices) || 1));
     const safeIntervalSec = Math.max(1, Math.floor(Number(intervalSec) || 1));
+    const safeParticipation = Math.min(1, Math.max(0.01, Number(maxParticipationPct) || 0.15));
+    const normalizedStyle = ["Twap", "Vwap", "Pov"].includes(style) ? style : "Twap";
+    const maybeLimit = Number.isFinite(Number(limitPrice)) && Number(limitPrice) > 0 ? Number(limitPrice) : null;
     if (!Number.isFinite(safeTotalQty) || safeTotalQty <= 0) {
-      setError("TWAP total quantity must be > 0.");
+      setError("Algo total quantity must be > 0.");
       return;
     }
 
     setRunningTwap(true);
     setError("");
     try {
-      const perSliceQty = safeTotalQty / safeSlices;
-      for (let i = 0; i < safeSlices; i += 1) {
-        const ok = await submitOrderPayload({
-          symbol,
-          side,
-          quantity: perSliceQty,
-          type: "Market",
-          clientOrderId: `TWAP-${Date.now()}-${i + 1}`,
-        });
-        if (!ok) break;
-        if (i < safeSlices - 1) {
-          await new Promise((resolve) => setTimeout(resolve, safeIntervalSec * 1000));
-        }
-      }
+      await executeAlgoOrder({
+        symbol,
+        side,
+        quantity: safeTotalQty,
+        style: normalizedStyle,
+        slices: safeSlices,
+        intervalSeconds: safeIntervalSec,
+        maxParticipationPct: safeParticipation,
+        limitPrice: maybeLimit,
+        allowPartialFill: true,
+        maxRetriesPerSlice: 1,
+        clientOrderId: `ALGO-${Date.now()}`,
+      });
+      await refreshTradingBook();
     } finally {
       setRunningTwap(false);
     }
-  }, [orderForm.symbol, selectedOption, submitOrderPayload]);
+  }, [orderForm.symbol, selectedOption, refreshTradingBook]);
+
+  const runAutoHedgeExecution = useCallback(async () => {
+    setRunningAutoHedge(true);
+    setError("");
+    try {
+      await runAutoHedge({
+        asset,
+        targetDelta: 0,
+        targetVega: 0,
+        targetGamma: 0,
+        maxLegs: 3,
+        maxNotionalPerLeg: 150000,
+        execute: true,
+        useAlgoExecution: true,
+        algoStyle: "Twap",
+        algoSlices: 3,
+        algoIntervalSeconds: 1,
+        requestedBy: "ui",
+      });
+      await refreshTradingBook();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setRunningAutoHedge(false);
+    }
+  }, [asset, refreshTradingBook]);
 
   const runStress = useCallback(async () => {
     setLoadingStress(true);
@@ -1210,6 +1297,9 @@ function App() {
                 <button className="btn btn-ghost" onClick={retryOpen} disabled={retryingOpenOrders || runningTwap}>
                   {retryingOpenOrders ? "Retrying..." : "Retry Open Orders"}
                 </button>
+                <button className="btn btn-secondary" onClick={runAutoHedgeExecution} disabled={runningAutoHedge || runningTwap}>
+                  {runningAutoHedge ? "Auto-Hedging..." : "Run Auto-Hedge"}
+                </button>
                 <button className={`btn ${killSwitch?.isActive ? "btn-ghost" : "btn-secondary"}`} onClick={toggleKillSwitch} disabled={togglingKillSwitch}>
                   {togglingKillSwitch ? "Updating..." : killSwitch?.isActive ? "Disable Kill-Switch" : "Enable Kill-Switch"}
                 </button>
@@ -1230,7 +1320,7 @@ function App() {
               />
               <SmartExecutionPanel
                 defaultSymbol={orderForm.symbol || selectedOption?.symbol || ""}
-                onRunTwap={runTwapExecution}
+                onRunAlgo={runAlgoExecution}
                 running={runningTwap}
               />
             </SectionCard>

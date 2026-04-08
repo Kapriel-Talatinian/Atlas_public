@@ -1,13 +1,100 @@
 # Atlas — Institutional Crypto Options Desk
 
+[![CI](https://github.com/Kapriel-Talatinian/Atlas_public/actions/workflows/ci.yml/badge.svg)](https://github.com/Kapriel-Talatinian/Atlas_public/actions/workflows/ci.yml)
+![Tests](https://img.shields.io/badge/tests-29%20passing-11a36a)
+![UI Screens](https://img.shields.io/badge/screenshots-4%20captured-0ea5e9)
+![License](https://img.shields.io/badge/license-Proprietary-111827)
+
 Atlas est une plateforme **API + UI** pour un desk options crypto orienté execution/risk:
 - analytics options (surface IV, Greeks, calibration, regime, macro/live bias),
 - paper trading institutionnel (pré-trade risk, marge, slippage, QoE, idempotence, retries),
 - market data résiliente multi-source (Bybit + Deribit + fallback WTI synthétique),
+- OMS complet (cancel/replace/reconcile fills, algo TWAP/VWAP/POV, smart routing),
+- persistance transactionnelle SQLite (ordre/position/risque/audit trail immuable),
 - monitoring ops (health, metrics, alerts),
+- monitoring SLO (availability + p95 latency) et playbooks de recovery,
 - bot expérimental 24/7 en paper avec apprentissage online et audit continu.
 
 > Statut produit: **simulation/paper trading uniquement** (pas d'envoi d'ordres réel exchange).
+
+## Live Demo Status
+
+- Web public Atlas: **à brancher sur un déploiement dédié**
+- API publique Atlas: **à brancher sur un déploiement dédié**
+- Note: les placeholders Railway génériques souvent utilisés (`atlas-web.up.railway.app`, `atlas-api.up.railway.app`) ne servent pas actuellement cette application, donc ils ne sont pas mis en avant ici pour éviter tout lien trompeur.
+
+## Visual Walkthrough
+
+Captures générées depuis l’application React locale avec les données live/synthétiques du repo.
+
+Deep links utiles pour partager une vue précise:
+
+- `/?tab=market&asset=BTC`
+- `/?tab=strategy&asset=BTC&preset=first`
+- `/?tab=alpha&asset=ETH`
+- `/?tab=experimental&asset=SOL`
+
+| Market Overview | Strategy Lab |
+|---|---|
+| [![Market Overview](docs/screenshots/market-overview.png)](docs/screenshots/market-overview.png) | [![Strategy Lab](docs/screenshots/strategy-lab.png)](docs/screenshots/strategy-lab.png) |
+
+| Alpha Lab | Experimental Bot |
+|---|---|
+| [![Alpha Lab](docs/screenshots/alpha-lab.png)](docs/screenshots/alpha-lab.png) | [![Experimental Bot](docs/screenshots/experimental-bot.png)](docs/screenshots/experimental-bot.png) |
+
+## Test Surface
+
+Atlas expose aujourd’hui **29 tests backend xUnit** sur les briques qui comptent le plus pour la crédibilité quant/risk du projet:
+
+- pricing et Greeks: Black-Scholes, IV solver, convergence Monte Carlo / binomial, stabilité numérique
+- non-régression modèle: snapshots `BS / Heston / SABR`
+- toxic flow: clustering et signaux de contrepartie
+- observabilité: calcul SLO disponibilité / p95
+- persistance: snapshots positions vers SQLite et relecture des événements
+
+Fichiers de référence:
+
+- [Tests.cs](tests/Atlas.Tests/Tests.cs)
+- [ApiReliabilityTests.cs](tests/Atlas.Tests/ApiReliabilityTests.cs)
+
+Commande rapide:
+
+```bash
+dotnet test Atlas.sln
+```
+
+## Design Rationale
+
+Le projet mélange volontairement plusieurs niveaux de modèles au lieu de “choisir le plus sophistiqué partout”. **Heston** est conservé comme modèle structurel pour donner une lecture plus réaliste de la skew/convexité qu’un simple Black-Scholes, mais **Bates** n’a pas été retenu à ce stade car la calibration avec sauts apporte vite de l’instabilité et du sur-ajustement pour une desk app paper/live-demo. **SABR** reste utile à côté pour l’interpolation de smile et la lecture desk-friendly des ailes, donc Atlas expose les deux approches plutôt que d’en imposer une seule.
+
+Sur l’OMS, l’idempotence est attachée au **`clientOrderId`** avant tout, pas à un hash brut du payload. La raison est simple: en vrai desk usage, un retry humain ou algo doit pouvoir représenter “le même ordre logique” même si certains champs secondaires changent entre deux tentatives. Le hash payload seul est trop fragile pour ce cas, alors que `clientOrderId` permet une sémantique d’ordre plus propre.
+
+Enfin, la market data est construite sur **Bybit + Deribit + fallback synthétique**. Un seul provider aurait simplifié le code, mais aurait rendu impossible la comparaison inter-source, la détection de stale feed crédible et la continuité de service quand une API publique commence à répondre `403`, `404` ou vide. Le coût d’intégration multi-source est plus élevé, mais c’est précisément ce qui fait passer Atlas de “démo UI” à “desk simulator” cohérent.
+
+## Quant Notes & Demo
+
+Pour un lecteur quant, les deux points d’entrée les plus utiles sont maintenant:
+
+- [QUANT_NOTES.md](QUANT_NOTES.md): choix de modèles, calibration, edge cases, limites connues, références papiers.
+- [examples/pricing_demo.py](examples/pricing_demo.py): script de démonstration qui prend une option du chain Atlas, compare marché vs `BS / Heston / SABR`, affiche la calibration et une coupe de smile.
+
+Commandes rapides:
+
+```bash
+dotnet run --project src/Atlas.Api
+python3 examples/pricing_demo.py --asset BTC --right call
+```
+
+## GitHub Metadata
+
+Le code du repo peut être renforcé directement depuis GitHub pour mieux performer en partage/portfolio:
+
+- nom recommandé: `Atlas`
+- description recommandée: `Institutional crypto options desk: paper trading, risk engine, multi-source market data, quant analytics`
+- website recommandé: ton futur déploiement public Atlas, pas un placeholder Railway générique
+- social preview recommandé: une bannière dérivée de `docs/screenshots/market-overview.png`
+
+Le texte exact prêt à copier est documenté dans [docs/github-metadata.md](docs/github-metadata.md).
 
 ## 1) Vue d'ensemble
 
@@ -155,6 +242,9 @@ flowchart TD
 - Pré-trade simulation: prix exécutable, slippage, frais, QoE.
 - State machine robuste: retries, partial fills, state trace.
 - Idempotence via `clientOrderId` + anti-duplicate fingerprint.
+- OMS operations: cancel, replace, reconciliation des fills/orders.
+- Algo execution: `TWAP`, `VWAP`, `POV`, slicing dynamique + routing multi-venue.
+- Auto-hedging multi-legs avec exécution optionnelle.
 - Risk engine pré-trade: notional, taille, Greeks, concentration, open orders, daily loss.
 - Margin engine: initial/maintenance/equity/available margin/margin ratio.
 - Kill-switch manuel + activation auto en cas de liquidation.
@@ -168,9 +258,15 @@ flowchart TD
 ### 2.4 Monitoring / observabilité
 - Metrics, counters, gauges, active alerts.
 - Request observability middleware + latence/status HTTP.
+- SLO report live (`availability`, `p95`) sur fenêtres 5m/1h.
 - Endpoints ops dédiés (`/api/system/*`).
 
-### 2.5 Experimental Bot
+### 2.5 Persistance / audit trail
+- Base transactionnelle SQLite (`TRADING_DB_PATH` configurable).
+- Historique persistant des ordres, positions, snapshots de risque, et événements d’audit.
+- Écriture append-only pour replay/reconciliation post-incident.
+
+### 2.6 Experimental Bot
 - Snapshot live: signal, trades, décisions, poids modèle.
 - Persistance d'état sur disque (pas de reset au redémarrage).
 - Rolling audit (100 trades par défaut): win-rate, profit factor, drawdown.
@@ -258,6 +354,7 @@ npm run dev:full
 | `PORT` | Port runtime (injecté en cloud) | `5000` |
 | `CORS_ALLOWED_ORIGINS` | Origines autorisées (CSV) | `http://127.0.0.1:5173` |
 | `ASPNETCORE_ENVIRONMENT` | Environnement .NET | `Production` |
+| `TRADING_DB_PATH` | Chemin DB SQLite ordres/risque/audit | `/data/atlas/trading.db` |
 | `EXPERIMENTAL_BOT_STATE_DIR` | Répertoire persistance bot (optionnel) | `/data/atlas-bot` |
 
 ### 6.2 Frontend (`frontend/.env.example`)
@@ -303,9 +400,13 @@ npm run dev:full
 
 ### 7.4 Trading (`/api/trading`)
 - `GET /api/trading/limits`
+- `GET /api/trading/margin-rules`
 - `GET /api/trading/orders?limit=200`
 - `GET /api/trading/notifications?limit=120`
 - `POST /api/trading/orders/retry?maxOrders=25`
+- `POST /api/trading/orders/cancel`
+- `POST /api/trading/orders/replace`
+- `GET /api/trading/orders/reconcile?limit=400`
 - `GET /api/trading/killswitch`
 - `POST /api/trading/killswitch`
 - `GET /api/trading/positions`
@@ -314,10 +415,16 @@ npm run dev:full
 - `POST /api/trading/orders`
 - `POST /api/trading/preview`
 - `POST /api/trading/stress`
+- `POST /api/trading/algo/execute`
+- `POST /api/trading/hedge/suggest`
+- `POST /api/trading/hedge/auto`
+- `POST /api/trading/portfolio/optimize`
+- `GET /api/trading/history?orderLimit=250&positionLimit=250&riskLimit=250&auditLimit=250`
 - `POST /api/trading/reset`
 
 ### 7.5 Experimental Bot (`/api/experimental/bot`)
 - `GET /api/experimental/bot/snapshot?asset=BTC`
+- `GET /api/experimental/bot/explain?asset=BTC`
 - `POST /api/experimental/bot/configure?asset=BTC`
 - `POST /api/experimental/bot/run?asset=BTC&cycles=1`
 - `POST /api/experimental/bot/reset?asset=BTC`
@@ -326,8 +433,11 @@ npm run dev:full
 - `GET /api/system/health`
 - `GET /api/system/metrics`
 - `GET /api/system/alerts`
+- `GET /api/system/slo`
 - `GET /api/system/market-data`
 - `GET /api/system/ops`
+- `GET /api/system/recovery-playbook`
+- `POST /api/system/recovery/execute?dryRun=false`
 - `GET /health`
 
 ## 8) Exemples payloads
@@ -393,6 +503,14 @@ cd frontend
 npm run build
 ```
 
+Résumé visible pour un lecteur technique:
+
+- `29` tests passent actuellement en local et en CI
+- pricing: `Black-Scholes`, `ImpliedVolSolver`, `MonteCarlo`, `BinomialTree`
+- cohérence mathématique: Greeks analytiques vs finite-difference
+- non-régression: snapshots `BS/Heston/SABR`
+- fiabilité plateforme: `SLO monitoring`, persistance SQLite des positions
+
 ## 11) Déploiement Railway (sans VPS)
 
 Architecture recommandée: **2 services** (API + Frontend).
@@ -402,8 +520,8 @@ flowchart LR
     GH[GitHub Repo] --> RAPI[Railway Service API]
     GH --> RWEB[Railway Service Frontend]
 
-    RAPI --> APIURL[https://atlas-api.up.railway.app]
-    RWEB --> WEBURL[https://atlas-web.up.railway.app]
+    RAPI --> APIURL[https://<atlas-api>.up.railway.app]
+    RWEB --> WEBURL[https://<atlas-web>.up.railway.app]
 
     WEBURL -->|VITE_API_BASE_URL| APIURL
     APIURL -->|CORS_ALLOWED_ORIGINS| WEBURL
@@ -445,6 +563,11 @@ flowchart LR
 ### 12.4 Railway build error
 - API doit être construite depuis la racine repo (`/`) car `Atlas.Api` dépend de `Atlas.Core/Exchange/ToxicFlow`.
 
+### 12.5 Erreurs 403 Bybit/Deribit en cloud
+- Les endpoints utilisés sont publics: **aucune clé API n'est nécessaire** pour cette version.
+- Un 403 peut venir d'un blocage egress/rate-limit côté provider.
+- Atlas applique un fallback synthétique pour maintenir les endpoints fonctionnels (notamment SOL/WTI) au lieu de renvoyer un crash API.
+
 ## 13) Passage production réel (checklist)
 
 - AuthN/AuthZ (JWT/OIDC, RBAC).
@@ -454,12 +577,20 @@ flowchart LR
 - Runbooks d'incident + on-call.
 - Connecteurs execution réelle exchange + reconciliations.
 
+Runbooks inclus:
+- `docs/runbooks/incident-recovery.md`
+- `docs/runbooks/slo-breach.md`
+- `docs/runbooks/deploy-zero-downtime.md`
+
 ## 14) Limites actuelles
 
 - Trading réel non activé (paper only).
 - Pas de multi-tenancy utilisateur complet.
 - Bot expérimental = recherche/itération, pas promesse de performance live.
+- Le périmètre actuel est infrastructurel et métier — l'objectif n'est pas de battre un pricer production mais de démontrer une capacité à construire une plateforme options cohérente. Les modèles de pricing sont implémentés à un niveau académique (références : Gatheral, Hagan et al.), pas optimisés pour la production.
 
 ## 15) Licence
 
-Proprietary. All rights reserved.
+Licence propriétaire avec fichier explicite à la racine:
+
+- [LICENSE](LICENSE)

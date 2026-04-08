@@ -128,6 +128,23 @@ public sealed record ExperimentalBotDecision(
     string Action,
     string Reason);
 
+public sealed record ExperimentalBotFeatureContribution(
+    string Feature,
+    double Weight,
+    double FeatureValue,
+    double Contribution);
+
+public sealed record ExperimentalBotModelExplainSnapshot(
+    string Asset,
+    string Bias,
+    double Score,
+    double Confidence,
+    IReadOnlyList<ExperimentalBotFeatureContribution> TopPositiveContributors,
+    IReadOnlyList<ExperimentalBotFeatureContribution> TopNegativeContributors,
+    IReadOnlyList<ExperimentalBotAuditEntry> LatestAuditSamples,
+    string Narrative,
+    DateTimeOffset Timestamp);
+
 public sealed record ExperimentalBotSnapshot(
     string Asset,
     bool Running,
