@@ -5,6 +5,7 @@ using System.Text.Json;
 using Atlas.Api.Models;
 using Atlas.Core.Common;
 using Atlas.Core.Models;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Atlas.Api.Services;
 
@@ -26,6 +27,8 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILogger<ResilientOptionsMarketDataService> _logger;
     private readonly ISystemMonitoringService _monitoring;
+    private readonly bool _includeSyntheticFallback;
+    private readonly Func<string, DateTimeOffset, IReadOnlyList<LiveOptionQuote>> _syntheticChainFactory;
     private readonly ConcurrentDictionary<string, CacheEntry> _cache = new(StringComparer.OrdinalIgnoreCase);
     private readonly ConcurrentDictionary<string, SourceHealth> _sourceHealth = new(StringComparer.OrdinalIgnoreCase);
 
@@ -64,14 +67,32 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
         int DroppedOutlier,
         int Deduplicated);
 
+    [ActivatorUtilitiesConstructor]
     public ResilientOptionsMarketDataService(
         IHttpClientFactory httpClientFactory,
         ILogger<ResilientOptionsMarketDataService> logger,
         ISystemMonitoringService monitoring)
+        : this(
+            httpClientFactory,
+            logger,
+            monitoring,
+            includeSyntheticFallback: true,
+            syntheticChainFactory: null)
+    {
+    }
+
+    public ResilientOptionsMarketDataService(
+        IHttpClientFactory httpClientFactory,
+        ILogger<ResilientOptionsMarketDataService> logger,
+        ISystemMonitoringService monitoring,
+        bool includeSyntheticFallback,
+        Func<string, DateTimeOffset, IReadOnlyList<LiveOptionQuote>>? syntheticChainFactory)
     {
         _httpClientFactory = httpClientFactory;
         _logger = logger;
         _monitoring = monitoring;
+        _includeSyntheticFallback = includeSyntheticFallback;
+        _syntheticChainFactory = syntheticChainFactory ?? BuildSyntheticOptionChain;
     }
 
     public IReadOnlyList<string> SupportedAssets => Assets;
@@ -190,15 +211,21 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
     private async Task<IReadOnlyList<SourceFetchResult>> FetchFromSourcesAsync(string asset, CancellationToken ct)
     {
         if (asset == "WTI")
-            return [GenerateSyntheticAssetResult(asset)];
+            return _includeSyntheticFallback
+                ? [GenerateSyntheticAssetResult(asset)]
+                : [];
 
         var tasks = new List<Task<SourceFetchResult>>
         {
-            FetchBybitAsync(asset, ct),
+            FetchBybitAsync(asset, ct)
+        };
+
+        if (_includeSyntheticFallback)
+        {
             // Always keep a synthetic leg available as a final fallback in restricted
             // cloud egress / temporary exchange outages.
-            Task.FromResult(GenerateSyntheticAssetResult(asset))
-        };
+            tasks.Add(Task.FromResult(GenerateSyntheticAssetResult(asset)));
+        }
 
         // Deribit has liquid BTC/ETH books; synthetic remains available as emergency fallback.
         if (asset is "BTC" or "ETH")
@@ -213,7 +240,7 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
         try
         {
             var now = DateTimeOffset.UtcNow;
-            var quotes = BuildSyntheticOptionChain(asset, now);
+            var quotes = _syntheticChainFactory(asset, now);
             return FinalizeSourceResult("SYNTHETIC", asset, quotes, now, sw.ElapsedMilliseconds, null);
         }
         catch (Exception ex)
@@ -683,6 +710,13 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
             double turnover24h = SanitizeNonNegative(quote.Turnover24h);
             if (turnover24h <= 0 && volume24h > 0)
                 turnover24h = volume24h * mid;
+            GreeksResult normalizedGreeks = ComputeNormalizedGreeks(
+                quote.Right,
+                underlying,
+                quote.Strike,
+                markIv,
+                quote.Expiry,
+                now);
 
             sanitized.Add(quote with
             {
@@ -692,10 +726,12 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
                 Mark = mark,
                 Mid = mid,
                 MarkIv = markIv,
-                Delta = ClampFinite(quote.Delta, -1.20, 1.20),
-                Gamma = ClampFinite(quote.Gamma, -2.0, 2.0),
-                Vega = ClampFinite(quote.Vega, -12_000.0, 12_000.0),
-                Theta = ClampFinite(quote.Theta, -12_000.0, 12_000.0),
+                // Normalize venue Greeks through one consistent BS lens so
+                // downstream analytics are not stuck with missing exchange fields.
+                Delta = normalizedGreeks.Delta,
+                Gamma = normalizedGreeks.Gamma,
+                Vega = normalizedGreeks.Vega,
+                Theta = normalizedGreeks.Theta,
                 OpenInterest = openInterest,
                 Volume24h = volume24h,
                 Turnover24h = turnover24h,
@@ -807,6 +843,32 @@ public sealed class ResilientOptionsMarketDataService : IOptionsMarketDataServic
         double term = 0.22 + 0.05 * Math.Sqrt(dte / 30.0);
         double moneyness = Math.Abs(strike / spot - 1.0);
         return Math.Clamp(term + moneyness * 0.55, 0.08, 2.2);
+    }
+
+    private static GreeksResult ComputeNormalizedGreeks(
+        OptionRight right,
+        double spot,
+        double strike,
+        double markIv,
+        DateTimeOffset expiry,
+        DateTimeOffset now)
+    {
+        if (spot <= 0 || strike <= 0 || markIv <= 0)
+            return GreeksResult.Zero;
+
+        double t = Math.Max((expiry - now).TotalDays / 365.25, 1.0 / 24.0 / 365.25);
+        OptionType optionType = right == OptionRight.Call ? OptionType.Call : OptionType.Put;
+        var greeks = BlackScholes.AllGreeks(spot, strike, 0.03, markIv, t, optionType);
+
+        return new GreeksResult(
+            Delta: ClampFinite(greeks.Delta, -1.20, 1.20),
+            Gamma: ClampFinite(greeks.Gamma, -2.0, 2.0),
+            Vega: ClampFinite(greeks.Vega, -12_000.0, 12_000.0),
+            Theta: ClampFinite(greeks.Theta, -12_000.0, 12_000.0),
+            Vanna: 0,
+            Volga: 0,
+            Charm: 0,
+            Rho: 0);
     }
 
     private static double ComputeMedian(IEnumerable<double> values)

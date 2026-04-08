@@ -27,18 +27,41 @@ function getMetricValue(cell, metric) {
 
 function formatMetric(metric, value) {
   if (!Number.isFinite(value)) return "-";
+  const absValue = Math.abs(value);
   switch (metric) {
     case "gamma":
-      return formatSigned(value, 2);
+      if (absValue >= 100) return formatSigned(value, 1);
+      if (absValue >= 1) return formatSigned(value, 2);
+      if (absValue >= 0.01) return formatSigned(value, 4);
+      return formatSigned(value, 6);
     case "vega":
-      return formatSigned(value, 1);
+      if (absValue >= 1000) return formatSigned(value, 0);
+      if (absValue >= 10) return formatSigned(value, 1);
+      if (absValue >= 0.1) return formatSigned(value, 3);
+      return formatSigned(value, 5);
     case "theta":
-      return formatSigned(value, 1);
+      if (absValue >= 1000) return formatSigned(value, 0);
+      if (absValue >= 10) return formatSigned(value, 1);
+      if (absValue >= 0.1) return formatSigned(value, 3);
+      return formatSigned(value, 5);
     case "delta":
-      return formatSigned(value, 1);
+      if (absValue >= 1000) return formatSigned(value, 0);
+      if (absValue >= 10) return formatSigned(value, 1);
+      if (absValue >= 0.1) return formatSigned(value, 3);
+      return formatSigned(value, 5);
     default:
       return formatSigned(value, 2);
   }
+}
+
+function formatPinRisk(value) {
+  if (!Number.isFinite(value)) return "-";
+  const absValue = Math.abs(value);
+  if (absValue >= 1_000_000) return value.toLocaleString("en-US", { notation: "compact", maximumFractionDigits: 2 });
+  if (absValue >= 100) return value.toLocaleString("en-US", { maximumFractionDigits: 1 });
+  if (absValue >= 1) return value.toLocaleString("en-US", { maximumFractionDigits: 2 });
+  if (absValue >= 0.01) return value.toLocaleString("en-US", { maximumFractionDigits: 4 });
+  return value.toExponential(2);
 }
 
 function valueTone(metricValue, maxAbs) {
@@ -62,6 +85,11 @@ export default function GreeksExposureHeatmapPanel({
 }) {
   if (loading) return <div className="status-chip">Computing exposure grid...</div>;
   if (!grid?.cells?.length) return <div className="status-chip">No exposure grid available yet.</div>;
+
+  const hotspots = (grid.topHotspots || [])
+    .filter((spot) => Number.isFinite(spot?.pinRiskScore))
+    .sort((a, b) => (b.pinRiskScore || 0) - (a.pinRiskScore || 0))
+    .slice(0, 15);
 
   const expiries = [...new Set(grid.cells.map((cell) => String(cell.expiry).slice(0, 10)))].sort();
   const strikes = [...new Set(grid.cells.map((cell) => Number(cell.strike)))].sort((a, b) => a - b);
@@ -127,12 +155,12 @@ export default function GreeksExposureHeatmapPanel({
 
       <div className="section-subhead" style={{ marginTop: 2 }}>Pin Risk Hotspots</div>
       <div className="exposure-hotspots">
-        {(grid.topHotspots || []).map((spot) => (
+        {hotspots.map((spot) => (
           <div className="summary-card" key={`${spot.expiry}-${spot.strike}`}>
             <div className="summary-label">{String(spot.expiry).slice(0, 10)} | K {Number(spot.strike).toFixed(0)}</div>
-            <div className="summary-value">Pin: {Number(spot.pinRiskScore || 0).toFixed(1)}</div>
+            <div className="summary-value">Pin: {formatPinRisk(spot.pinRiskScore || 0)}</div>
             <div className="subtle">
-              OI {Number(spot.openInterest || 0).toFixed(0)} | Γ {formatSigned(spot.gammaExposure || 0, 2)} | ν {formatSigned(spot.vegaExposure || 0, 1)}
+              OI {Number(spot.openInterest || 0).toFixed(0)} | Γ {formatMetric("gamma", spot.gammaExposure || 0)} | ν {formatMetric("vega", spot.vegaExposure || 0)}
             </div>
             <button className="btn btn-secondary" style={{ marginTop: 6 }} onClick={() => onFocusCell?.(spot)}>
               Focus

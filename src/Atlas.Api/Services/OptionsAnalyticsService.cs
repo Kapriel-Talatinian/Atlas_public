@@ -1086,15 +1086,16 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
 
                 foreach (var quote in group)
                 {
+                    GreeksResult quoteGreeks = ResolveStrategyGreeks(quote);
                     double oi = Math.Max(0, quote.OpenInterest);
                     double vol = Math.Max(0, quote.Volume24h);
                     double weight = Math.Max(1, oi + vol * 0.35);
                     openInterest += oi;
                     volume24h += vol;
-                    deltaExposure += quote.Delta * weight;
-                    gammaExposure += quote.Gamma * weight * Math.Max(spot, 1);
-                    vegaExposure += quote.Vega * weight;
-                    thetaExposure += quote.Theta * weight;
+                    deltaExposure += quoteGreeks.Delta * weight;
+                    gammaExposure += quoteGreeks.Gamma * weight * Math.Max(spot, 1);
+                    vegaExposure += quoteGreeks.Vega * weight;
+                    thetaExposure += quoteGreeks.Theta * weight;
                 }
 
                 double distancePct = spot > 0 ? group.Key.Strike / spot - 1 : 0;
@@ -1121,7 +1122,11 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
             .ToList();
 
         var topHotspots = cells
-            .Where(c => c.OpenInterest > 0 || Math.Abs(c.GammaExposure) > 0)
+            .Where(c =>
+                c.OpenInterest > 0 ||
+                Math.Abs(c.GammaExposure) > 1e-12 ||
+                Math.Abs(c.VegaExposure) > 1e-12 ||
+                Math.Abs(c.DeltaExposure) > 1e-12)
             .OrderByDescending(c => c.PinRiskScore)
             .ThenBy(c => Math.Abs(c.DistanceToSpotPct))
             .Take(15)
@@ -1454,11 +1459,12 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
             int cashSign = leg.Direction == TradeDirection.Buy ? -1 : 1;
             netPremium += cashSign * entryPrice * quantity;
 
+            GreeksResult quoteGreeks = ResolveStrategyGreeks(quote);
             var legGreeks = new GreeksResult(
-                Delta: directionSign * quantity * quote.Delta,
-                Gamma: directionSign * quantity * quote.Gamma,
-                Vega: directionSign * quantity * quote.Vega,
-                Theta: directionSign * quantity * quote.Theta,
+                Delta: directionSign * quantity * quoteGreeks.Delta,
+                Gamma: directionSign * quantity * quoteGreeks.Gamma,
+                Vega: directionSign * quantity * quoteGreeks.Vega,
+                Theta: directionSign * quantity * quoteGreeks.Theta,
                 Vanna: 0,
                 Volga: 0,
                 Charm: 0,
@@ -1534,6 +1540,46 @@ public sealed class OptionsAnalyticsService : IOptionsAnalyticsService
             ProbabilityOfProfitApprox: popApprox,
             ExpectedValue: expectedValue,
             PremiumAtRisk: premiumAtRisk);
+    }
+
+    private static GreeksResult ResolveStrategyGreeks(LiveOptionQuote quote)
+    {
+        bool hasMeaningfulFeedGreeks =
+            Math.Abs(quote.Delta) > 1e-8 ||
+            Math.Abs(quote.Gamma) > 1e-10 ||
+            Math.Abs(quote.Vega) > 1e-8 ||
+            Math.Abs(quote.Theta) > 1e-8;
+
+        if (hasMeaningfulFeedGreeks)
+        {
+            return new GreeksResult(
+                Delta: quote.Delta,
+                Gamma: quote.Gamma,
+                Vega: quote.Vega,
+                Theta: quote.Theta,
+                Vanna: 0,
+                Volga: 0,
+                Charm: 0,
+                Rho: 0);
+        }
+
+        double spot = quote.UnderlyingPrice;
+        double sigma = MathUtils.Clamp(quote.MarkIv, 0.01, 5.0);
+        if (spot <= 0 || quote.Strike <= 0)
+            return GreeksResult.Zero;
+
+        double t = Math.Max((quote.Expiry - DateTimeOffset.UtcNow).TotalDays / 365.25, 1.0 / 24.0 / 365.25);
+        OptionType optionType = quote.Right == OptionRight.Call ? OptionType.Call : OptionType.Put;
+        var greeks = BlackScholes.AllGreeks(spot, quote.Strike, DefaultRiskFreeRate, sigma, t, optionType);
+        return new GreeksResult(
+            Delta: greeks.Delta,
+            Gamma: greeks.Gamma,
+            Vega: greeks.Vega,
+            Theta: greeks.Theta,
+            Vanna: 0,
+            Volga: 0,
+            Charm: 0,
+            Rho: 0);
     }
 
     private static void TryAddPreset(
