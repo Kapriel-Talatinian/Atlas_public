@@ -65,9 +65,9 @@ public sealed class PostgresBotLeaderElectionService : IBotLeaderElectionService
                 seed.Transaction = transaction;
                 seed.CommandText = @"
 INSERT INTO atlas_bot_leader_lock(bot_key, fencing_token, updated_at)
-VALUES ($bot_key, 0, now())
+VALUES (@bot_key, 0, now())
 ON CONFLICT (bot_key) DO NOTHING;";
-                seed.Parameters.AddWithValue("$bot_key", botKey);
+                seed.Parameters.AddWithValue("@bot_key", botKey);
                 seed.ExecuteNonQuery();
             }
 
@@ -78,31 +78,31 @@ ON CONFLICT (bot_key) DO NOTHING;";
 WITH current_lock AS (
     SELECT bot_key, owner_instance_id, owner_hostname, fencing_token, lease_until
     FROM atlas_bot_leader_lock
-    WHERE bot_key = $bot_key
+    WHERE bot_key = @bot_key
     FOR UPDATE
 )
 UPDATE atlas_bot_leader_lock AS l
-SET owner_instance_id = $instance_id,
-    owner_hostname = $host_name,
+SET owner_instance_id = @instance_id,
+    owner_hostname = @host_name,
     fencing_token = CASE
-        WHEN current_lock.owner_instance_id = $instance_id THEN current_lock.fencing_token
+        WHEN current_lock.owner_instance_id = @instance_id THEN current_lock.fencing_token
         ELSE current_lock.fencing_token + 1
     END,
-    lease_until = $lease_until,
-    last_heartbeat_at = $now,
-    updated_at = $now
+    lease_until = @lease_until,
+    last_heartbeat_at = @now,
+    updated_at = @now
 FROM current_lock
 WHERE l.bot_key = current_lock.bot_key
   AND (
-      current_lock.owner_instance_id = $instance_id
+      current_lock.owner_instance_id = @instance_id
       OR current_lock.lease_until IS NULL
-      OR current_lock.lease_until <= $now)
+      OR current_lock.lease_until <= @now)
 RETURNING l.owner_instance_id, l.owner_hostname, l.fencing_token, l.lease_until;";
-                cmd.Parameters.AddWithValue("$bot_key", botKey);
-                cmd.Parameters.AddWithValue("$instance_id", runtime.InstanceId);
-                cmd.Parameters.AddWithValue("$host_name", runtime.HostName);
-                cmd.Parameters.AddWithValue("$lease_until", leaseUntil);
-                cmd.Parameters.AddWithValue("$now", now);
+                cmd.Parameters.AddWithValue("@bot_key", botKey);
+                cmd.Parameters.AddWithValue("@instance_id", runtime.InstanceId);
+                cmd.Parameters.AddWithValue("@host_name", runtime.HostName);
+                cmd.Parameters.AddWithValue("@lease_until", leaseUntil);
+                cmd.Parameters.AddWithValue("@now", now);
 
                 using var reader = cmd.ExecuteReader();
                 if (reader.Read())
@@ -126,8 +126,8 @@ RETURNING l.owner_instance_id, l.owner_hostname, l.fencing_token, l.lease_until;
                 fallback.CommandText = @"
 SELECT owner_instance_id, owner_hostname, fencing_token, lease_until
 FROM atlas_bot_leader_lock
-WHERE bot_key = $bot_key;";
-                fallback.Parameters.AddWithValue("$bot_key", botKey);
+WHERE bot_key = @bot_key;";
+                fallback.Parameters.AddWithValue("@bot_key", botKey);
                 using var reader = fallback.ExecuteReader();
                 if (reader.Read())
                 {
@@ -164,8 +164,8 @@ WHERE bot_key = $bot_key;";
             cmd.CommandText = @"
 SELECT owner_instance_id, owner_hostname, fencing_token, lease_until
 FROM atlas_bot_leader_lock
-WHERE bot_key = $bot_key;";
-            cmd.Parameters.AddWithValue("$bot_key", botKey);
+WHERE bot_key = @bot_key;";
+            cmd.Parameters.AddWithValue("@bot_key", botKey);
 
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())
@@ -199,14 +199,14 @@ WHERE bot_key = $bot_key;";
             using var cmd = connection.CreateCommand();
             cmd.CommandText = @"
 UPDATE atlas_bot_leader_lock
-SET lease_until = $now,
-    updated_at = $now,
-    last_heartbeat_at = $now
-WHERE bot_key = $bot_key
-  AND owner_instance_id = $instance_id;";
-            cmd.Parameters.AddWithValue("$now", DateTimeOffset.UtcNow);
-            cmd.Parameters.AddWithValue("$bot_key", botKey);
-            cmd.Parameters.AddWithValue("$instance_id", runtime.InstanceId);
+SET lease_until = @now,
+    updated_at = @now,
+    last_heartbeat_at = @now
+WHERE bot_key = @bot_key
+  AND owner_instance_id = @instance_id;";
+            cmd.Parameters.AddWithValue("@now", DateTimeOffset.UtcNow);
+            cmd.Parameters.AddWithValue("@bot_key", botKey);
+            cmd.Parameters.AddWithValue("@instance_id", runtime.InstanceId);
             cmd.ExecuteNonQuery();
         }
         catch (Exception ex)

@@ -169,8 +169,8 @@ SELECT bot_key,
        last_cycle_status,
        last_cycle_duration_ms
 FROM atlas_bot_runtime_state
-WHERE bot_key = $bot_key;";
-            cmd.Parameters.AddWithValue("$bot_key", botKey);
+WHERE bot_key = @bot_key;";
+            cmd.Parameters.AddWithValue("@bot_key", botKey);
 
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())
@@ -209,14 +209,14 @@ INSERT INTO atlas_bot_runtime_state(
     last_cycle_duration_ms,
     updated_at)
 VALUES (
-    $bot_key,
-    CAST($state_json AS jsonb),
-    $insert_version,
-    $last_persisted_at,
-    $last_evaluation_at,
-    $last_cycle_status,
-    $last_cycle_duration_ms,
-    $last_persisted_at)
+    @bot_key,
+    CAST(@state_json AS jsonb),
+    @insert_version,
+    @last_persisted_at,
+    @last_evaluation_at,
+    @last_cycle_status,
+    @last_cycle_duration_ms,
+    @last_persisted_at)
 ON CONFLICT (bot_key) DO UPDATE
 SET state_json = EXCLUDED.state_json,
     state_version = atlas_bot_runtime_state.state_version + 1,
@@ -225,7 +225,7 @@ SET state_json = EXCLUDED.state_json,
     last_cycle_status = EXCLUDED.last_cycle_status,
     last_cycle_duration_ms = EXCLUDED.last_cycle_duration_ms,
     updated_at = EXCLUDED.updated_at
-WHERE atlas_bot_runtime_state.state_version = $expected_version
+WHERE atlas_bot_runtime_state.state_version = @expected_version
 RETURNING bot_key,
           state_json::text,
           state_version,
@@ -233,14 +233,14 @@ RETURNING bot_key,
           last_evaluation_at,
           last_cycle_status,
           last_cycle_duration_ms;";
-            cmd.Parameters.AddWithValue("$bot_key", request.BotKey);
-            cmd.Parameters.AddWithValue("$state_json", request.StateJson);
-            cmd.Parameters.AddWithValue("$insert_version", request.ExpectedStateVersion + 1);
-            cmd.Parameters.AddWithValue("$expected_version", request.ExpectedStateVersion);
-            cmd.Parameters.AddWithValue("$last_persisted_at", DateTimeOffset.UtcNow);
-            cmd.Parameters.AddWithValue("$last_evaluation_at", request.LastEvaluationAt ?? (object)DBNull.Value);
-            cmd.Parameters.AddWithValue("$last_cycle_status", string.IsNullOrWhiteSpace(request.LastCycleStatus) ? "cold" : request.LastCycleStatus.Trim());
-            cmd.Parameters.AddWithValue("$last_cycle_duration_ms", Math.Max(0, request.LastCycleDurationMs));
+            cmd.Parameters.AddWithValue("@bot_key", request.BotKey);
+            cmd.Parameters.AddWithValue("@state_json", request.StateJson);
+            cmd.Parameters.AddWithValue("@insert_version", request.ExpectedStateVersion + 1);
+            cmd.Parameters.AddWithValue("@expected_version", request.ExpectedStateVersion);
+            cmd.Parameters.AddWithValue("@last_persisted_at", DateTimeOffset.UtcNow);
+            cmd.Parameters.AddWithValue("@last_evaluation_at", request.LastEvaluationAt ?? (object)DBNull.Value);
+            cmd.Parameters.AddWithValue("@last_cycle_status", string.IsNullOrWhiteSpace(request.LastCycleStatus) ? "cold" : request.LastCycleStatus.Trim());
+            cmd.Parameters.AddWithValue("@last_cycle_duration_ms", Math.Max(0, request.LastCycleDurationMs));
 
             using var reader = cmd.ExecuteReader();
             if (!reader.Read())
