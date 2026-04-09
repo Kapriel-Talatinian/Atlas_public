@@ -44,8 +44,7 @@ public sealed class PostgresBotLeaderElectionService : IBotLeaderElectionService
     public PostgresBotLeaderElectionService(ILogger<PostgresBotLeaderElectionService> logger)
     {
         _logger = logger;
-        _connectionString = Environment.GetEnvironmentVariable("BOT_RUNTIME_DB_CONNECTION_STRING")?.Trim() ??
-            throw new InvalidOperationException("BOT_RUNTIME_DB_CONNECTION_STRING is required for Postgres leader election.");
+        _connectionString = PostgresConnectionResolver.ResolveConnectionString();
         Initialize();
     }
 
