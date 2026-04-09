@@ -73,15 +73,15 @@ builder.Services.AddHttpClient("telegram-bot", client =>
 });
 builder.Services.AddSingleton<ISystemMonitoringService, SystemMonitoringService>();
 builder.Services.AddSingleton<ITradingPersistenceService, SqliteTradingPersistenceService>();
-if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable("BOT_RUNTIME_DB_CONNECTION_STRING")))
-{
-    builder.Services.AddSingleton<IBotStateRepository, FileBotStateRepository>();
-    builder.Services.AddSingleton<IBotLeaderElectionService, SingleNodeBotLeaderElectionService>();
-}
-else
+if (PostgresConnectionResolver.HasPostgresConfiguration())
 {
     builder.Services.AddSingleton<IBotStateRepository, PostgresBotStateRepository>();
     builder.Services.AddSingleton<IBotLeaderElectionService, PostgresBotLeaderElectionService>();
+}
+else
+{
+    builder.Services.AddSingleton<IBotStateRepository, FileBotStateRepository>();
+    builder.Services.AddSingleton<IBotLeaderElectionService, SingleNodeBotLeaderElectionService>();
 }
 builder.Services.AddSingleton<IOptionsMarketDataService, ResilientOptionsMarketDataService>();
 builder.Services.AddSingleton<IOptionsAnalyticsService, OptionsAnalyticsService>();

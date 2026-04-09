@@ -148,48 +148,8 @@ public sealed class PostgresBotStateRepository : IBotStateRepository
     public PostgresBotStateRepository(ILogger<PostgresBotStateRepository> logger)
     {
         _logger = logger;
-        _connectionString = ResolveConnectionString();
+        _connectionString = PostgresConnectionResolver.ResolveConnectionString();
         Initialize();
-    }
-
-    private static string ResolveConnectionString()
-    {
-        string? configured = Environment.GetEnvironmentVariable("BOT_RUNTIME_DB_CONNECTION_STRING")?.Trim();
-
-        // Accept the configured value only if it looks like a real connection string,
-        // not an unresolved Railway variable reference such as "${{Postgres.DATABASE_URL}}".
-        if (!string.IsNullOrWhiteSpace(configured) &&
-            (configured.Contains("Host=", StringComparison.OrdinalIgnoreCase) ||
-             configured.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
-             configured.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) ||
-             configured.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase)))
-        {
-            return configured;
-        }
-
-        // Fall back to Railway's individual Postgres environment variables.
-        // RAILWAY_PRIVATE_DOMAIN is preferred for internal (private-network) connections;
-        // PGHOST is the standard fallback.
-        string? host = Environment.GetEnvironmentVariable("RAILWAY_PRIVATE_DOMAIN")?.Trim()
-            ?? Environment.GetEnvironmentVariable("PGHOST")?.Trim();
-        string? port = Environment.GetEnvironmentVariable("PGPORT")?.Trim();
-        string? user = Environment.GetEnvironmentVariable("PGUSER")?.Trim();
-        string? password = Environment.GetEnvironmentVariable("PGPASSWORD")?.Trim();
-        string? database = Environment.GetEnvironmentVariable("PGDATABASE")?.Trim();
-
-        if (string.IsNullOrWhiteSpace(host) ||
-            string.IsNullOrWhiteSpace(user) ||
-            string.IsNullOrWhiteSpace(password) ||
-            string.IsNullOrWhiteSpace(database))
-        {
-            throw new InvalidOperationException(
-                "Postgres connection could not be resolved. " +
-                "Set BOT_RUNTIME_DB_CONNECTION_STRING to a valid connection string, " +
-                "or provide PGHOST (or RAILWAY_PRIVATE_DOMAIN), PGPORT, PGUSER, PGPASSWORD, and PGDATABASE.");
-        }
-
-        string portPart = string.IsNullOrWhiteSpace(port) ? "5432" : port;
-        return $"Host={host};Port={portPart};Username={user};Password={password};Database={database};";
     }
 
     public string BackendName => "postgres";
