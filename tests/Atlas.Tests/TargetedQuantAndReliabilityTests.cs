@@ -806,6 +806,107 @@ public class BotRuntimeInfrastructureTests
     }
 }
 
+public class PostgresConnectionResolverTests
+{
+    [Fact]
+    public void HasPostgresConfiguration_IgnoresMalformedExplicitUri_AndUsesPgFallback()
+    {
+        var previous = CaptureEnvironment(
+            "BOT_RUNTIME_DB_CONNECTION_STRING",
+            "PGHOST",
+            "PGPORT",
+            "PGUSER",
+            "PGPASSWORD",
+            "PGDATABASE",
+            "RAILWAY_PRIVATE_DOMAIN",
+            "DB_PORT",
+            "DB_USER",
+            "DB_PASSWORD",
+            "DB_NAME");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("BOT_RUNTIME_DB_CONNECTION_STRING", "postgres://:@");
+            Environment.SetEnvironmentVariable("PGHOST", "postgres.internal");
+            Environment.SetEnvironmentVariable("PGPORT", "5432");
+            Environment.SetEnvironmentVariable("PGUSER", "atlas");
+            Environment.SetEnvironmentVariable("PGPASSWORD", "secret");
+            Environment.SetEnvironmentVariable("PGDATABASE", "atlasdb");
+
+            Assert.True(InvokeResolverHasPostgresConfiguration());
+
+            string connectionString = InvokeResolverConnectionString();
+            Assert.Contains("Host=postgres.internal", connectionString, StringComparison.Ordinal);
+            Assert.Contains("Username=atlas", connectionString, StringComparison.Ordinal);
+            Assert.Contains("Database=atlasdb", connectionString, StringComparison.Ordinal);
+        }
+        finally
+        {
+            RestoreEnvironment(previous);
+        }
+    }
+
+    [Fact]
+    public void ResolveConnectionString_NormalizesValidExplicitConnectionString()
+    {
+        var previous = CaptureEnvironment(
+            "BOT_RUNTIME_DB_CONNECTION_STRING",
+            "PGHOST",
+            "PGPORT",
+            "PGUSER",
+            "PGPASSWORD",
+            "PGDATABASE",
+            "RAILWAY_PRIVATE_DOMAIN",
+            "DB_PORT",
+            "DB_USER",
+            "DB_PASSWORD",
+            "DB_NAME");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("BOT_RUNTIME_DB_CONNECTION_STRING", "\"Host=db.internal;Port=5432;Username=atlas;Password=secret;Database=atlasdb\"");
+            Environment.SetEnvironmentVariable("PGHOST", null);
+            Environment.SetEnvironmentVariable("PGPORT", null);
+            Environment.SetEnvironmentVariable("PGUSER", null);
+            Environment.SetEnvironmentVariable("PGPASSWORD", null);
+            Environment.SetEnvironmentVariable("PGDATABASE", null);
+
+            string connectionString = InvokeResolverConnectionString();
+
+            Assert.Contains("Host=db.internal", connectionString, StringComparison.Ordinal);
+            Assert.Contains("Username=atlas", connectionString, StringComparison.Ordinal);
+            Assert.Contains("Database=atlasdb", connectionString, StringComparison.Ordinal);
+        }
+        finally
+        {
+            RestoreEnvironment(previous);
+        }
+    }
+
+    private static bool InvokeResolverHasPostgresConfiguration()
+    {
+        Type resolverType = typeof(PostgresBotStateRepository).Assembly.GetType("Atlas.Api.Services.PostgresConnectionResolver")!;
+        MethodInfo method = resolverType.GetMethod("HasPostgresConfiguration", BindingFlags.Static | BindingFlags.NonPublic)!;
+        return (bool)method.Invoke(null, null)!;
+    }
+
+    private static string InvokeResolverConnectionString()
+    {
+        Type resolverType = typeof(PostgresBotStateRepository).Assembly.GetType("Atlas.Api.Services.PostgresConnectionResolver")!;
+        MethodInfo method = resolverType.GetMethod("ResolveConnectionString", BindingFlags.Static | BindingFlags.NonPublic)!;
+        return (string)method.Invoke(null, null)!;
+    }
+
+    private static Dictionary<string, string?> CaptureEnvironment(params string[] keys) =>
+        keys.ToDictionary(key => key, Environment.GetEnvironmentVariable);
+
+    private static void RestoreEnvironment(Dictionary<string, string?> values)
+    {
+        foreach ((string key, string? value) in values)
+            Environment.SetEnvironmentVariable(key, value);
+    }
+}
+
 public class PolymarketBotServiceTests
 {
     [Fact]

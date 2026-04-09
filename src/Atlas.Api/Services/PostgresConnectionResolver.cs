@@ -1,3 +1,5 @@
+using Npgsql;
+
 namespace Atlas.Api.Services;
 
 /// <summary>
@@ -32,7 +34,7 @@ internal static class PostgresConnectionResolver
     {
         // Valid explicit connection string
         string? explicit_ = Environment.GetEnvironmentVariable("BOT_RUNTIME_DB_CONNECTION_STRING")?.Trim();
-        if (!string.IsNullOrWhiteSpace(explicit_) && IsValidConnectionString(explicit_))
+        if (TryNormalizeExplicitConnectionString(explicit_, out _))
             return true;
 
         // Sufficient PG* variables
@@ -62,8 +64,8 @@ internal static class PostgresConnectionResolver
         // Accept the value only when it is a real connection string, not an
         // unresolved Railway variable reference like "${{Postgres.DATABASE_URL}}".
         string? explicit_ = Environment.GetEnvironmentVariable("BOT_RUNTIME_DB_CONNECTION_STRING")?.Trim();
-        if (!string.IsNullOrWhiteSpace(explicit_) && IsValidConnectionString(explicit_))
-            return explicit_;
+        if (TryNormalizeExplicitConnectionString(explicit_, out string? normalizedExplicit))
+            return normalizedExplicit!;
 
         // ── Step 2: standard libpq PG* variables ─────────────────────────────
         string? pgHost = Environment.GetEnvironmentVariable("PGHOST")?.Trim();
@@ -112,18 +114,42 @@ internal static class PostgresConnectionResolver
     /// Returns <c>true</c> when <paramref name="value"/> looks like a real
     /// connection string rather than an unresolved Railway variable reference.
     /// </summary>
-    private static bool IsValidConnectionString(string value)
+    private static bool TryNormalizeExplicitConnectionString(string? rawValue, out string? normalized)
     {
-        // Npgsql keyword=value format
-        if (value.Contains("Host=", StringComparison.OrdinalIgnoreCase))
-            return true;
+        normalized = null;
+        if (string.IsNullOrWhiteSpace(rawValue))
+            return false;
 
-        // URI formats accepted by Npgsql
-        if (value.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
-            value.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
-            return true;
+        string candidate = rawValue.Trim().Trim('"', '\'');
+        if (string.IsNullOrWhiteSpace(candidate))
+            return false;
 
-        return false;
+        bool looksLikeConnectionString =
+            candidate.Contains("Host=", StringComparison.OrdinalIgnoreCase) ||
+            candidate.Contains("Server=", StringComparison.OrdinalIgnoreCase) ||
+            candidate.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+            candidate.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase);
+
+        if (!looksLikeConnectionString)
+            return false;
+
+        try
+        {
+            var builder = new NpgsqlConnectionStringBuilder(candidate);
+            if (string.IsNullOrWhiteSpace(builder.Host) ||
+                string.IsNullOrWhiteSpace(builder.Username) ||
+                string.IsNullOrWhiteSpace(builder.Database))
+            {
+                return false;
+            }
+
+            normalized = builder.ConnectionString;
+            return true;
+        }
+        catch (ArgumentException)
+        {
+            return false;
+        }
     }
 
     private static string BuildNpgsqlConnectionString(
