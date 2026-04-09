@@ -947,6 +947,73 @@ public class PolymarketBotServiceTests
     }
 
     [Fact]
+    public async Task PolymarketBot_NoTrade_JournalsDominantGateReason_WhenScannerHasOnlyBorderlineSignals()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-poly-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        var previous = CaptureEnvironment(
+            "POLYMARKET_BOT_ENABLED",
+            "POLYMARKET_EXECUTION_MODE",
+            "POLYMARKET_MAX_TRADE_USD",
+            "POLYMARKET_STARTING_BALANCE_USD",
+            "POLYMARKET_DAILY_LOSS_LIMIT_USD",
+            "POLYMARKET_BOT_EVALUATION_SECONDS",
+            "POLYMARKET_REPORT_TIMEZONE");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_ENABLED", "true");
+            Environment.SetEnvironmentVariable("POLYMARKET_EXECUTION_MODE", "paper");
+            Environment.SetEnvironmentVariable("POLYMARKET_MAX_TRADE_USD", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_STARTING_BALANCE_USD", "10");
+            Environment.SetEnvironmentVariable("POLYMARKET_DAILY_LOSS_LIMIT_USD", "5");
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_EVALUATION_SECONDS", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_REPORT_TIMEZONE", "UTC");
+
+            var live = new StaticPolymarketBotLiveService(BuildLiveSnapshot(
+                BuildSignal("MKT-LOW-Q", "BTC", "Will Bitcoin be above $80,000 in 20 minutes?", "Buy Yes", 0.42, 0.58, 0.57, 0.43, 20, 44, 80)));
+            var telegram = new CaptureTelegramService();
+            var service = BuildPolymarketBotService(tempRoot, live, telegram, AtlasRuntimeRole.All);
+
+            PolymarketLiveSnapshot snapshot = await service.RunAutopilotAsync();
+
+            Assert.Empty(snapshot.OpenPositions);
+            Assert.Equal(1, snapshot.Stats.ScannerSignals);
+            Assert.Equal(0, snapshot.Stats.ActionableSignals);
+            Assert.Contains(snapshot.Journal, entry => entry.Type == "watch" && entry.Detail.Contains("Dominant reason:", StringComparison.Ordinal));
+            Assert.Empty(telegram.Messages);
+        }
+        finally
+        {
+            RestoreEnvironment(previous);
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public void PolymarketBotRuleEngine_FlagsBorderlineScannerSignal_AsNotBotReady()
+    {
+        PolymarketMarketSignal signal = BuildSignal(
+            "MKT-BORDER",
+            "ETH",
+            "Will Ethereum be above $3,500 in 18 minutes?",
+            "Buy Yes",
+            0.44,
+            0.56,
+            0.57,
+            0.43,
+            18,
+            45,
+            78);
+
+        PolymarketBotSignalAssessment assessment = PolymarketBotRuleEngine.AssessSignal(signal, 24 * 60);
+
+        Assert.False(assessment.BotEligible);
+        Assert.Contains("quality", assessment.BlockReason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task PolymarketBot_ApiRole_ReadsPersistedPortfolioState()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-poly-tests-{Guid.NewGuid():N}");
@@ -1035,7 +1102,14 @@ public class PolymarketBotServiceTests
             },
             BotTiers: [],
             Opportunities: opportunities,
-            Stats: new PolymarketScanStats(1, 1, opportunities.Length, opportunities.Length, opportunities.Count(x => x.MinutesToExpiry <= 30), opportunities.Length),
+            Stats: new PolymarketScanStats(
+                1,
+                1,
+                opportunities.Length,
+                opportunities.Length,
+                opportunities.Count(x => x.MinutesToExpiry <= 30),
+                opportunities.Count(x => !string.Equals(x.RecommendedSide, "Pass", StringComparison.OrdinalIgnoreCase)),
+                opportunities.Count(x => x.BotEligible)),
             Notes: ["test"],
             Portfolio: new PolymarketBotPortfolioSnapshot(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, now),
             OpenPositions: [],
@@ -1101,7 +1175,11 @@ public class PolymarketBotServiceTests
                 MaxPositionPct: 0.01,
                 TimeStopMinutes: (int)Math.Round(minutes * 0.5),
                 ExitPlan: "exit test",
-                RiskPlan: "risk test"));
+                RiskPlan: "risk test"),
+            BotEligible: !string.Equals(side, "Pass", StringComparison.OrdinalIgnoreCase) && quality >= 46 && conviction >= 55,
+            BotEligibilityReason: !string.Equals(side, "Pass", StringComparison.OrdinalIgnoreCase) && quality >= 46 && conviction >= 55 ? "bot-ready" : "quality or conviction below threshold",
+            BotEntryPrice: side == "Buy Yes" ? marketYes : marketNo,
+            BotSelectedEdgePct: Math.Max(fairYes - marketYes, fairNo - marketNo));
     }
 
     private static PolymarketMarketSignal BuildDirectionalSignal(
@@ -1162,7 +1240,11 @@ public class PolymarketBotServiceTests
                 MaxPositionPct: 0.01,
                 TimeStopMinutes: (int)Math.Round(minutes * 0.5),
                 ExitPlan: "exit test",
-                RiskPlan: "risk test"));
+                RiskPlan: "risk test"),
+            BotEligible: !string.Equals(side, "Pass", StringComparison.OrdinalIgnoreCase) && quality >= 46 && conviction >= 55,
+            BotEligibilityReason: !string.Equals(side, "Pass", StringComparison.OrdinalIgnoreCase) && quality >= 46 && conviction >= 55 ? "bot-ready" : "quality or conviction below threshold",
+            BotEntryPrice: side == "Buy Up" ? marketYes : marketNo,
+            BotSelectedEdgePct: Math.Max(fairYes - marketYes, fairNo - marketNo));
     }
 
     private static Dictionary<string, string?> CaptureEnvironment(params string[] keys) =>

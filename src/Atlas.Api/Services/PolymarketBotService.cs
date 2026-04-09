@@ -79,6 +79,8 @@ public sealed class PolymarketBotService : IPolymarketBotService
         public string? DailyLossLockDateKey { get; set; }
         public string? LastDailySummaryDateKey { get; set; }
         public string? LastMonthlySummaryKey { get; set; }
+        public string? LastEntryDecisionDigest { get; set; }
+        public DateTimeOffset LastEntryDecisionAt { get; set; } = DateTimeOffset.MinValue;
         public List<InternalPosition> OpenPositions { get; set; } = [];
         public List<InternalPosition> ClosedPositions { get; set; } = [];
         public List<PolymarketJournalEntry> Journal { get; set; } = [];
@@ -101,6 +103,8 @@ public sealed class PolymarketBotService : IPolymarketBotService
         public string? DailyLossLockDateKey { get; set; }
         public string? LastDailySummaryDateKey { get; set; }
         public string? LastMonthlySummaryKey { get; set; }
+        public string? LastEntryDecisionDigest { get; set; }
+        public DateTimeOffset LastEntryDecisionAt { get; set; } = DateTimeOffset.MinValue;
         public List<InternalPosition> OpenPositions { get; } = [];
         public List<InternalPosition> ClosedPositions { get; } = [];
         public List<PolymarketJournalEntry> Journal { get; } = [];
@@ -318,24 +322,72 @@ public sealed class PolymarketBotService : IPolymarketBotService
             !string.Equals(config.ExecutionMode, "dry-run", StringComparison.OrdinalIgnoreCase))
             return;
 
-        var candidates = live.Opportunities
+        var scannerSignals = live.Opportunities
             .Where(signal => !string.Equals(signal.RecommendedSide, "Pass", StringComparison.OrdinalIgnoreCase))
-            .Where(signal => signal.MinutesToExpiry >= 1 && signal.MinutesToExpiry <= config.LookaheadMinutes)
-            .Where(signal => signal.ExecutionPlan.IndicativeEntryPrice >= 0.05 && signal.ExecutionPlan.IndicativeEntryPrice <= 0.92)
-            .Where(signal => Math.Max(signal.EdgeYesPct, signal.EdgeNoPct) >= 0.015)
-            .Where(signal => signal.QualityScore >= 46 && signal.ConvictionScore >= 55)
-            .Where(signal => signal.LiquidityUsd >= 150 && signal.Spread <= 0.10)
-            .Where(signal => !state.OpenPositions.Any(position => position.MarketId.Equals(signal.MarketId, StringComparison.OrdinalIgnoreCase)))
-            .OrderByDescending(SignalPriority)
+            .ToList();
+
+        var assessedSignals = scannerSignals
+            .Select(signal => (Signal: signal, Assessment: PolymarketBotRuleEngine.AssessSignal(signal, config.LookaheadMinutes)))
+            .ToList();
+
+        var botReadySignals = assessedSignals
+            .Where(item => item.Assessment.BotEligible)
+            .ToList();
+
+        var candidates = botReadySignals
+            .Where(item => !state.OpenPositions.Any(position => position.MarketId.Equals(item.Signal.MarketId, StringComparison.OrdinalIgnoreCase)))
+            .OrderByDescending(item => SignalPriority(item.Signal))
             .Take(Math.Max(1, config.MaxNewTradesPerCycle))
             .ToList();
 
-        foreach (PolymarketMarketSignal signal in candidates)
+        if (scannerSignals.Count == 0)
         {
-            if (state.CashBalanceUsd + 1e-9 < config.MaxTradeUsd)
+            MaybeRecordNoTradeDecision(
+                state,
+                "No new trade opened",
+                "No scanner signal currently recommends a YES/NO or UP/DOWN side strongly enough to enter.",
+                now);
+            return;
+        }
+
+        if (botReadySignals.Count == 0)
+        {
+            MaybeRecordNoTradeDecision(
+                state,
+                "No new trade opened",
+                SummarizeBotGateBlockers(assessedSignals),
+                now);
+            return;
+        }
+
+        if (candidates.Count == 0)
+        {
+            MaybeRecordNoTradeDecision(
+                state,
+                "No new trade opened",
+                $"All {botReadySignals.Count} bot-ready market(s) are already live in the portfolio. The bot is waiting for a fresh market id.",
+                now);
+            return;
+        }
+
+        if (state.CashBalanceUsd < 0.50)
+        {
+            MaybeRecordNoTradeDecision(
+                state,
+                "No new trade opened",
+                $"Available cash {state.CashBalanceUsd:0.00}$ is below the 0.50$ minimum ticket size.",
+                now);
+            return;
+        }
+
+        bool openedAny = false;
+        foreach ((PolymarketMarketSignal Signal, PolymarketBotSignalAssessment Assessment) candidate in candidates)
+        {
+            PolymarketMarketSignal signal = candidate.Signal;
+            if (state.CashBalanceUsd + 1e-9 < 0.50)
                 break;
 
-            double entryPrice = UsesFirstOutcome(signal.RecommendedSide) ? signal.MarketYesPrice : signal.MarketNoPrice;
+            double entryPrice = candidate.Assessment.EntryPrice;
             entryPrice = MathUtils.Clamp(entryPrice, 0.01, 0.99);
             double stakeUsd = Math.Min(config.MaxTradeUsd, state.CashBalanceUsd);
             if (stakeUsd < 0.50)
@@ -398,6 +450,21 @@ public sealed class PolymarketBotService : IPolymarketBotService
             state.OpenPositions.Add(position);
             AddJournal(state, "entry", $"{signal.Asset} {signal.RecommendedSide} opened", $"{signal.Question} | stake={stakeUsd:0.00}$ | edge={(position.EdgePct * 100):+0.00;-0.00}% | fair={position.FairProbability:P1} | market={position.MarketProbability:P1}", position.PositionId, position.MarketId, now);
             _ = _telegram.SendAsync(BuildOpenTelegramMessage(position), CancellationToken.None);
+            openedAny = true;
+        }
+
+        if (openedAny)
+        {
+            state.LastEntryDecisionDigest = null;
+            state.LastEntryDecisionAt = DateTimeOffset.MinValue;
+        }
+        else
+        {
+            MaybeRecordNoTradeDecision(
+                state,
+                "No new trade opened",
+                $"Bot-ready setups existed, but available cash {state.CashBalanceUsd:0.00}$ was insufficient for another {config.MaxTradeUsd:0.00}$ ticket.",
+                now);
         }
     }
 
@@ -547,6 +614,35 @@ public sealed class PolymarketBotService : IPolymarketBotService
         state.Journal.Add(new PolymarketJournalEntry(now, type, headline, detail, positionId, marketId));
     }
 
+    private static void MaybeRecordNoTradeDecision(RuntimeState state, string headline, string detail, DateTimeOffset now)
+    {
+        string digest = $"{headline}|{detail}";
+        if (string.Equals(state.LastEntryDecisionDigest, digest, StringComparison.Ordinal) &&
+            state.LastEntryDecisionAt != DateTimeOffset.MinValue &&
+            now - state.LastEntryDecisionAt < TimeSpan.FromMinutes(15))
+            return;
+
+        AddJournal(state, "watch", headline, detail, null, null, now);
+        state.LastEntryDecisionDigest = digest;
+        state.LastEntryDecisionAt = now;
+    }
+
+    private static string SummarizeBotGateBlockers(IEnumerable<(PolymarketMarketSignal Signal, PolymarketBotSignalAssessment Assessment)> assessments)
+    {
+        var dominantReason = assessments
+            .Where(item => !item.Assessment.BotEligible)
+            .GroupBy(item => item.Assessment.BlockReason)
+            .OrderByDescending(group => group.Count())
+            .ThenBy(group => group.Key, StringComparer.Ordinal)
+            .FirstOrDefault();
+
+        if (dominantReason is null)
+            return "Scanner found signals, but none cleared the bot entry gates.";
+
+        int totalBlocked = assessments.Count(item => !item.Assessment.BotEligible);
+        return $"{totalBlocked} scanner signal(s) were blocked by the bot gates. Dominant reason: {dominantReason.Key}.";
+    }
+
     private static void TrimStateNoLock(RuntimeState state)
     {
         const int maxClosed = 400;
@@ -633,7 +729,7 @@ public sealed class PolymarketBotService : IPolymarketBotService
             Assets: [],
             BotTiers: [],
             Opportunities: [],
-            Stats: new PolymarketScanStats(0, 0, 0, 0, 0, 0),
+            Stats: new PolymarketScanStats(0, 0, 0, 0, 0, 0, 0),
             Notes: ["No Polymarket scan captured yet."],
             Portfolio: new PolymarketBotPortfolioSnapshot(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1.0, DateTimeOffset.UtcNow),
             OpenPositions: [],
@@ -794,6 +890,8 @@ public sealed class PolymarketBotService : IPolymarketBotService
             state.DailyLossLockDateKey = persisted.DailyLossLockDateKey;
             state.LastDailySummaryDateKey = persisted.LastDailySummaryDateKey;
             state.LastMonthlySummaryKey = persisted.LastMonthlySummaryKey;
+            state.LastEntryDecisionDigest = persisted.LastEntryDecisionDigest;
+            state.LastEntryDecisionAt = persisted.LastEntryDecisionAt;
             state.OpenPositions.AddRange(persisted.OpenPositions);
             state.ClosedPositions.AddRange(persisted.ClosedPositions);
             state.Journal.AddRange(persisted.Journal);
@@ -824,7 +922,8 @@ public sealed class PolymarketBotService : IPolymarketBotService
             CashBalanceUsd = config.StartingBalanceUsd,
             PeakEquityUsd = config.StartingBalanceUsd,
             MaxDrawdownUsd = 0,
-            DailyLossLockActive = false
+            DailyLossLockActive = false,
+            LastEntryDecisionAt = DateTimeOffset.MinValue
         };
     }
 
@@ -842,6 +941,8 @@ public sealed class PolymarketBotService : IPolymarketBotService
             DailyLossLockDateKey = state.DailyLossLockDateKey,
             LastDailySummaryDateKey = state.LastDailySummaryDateKey,
             LastMonthlySummaryKey = state.LastMonthlySummaryKey,
+            LastEntryDecisionDigest = state.LastEntryDecisionDigest,
+            LastEntryDecisionAt = state.LastEntryDecisionAt,
             OpenPositions = state.OpenPositions.ToList(),
             ClosedPositions = state.ClosedPositions.ToList(),
             Journal = state.Journal.ToList(),
@@ -887,6 +988,8 @@ public sealed class PolymarketBotService : IPolymarketBotService
             _state.DailyLossLockDateKey = persisted.DailyLossLockDateKey;
             _state.LastDailySummaryDateKey = persisted.LastDailySummaryDateKey;
             _state.LastMonthlySummaryKey = persisted.LastMonthlySummaryKey;
+            _state.LastEntryDecisionDigest = persisted.LastEntryDecisionDigest;
+            _state.LastEntryDecisionAt = persisted.LastEntryDecisionAt;
             _state.OpenPositions.Clear();
             _state.OpenPositions.AddRange(persisted.OpenPositions);
             _state.ClosedPositions.Clear();

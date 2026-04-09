@@ -261,6 +261,14 @@
   gap: 12px;
 }
 
+.polymarket-bot-gate-callout {
+  margin-top: 12px;
+}
+
+.polymarket-mini-status-row {
+  margin-top: 10px;
+}
+
 .polymarket-rationale-card {
   border-radius: 16px;
   background: rgba(255, 255, 255, 0.03);

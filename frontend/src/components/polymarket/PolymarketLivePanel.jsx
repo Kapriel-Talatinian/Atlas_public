@@ -102,10 +102,21 @@ function signalCategoryLabel(signal) {
 }
 
 function outcomePriceForSignal(signal) {
+  if (Number.isFinite(signal.botEntryPrice) && signal.botEntryPrice > 0) {
+    return signal.botEntryPrice;
+  }
   const normalized = String(signal.recommendedSide || "").toLowerCase();
   return normalized.endsWith((signal.primaryOutcomeLabel || "yes").toLowerCase()) || normalized.endsWith("yes") || normalized.endsWith("up")
     ? signal.marketYesPrice || 0
     : signal.marketNoPrice || 0;
+}
+
+function readinessIntent(signal) {
+  return signal.botEligible ? Intent.SUCCESS : Intent.WARNING;
+}
+
+function readinessLabel(signal) {
+  return signal.botEligible ? "BOT READY" : "WATCHLIST";
 }
 
 function metricTone(value) {
@@ -149,6 +160,7 @@ function TopSignalHero({ signal }) {
         <div className="polymarket-chip-rail">
           <Tag large round intent={sideIntent(signal.recommendedSide)}>{sideLabel(signal.recommendedSide)}</Tag>
           <Tag large round intent={categoryIntent(signal.signalCategory)}>{signalCategoryLabel(signal)}</Tag>
+          <Tag large round intent={readinessIntent(signal)}>{readinessLabel(signal)}</Tag>
           <Tag large minimal intent={Intent.PRIMARY}>{minutesLabel(signal.minutesToExpiry)}</Tag>
         </div>
       </div>
@@ -198,6 +210,11 @@ function TopSignalHero({ signal }) {
           {signal.mathReasoning}
         </Callout>
       </div>
+      {!signal.botEligible ? (
+        <Callout className="polymarket-rationale-card polymarket-bot-gate-callout" intent={Intent.WARNING} title="Bot gate">
+          {signal.botEligibilityReason}
+        </Callout>
+      ) : null}
     </Card>
   );
 }
@@ -245,6 +262,9 @@ function MiniSignalCard({ title, signal }) {
         </div>
         <Tag round intent={sideIntent(signal.recommendedSide)}>{sideLabel(signal.recommendedSide)}</Tag>
       </div>
+      <div className="polymarket-mini-status-row">
+        <Tag minimal intent={readinessIntent(signal)}>{readinessLabel(signal)}</Tag>
+      </div>
       <div className="polymarket-mini-grid">
         <div>
           <span>Entry</span>
@@ -285,6 +305,7 @@ function OpportunityCard({ signal }) {
         </div>
         <div className="polymarket-chip-stack">
           <Tag large round intent={sideIntent(signal.recommendedSide)}>{sideLabel(signal.recommendedSide)}</Tag>
+          <Tag minimal intent={readinessIntent(signal)}>{readinessLabel(signal)}</Tag>
           <Tag minimal intent={qualityIntent(signal.convictionScore || 0)}>Conv {fmt(signal.convictionScore || 0, 1)}</Tag>
         </div>
       </div>
@@ -319,6 +340,7 @@ function OpportunityCard({ signal }) {
       <div className="polymarket-opportunity-body">
         <div className="polymarket-opportunity-summary">{signal.summary}</div>
         <div className="polymarket-opportunity-text"><strong>Math:</strong> {signal.mathReasoning}</div>
+        <div className="polymarket-opportunity-text"><strong>Bot:</strong> {signal.botEligibilityReason}</div>
       </div>
     </Card>
   );
@@ -451,14 +473,15 @@ export default function PolymarketLivePanel({ snapshot, loading, onRefresh }) {
   const journal = snapshot?.journal || [];
 
   const sortedSignals = [...opportunities].sort((a, b) => (b.convictionScore || 0) - (a.convictionScore || 0));
-  const topSignal = sortedSignals.find((signal) => !String(signal.recommendedSide || "").toLowerCase().includes("pass")) || sortedSignals[0] || null;
+  const scannerSignals = sortedSignals.filter((signal) => !String(signal.recommendedSide || "").toLowerCase().includes("pass"));
+  const topSignal = scannerSignals.find((signal) => signal.botEligible) || scannerSignals[0] || sortedSignals[0] || null;
   const referenceByAsset = Object.fromEntries(assets.map((item) => [item.asset, item]));
 
   const assetLanes = ASSET_ORDER.map((asset) => ({
     asset,
     reference: referenceByAsset[asset] || null,
-    thresholdSignal: sortedSignals.find((signal) => signal.asset === asset && signal.signalCategory !== "directional" && !String(signal.recommendedSide || "").toLowerCase().includes("pass")) || null,
-    directionalSignal: sortedSignals.find((signal) => signal.asset === asset && signal.signalCategory === "directional" && !String(signal.recommendedSide || "").toLowerCase().includes("pass")) || null,
+    thresholdSignal: sortedSignals.find((signal) => signal.asset === asset && signal.signalCategory !== "directional" && signal.botEligible) || sortedSignals.find((signal) => signal.asset === asset && signal.signalCategory !== "directional" && !String(signal.recommendedSide || "").toLowerCase().includes("pass")) || null,
+    directionalSignal: sortedSignals.find((signal) => signal.asset === asset && signal.signalCategory === "directional" && signal.botEligible) || sortedSignals.find((signal) => signal.asset === asset && signal.signalCategory === "directional" && !String(signal.recommendedSide || "").toLowerCase().includes("pass")) || null,
   }));
 
   if (loading && !snapshot) {
@@ -507,7 +530,7 @@ export default function PolymarketLivePanel({ snapshot, loading, onRefresh }) {
           <StatCard label="Daily PnL" value={formatUsd(portfolio.dailyPnlUsd || 0, 2)} helper={`Monthly ${formatUsd(portfolio.monthlyPnlUsd || 0, 2)}`} intent={pnlIntent(portfolio.dailyPnlUsd || 0)} />
           <StatCard label="Open positions" value={String(portfolio.openPositionsCount || 0)} helper={`${formatUsd(portfolio.grossExposureUsd || 0, 2)} gross exposure`} />
           <StatCard label="Win rate" value={formatPct(portfolio.winRate || 0, 1)} helper={`${portfolio.closedPositionsCount || 0} closed`} />
-          <StatCard label="Scanner" value={String(stats.actionableSignals || 0)} helper={`${stats.tradeableMarkets || 0} tradeable / ${stats.rawMarkets || 0} raw`} />
+          <StatCard label="Bot-ready" value={String(stats.actionableSignals || 0)} helper={`${stats.scannerSignals || scannerSignals.length || 0} scanner signals`} intent={(stats.actionableSignals || 0) > 0 ? Intent.SUCCESS : Intent.WARNING} />
           <StatCard label="Risk per trade" value={formatUsd(runtime.maxTradeUsd || portfolio.maxTradeRiskUsd || 0, 2)} helper={runtime.runtimeMode || "guarded"} intent={Intent.WARNING} />
         </div>
 
@@ -536,8 +559,8 @@ export default function PolymarketLivePanel({ snapshot, loading, onRefresh }) {
               <ProgressBar animate={false} intent={(portfolio.drawdownPct || 0) > 0.08 ? Intent.DANGER : (portfolio.drawdownPct || 0) > 0.04 ? Intent.WARNING : Intent.SUCCESS} value={normalizeProgress(portfolio.drawdownPct || 0, 0.15)} />
             </div>
             <div>
-              <div className="polymarket-progress-row"><span>Opportunity conversion</span><span>{stats.actionableSignals || 0} / {stats.tradeableMarkets || 0}</span></div>
-              <ProgressBar animate={false} intent={qualityIntent(stats.tradeableMarkets > 0 ? (stats.actionableSignals / stats.tradeableMarkets) * 100 : 0)} value={normalizeProgress(stats.tradeableMarkets > 0 ? stats.actionableSignals / stats.tradeableMarkets : 0)} />
+              <div className="polymarket-progress-row"><span>Scanner → bot-ready</span><span>{stats.actionableSignals || 0} / {stats.scannerSignals || scannerSignals.length || 0}</span></div>
+              <ProgressBar animate={false} intent={qualityIntent((stats.scannerSignals || scannerSignals.length || 0) > 0 ? ((stats.actionableSignals || 0) / (stats.scannerSignals || scannerSignals.length || 1)) * 100 : 0)} value={normalizeProgress((stats.scannerSignals || scannerSignals.length || 0) > 0 ? (stats.actionableSignals || 0) / (stats.scannerSignals || scannerSignals.length || 1) : 0)} />
             </div>
           </div>
         </Card>
@@ -561,7 +584,7 @@ export default function PolymarketLivePanel({ snapshot, loading, onRefresh }) {
         <div className="polymarket-section-head">
           <div>
             <div className="polymarket-kicker">Live scanner</div>
-            <h2 className="polymarket-section-title">Actionable opportunities</h2>
+            <h2 className="polymarket-section-title">Scanner board</h2>
           </div>
         </div>
         {!sortedSignals.length ? (

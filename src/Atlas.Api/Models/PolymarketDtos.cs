@@ -77,7 +77,11 @@ public sealed record PolymarketMarketSignal(
     string MacroReasoning,
     string MicroReasoning,
     string MathReasoning,
-    PolymarketExecutionPlan ExecutionPlan);
+    PolymarketExecutionPlan ExecutionPlan,
+    bool BotEligible,
+    string BotEligibilityReason,
+    double BotEntryPrice,
+    double BotSelectedEdgePct);
 
 public sealed record PolymarketScanStats(
     int RawEvents,
@@ -85,6 +89,7 @@ public sealed record PolymarketScanStats(
     int RawMarkets,
     int TradeableMarkets,
     int NearExpiryMarkets,
+    int ScannerSignals,
     int ActionableSignals);
 
 public sealed record PolymarketRuntimeStatus(

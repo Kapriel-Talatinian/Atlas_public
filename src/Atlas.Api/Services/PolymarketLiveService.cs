@@ -279,7 +279,7 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
                 if (!TryBuildParsedQuestion(evt, market, assetContext, out PolymarketParsedQuestion? parsed))
                     continue;
 
-                PolymarketMarketSignal signal = BuildSignal(evt, market, parsed!, assetContext, now);
+                PolymarketMarketSignal signal = BuildSignal(evt, market, parsed!, assetContext, now, safeLookahead);
                 if (!string.Equals(signal.RecommendedSide, "Pass", StringComparison.OrdinalIgnoreCase))
                     opportunities.Add(signal);
                 else if (opportunities.Count < safeMaxMarkets / 2)
@@ -294,18 +294,23 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
             .Take(safeMaxMarkets)
             .ToList();
 
-        int actionableSignals = ranked.Count(signal => !string.Equals(signal.RecommendedSide, "Pass", StringComparison.OrdinalIgnoreCase));
+        int scannerSignals = ranked.Count(signal => !string.Equals(signal.RecommendedSide, "Pass", StringComparison.OrdinalIgnoreCase));
+        int actionableSignals = ranked.Count(signal => signal.BotEligible);
         PolymarketRuntimeStatus runtime = BuildRuntimeStatus();
         IReadOnlyList<PolymarketReferenceAssetSnapshot> references = assetContexts.Values.Select(x => x.Reference).OrderBy(x => x.Asset).ToList();
-        IReadOnlyList<PolymarketBotTierSnapshot> botTiers = BuildBotTiers(runtime, ranked, rawEvents, tradeableMarkets, nearExpiryMarkets);
-        IReadOnlyList<string> notes = BuildNotes(runtime, safeLookahead, activeEvents.Count, actionableSignals);
+        IReadOnlyList<PolymarketBotTierSnapshot> botTiers = BuildBotTiers(runtime, ranked, rawEvents, tradeableMarkets, nearExpiryMarkets, actionableSignals);
+        IReadOnlyList<string> notes = BuildNotes(runtime, safeLookahead, activeEvents.Count, scannerSignals, actionableSignals);
 
         string status = actionableSignals > 0
             ? runtime.TradingEnabled && runtime.SignerConfigured ? "ready" : "analysis-ready"
-            : activeEvents.Count > 0 ? "watching" : "cold";
+            : scannerSignals > 0
+                ? "watching-gates"
+                : activeEvents.Count > 0 ? "watching" : "cold";
 
         string summary = actionableSignals > 0
-            ? $"{actionableSignals} crypto threshold market(s) currently show model edge on Polymarket."
+            ? $"{actionableSignals} crypto market(s) currently clear both model edge and execution gates on Polymarket."
+            : scannerSignals > 0
+                ? $"{scannerSignals} crypto market(s) show model edge, but none currently clears the bot execution gates."
             : activeEvents.Count > 0
                 ? "Polymarket crypto universe is live, but no short-dated market currently clears the edge and quality gates."
                 : "No active short-dated Polymarket crypto event was discovered for BTC/ETH/SOL in the current scan window.";
@@ -323,6 +328,7 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
                 RawMarkets: rawMarkets,
                 TradeableMarkets: tradeableMarkets,
                 NearExpiryMarkets: nearExpiryMarkets,
+                ScannerSignals: scannerSignals,
                 ActionableSignals: actionableSignals),
             Notes: notes,
             Portfolio: new PolymarketBotPortfolioSnapshot(
@@ -464,7 +470,8 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
         GammaMarket market,
         PolymarketParsedQuestion parsed,
         AssetContext context,
-        DateTimeOffset now)
+        DateTimeOffset now,
+        int lookaheadMinutes)
     {
         (string primaryOutcomeLabel, string secondaryOutcomeLabel) = ParseOutcomeLabels(market.Outcomes);
         bool isDirectional = IsDirectionalMarket(market, primaryOutcomeLabel, secondaryOutcomeLabel);
@@ -576,7 +583,7 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
                 : $"Take profits once model edge compresses below 0.5c or market reprices toward fair value. Hard exit by T-{Math.Max(1, (int)Math.Round(minutes * 0.15))}m.",
             RiskPlan: "Never cross the spread aggressively on thin books. Cancel if spread widens materially or live edge flips negative.");
 
-        return new PolymarketMarketSignal(
+        PolymarketMarketSignal signal = new(
             EventId: evt.Id,
             MarketId: market.Id,
             Asset: parsed.Asset,
@@ -612,7 +619,20 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
             MacroReasoning: macro,
             MicroReasoning: micro,
             MathReasoning: math,
-            ExecutionPlan: executionPlan);
+            ExecutionPlan: executionPlan,
+            BotEligible: false,
+            BotEligibilityReason: "not-assessed",
+            BotEntryPrice: indicativeEntry,
+            BotSelectedEdgePct: selectedEdge);
+
+        PolymarketBotSignalAssessment assessment = PolymarketBotRuleEngine.AssessSignal(signal, lookaheadMinutes);
+        return signal with
+        {
+            BotEligible = assessment.BotEligible,
+            BotEligibilityReason = assessment.BlockReason,
+            BotEntryPrice = assessment.EntryPrice,
+            BotSelectedEdgePct = assessment.SelectedEdgePct
+        };
     }
 
     private static double ResolveDirectionalReferencePrice(GammaEventDetail evt, GammaMarket market, double fallbackSpot)
@@ -858,7 +878,8 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
         IReadOnlyList<PolymarketMarketSignal> ranked,
         int rawEvents,
         int tradeableMarkets,
-        int nearExpiryMarkets)
+        int nearExpiryMarkets,
+        int actionableSignals)
     {
         PolymarketMarketSignal? top = ranked.FirstOrDefault();
         return new[]
@@ -879,7 +900,7 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
                 Name: "Execution",
                 Status: runtime.TradingEnabled && runtime.SignerConfigured ? "armed" : "guarded",
                 Summary: runtime.Summary,
-                Metric: ranked.Count(signal => !string.Equals(signal.RecommendedSide, "Pass", StringComparison.OrdinalIgnoreCase)),
+                Metric: actionableSignals,
                 Detail: "Real-money routing intentionally remains behind explicit runtime flags.")
         };
     }
@@ -888,6 +909,7 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
         PolymarketRuntimeStatus runtime,
         int lookaheadMinutes,
         int activeEvents,
+        int scannerSignals,
         int actionableSignals)
     {
         var notes = new List<string>
@@ -901,6 +923,8 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
             notes.Add("No Polymarket signer is configured on the server yet.");
         if (activeEvents == 0)
             notes.Add("No active short-dated crypto Polymarket event was found in the current search result set.");
+        if (scannerSignals > 0 && actionableSignals == 0)
+            notes.Add("Scanner signals exist, but the bot is waiting for tighter spreads, cleaner entry prices, stronger conviction or deeper liquidity before opening risk.");
         if (actionableSignals == 0 && activeEvents > 0)
             notes.Add("Markets are being monitored, but nothing currently clears the required edge buffer after spread.");
 
