@@ -1,0 +1,22 @@
+FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
+WORKDIR /src
+
+# Copy project files first for better restore layer caching
+COPY Atlas.sln ./
+COPY src/Atlas.Api/Atlas.Api.csproj src/Atlas.Api/
+COPY src/Atlas.Core/Atlas.Core.csproj src/Atlas.Core/
+COPY src/Atlas.Exchange/Atlas.Exchange.csproj src/Atlas.Exchange/
+COPY src/Atlas.ToxicFlow/Atlas.ToxicFlow.csproj src/Atlas.ToxicFlow/
+
+RUN dotnet restore src/Atlas.Api/Atlas.Api.csproj
+
+# Copy source and publish
+COPY src/ src/
+RUN dotnet publish src/Atlas.Api/Atlas.Api.csproj -c Release -o /app/publish --no-restore
+
+FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS runtime
+WORKDIR /app
+
+COPY --from=build /app/publish ./
+
+ENTRYPOINT ["dotnet", "Atlas.Api.dll"]
