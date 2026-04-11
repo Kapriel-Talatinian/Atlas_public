@@ -213,7 +213,7 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
         {
             try
             {
-                BotLeaderLeaseSnapshot lease = _leaderElection.AcquireOrRenew(BotKey, _runtime, TimeSpan.FromSeconds(16));
+                BotLeaderLeaseSnapshot lease = _leaderElection.AcquireOrRenew(BotKey, _runtime, TimeSpan.FromSeconds(30));
                 if (!lease.IsLeader)
                 {
                     await Task.Delay(TimeSpan.FromSeconds(4), stoppingToken);
@@ -334,8 +334,9 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
         {
             string body = await response.Content.ReadAsStringAsync(ct);
             _logger.LogWarning(
-                "Telegram getUpdates conflict. Another consumer is polling this bot token or a stale webhook is still active. body={Body}",
+                "Telegram getUpdates 409 conflict — clearing webhook and retrying. body={Body}",
                 body);
+            await EnsurePollingModeAsync(ct);
             return [];
         }
 
@@ -360,18 +361,25 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
 
         _logger.LogInformation("Telegram command worker accepted command /{Command} from chat {ChatId}", command, _chatId);
 
-        PolymarketLiveSnapshot snapshot = await _polymarketBotService.GetCachedSnapshotAsync(ct);
-        string response = command switch
+        string response;
+        if (command is "menu" or "start" or "help")
         {
-            "menu" or "start" or "help" => TelegramPolymarketMenuFormatter.BuildMenu(),
-            "status" => TelegramPolymarketMenuFormatter.BuildStatus(snapshot),
-            "pnl" => TelegramPolymarketMenuFormatter.BuildPnl(snapshot),
-            "metrics" => TelegramPolymarketMenuFormatter.BuildMetrics(snapshot),
-            "positions" => TelegramPolymarketMenuFormatter.BuildPositions(snapshot, DateTimeOffset.UtcNow),
-            "history" => TelegramPolymarketMenuFormatter.BuildHistory(snapshot),
-            "journal" => TelegramPolymarketMenuFormatter.BuildJournal(snapshot),
-            _ => "Unknown command. Use /menu."
-        };
+            response = TelegramPolymarketMenuFormatter.BuildMenu();
+        }
+        else
+        {
+            PolymarketLiveSnapshot snapshot = await _polymarketBotService.GetCachedSnapshotAsync(ct);
+            response = command switch
+            {
+                "status" => TelegramPolymarketMenuFormatter.BuildStatus(snapshot),
+                "pnl" => TelegramPolymarketMenuFormatter.BuildPnl(snapshot),
+                "metrics" => TelegramPolymarketMenuFormatter.BuildMetrics(snapshot),
+                "positions" => TelegramPolymarketMenuFormatter.BuildPositions(snapshot, DateTimeOffset.UtcNow),
+                "history" => TelegramPolymarketMenuFormatter.BuildHistory(snapshot),
+                "journal" => TelegramPolymarketMenuFormatter.BuildJournal(snapshot),
+                _ => "Unknown command. Use /menu."
+            };
+        }
 
         await _telegram.SendAsync(response, ct);
     }
