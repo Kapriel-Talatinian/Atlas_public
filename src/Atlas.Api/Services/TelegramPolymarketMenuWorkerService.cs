@@ -206,7 +206,9 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
             return;
         }
 
-        _logger.LogInformation("Telegram command worker starting on instance {InstanceId}", _runtime.InstanceId);
+        _logger.LogInformation(
+            "Telegram command worker starting on instance {InstanceId}, chatId={ChatId}, leaderBackend={LeaderBackend}",
+            _runtime.InstanceId, _chatId, _leaderElection.BackendName);
         await WarmupAsync(stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
@@ -221,6 +223,9 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
                 }
 
                 IReadOnlyList<TelegramUpdate> updates = await GetUpdatesAsync(stoppingToken);
+                if (updates.Count > 0)
+                    _logger.LogInformation("Telegram command worker received {Count} update(s), offset={Offset}", updates.Count, _offset);
+
                 foreach (TelegramUpdate update in updates)
                 {
                     _offset = Math.Max(_offset, update.UpdateId + 1);
@@ -350,10 +355,17 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
     {
         string text = update.Message?.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(text) || update.Message?.Chat is null)
+        {
+            _logger.LogDebug("Telegram update {UpdateId} skipped: no text or no chat", update.UpdateId);
             return;
+        }
 
-        if (!string.Equals(update.Message.Chat.Id.ToString(CultureInfo.InvariantCulture), _chatId, StringComparison.Ordinal))
+        string incomingChatId = update.Message.Chat.Id.ToString(CultureInfo.InvariantCulture);
+        if (!string.Equals(incomingChatId, _chatId, StringComparison.Ordinal))
+        {
+            _logger.LogWarning("Telegram message from chat {IncomingChatId} ignored (expected {ExpectedChatId})", incomingChatId, _chatId);
             return;
+        }
 
         string command = TelegramPolymarketMenuFormatter.NormalizeCommand(text);
         if (string.IsNullOrWhiteSpace(command))
