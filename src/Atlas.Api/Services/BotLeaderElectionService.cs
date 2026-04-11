@@ -104,10 +104,11 @@ RETURNING l.owner_instance_id, l.owner_hostname, l.fencing_token, l.lease_until;
                 cmd.Parameters.AddWithValue("@lease_until", leaseUntil);
                 cmd.Parameters.AddWithValue("@now", now);
 
+                BotLeaderLeaseSnapshot? acquiredSnapshot = null;
                 using var reader = cmd.ExecuteReader();
                 if (reader.Read())
                 {
-                    var snapshot = new BotLeaderLeaseSnapshot(
+                    acquiredSnapshot = new BotLeaderLeaseSnapshot(
                         BotKey: botKey,
                         IsLeader: true,
                         OwnerInstanceId: reader.IsDBNull(0) ? null : reader.GetString(0),
@@ -115,8 +116,13 @@ RETURNING l.owner_instance_id, l.owner_hostname, l.fencing_token, l.lease_until;
                         FencingToken: reader.GetInt64(2),
                         LeaseUntil: reader.IsDBNull(3) ? null : reader.GetFieldValue<DateTimeOffset>(3),
                         CheckedAt: now);
+                }
+
+                if (acquiredSnapshot is not null)
+                {
+                    reader.Close();
                     transaction.Commit();
-                    return snapshot;
+                    return acquiredSnapshot;
                 }
             }
 
@@ -128,10 +134,12 @@ SELECT owner_instance_id, owner_hostname, fencing_token, lease_until
 FROM atlas_bot_leader_lock
 WHERE bot_key = @bot_key;";
                 fallback.Parameters.AddWithValue("@bot_key", botKey);
+
+                BotLeaderLeaseSnapshot? fallbackSnapshot = null;
                 using var reader = fallback.ExecuteReader();
                 if (reader.Read())
                 {
-                    var snapshot = new BotLeaderLeaseSnapshot(
+                    fallbackSnapshot = new BotLeaderLeaseSnapshot(
                         BotKey: botKey,
                         IsLeader: false,
                         OwnerInstanceId: reader.IsDBNull(0) ? null : reader.GetString(0),
@@ -139,8 +147,13 @@ WHERE bot_key = @bot_key;";
                         FencingToken: reader.IsDBNull(2) ? 0 : reader.GetInt64(2),
                         LeaseUntil: reader.IsDBNull(3) ? null : reader.GetFieldValue<DateTimeOffset>(3),
                         CheckedAt: now);
+                }
+
+                if (fallbackSnapshot is not null)
+                {
+                    reader.Close();
                     transaction.Commit();
-                    return snapshot;
+                    return fallbackSnapshot;
                 }
             }
 
