@@ -34,10 +34,12 @@ public static class PolymarketBotRuleEngine
             reasons.Add($"quality {signal.QualityScore:0.0} below 46");
         if (signal.ConvictionScore < 55)
             reasons.Add($"conviction {signal.ConvictionScore:0.0} below 55");
-        if (signal.LiquidityUsd < 150)
-            reasons.Add($"liquidity {signal.LiquidityUsd:0.0} below 150");
-        if (signal.Spread > 0.10)
-            reasons.Add($"spread {signal.Spread:P2} above 10%");
+        if (signal.LiquidityUsd < 5_000)
+            reasons.Add($"liquidity {signal.LiquidityUsd:0} below 5000");
+        if (signal.Spread > 0.05)
+            reasons.Add($"spread {signal.Spread:P2} above 5%");
+        if (signal.DistanceToStrikePct > 0.05)
+            reasons.Add($"strike distance {signal.DistanceToStrikePct:P1} above 5%");
 
         return new PolymarketBotSignalAssessment(
             BotEligible: reasons.Count == 0,

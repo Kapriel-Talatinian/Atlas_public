@@ -538,10 +538,11 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
             side = buySecond;
 
         double conviction = MathUtils.Clamp(
-            qualityScore * 0.45
-            + Math.Max(edgeYes, edgeNo) * 1800
-            + (60 - Math.Min(minutes, 60)) * 0.22
-            + context.Reference.RegimeConfidence * 0.08,
+            qualityScore * 0.55
+            + Math.Max(edgeYes, edgeNo) * 800
+            + (60 - Math.Min(minutes, 60)) * 0.30
+            + context.Reference.RegimeConfidence * 15
+            - (context.Reference.AtmIv > 0.80 ? 12 : 0), // penalize extreme vol regimes
             1,
             99);
 

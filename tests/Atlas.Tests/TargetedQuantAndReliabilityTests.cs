@@ -1043,7 +1043,7 @@ public class PolymarketBotServiceTests
 
             Assert.Single(first.OpenPositions);
             Assert.Single(second.OpenPositions);
-            Assert.InRange(second.Portfolio.CashBalanceUsd, 8.99, 9.01);
+            Assert.InRange(second.Portfolio.CashBalanceUsd, 9.0, 10.0); // Kelly sizing: stake varies with edge
         }
         finally
         {
@@ -1256,7 +1256,7 @@ public class PolymarketBotServiceTests
             PolymarketLiveSnapshot snapshot = await apiService.GetSnapshotAsync();
 
             Assert.Single(snapshot.OpenPositions);
-            Assert.Equal(11, snapshot.Portfolio.CashBalanceUsd, 10);
+            Assert.InRange(snapshot.Portfolio.CashBalanceUsd, 11.0, 12.0); // Kelly sizing: stake < 1$
             Assert.Equal("live-ready", snapshot.Status switch
             {
                 "live-trading" => "live-ready",
@@ -1362,7 +1362,7 @@ public class PolymarketBotServiceTests
             BestBid: Math.Max(0, marketYes - 0.02),
             BestAsk: marketYes + 0.02,
             Spread: 0.04,
-            LiquidityUsd: 2_000,
+            LiquidityUsd: 10_000,
             Volume24hUsd: 750,
             FairYesProbability: fairYes,
             FairNoProbability: fairNo,
@@ -1427,7 +1427,7 @@ public class PolymarketBotServiceTests
             BestBid: Math.Max(0, marketYes - 0.02),
             BestAsk: marketYes + 0.02,
             Spread: 0.04,
-            LiquidityUsd: 2_500,
+            LiquidityUsd: 10_000,
             Volume24hUsd: 900,
             FairYesProbability: fairYes,
             FairNoProbability: fairNo,

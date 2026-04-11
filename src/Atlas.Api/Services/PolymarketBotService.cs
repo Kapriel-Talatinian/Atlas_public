@@ -345,8 +345,26 @@ public sealed class PolymarketBotService : IPolymarketBotService
             .Where(item => item.Assessment.BotEligible)
             .ToList();
 
+        // Per-asset concentration: max 2 open positions per asset, max 60% gross exposure
+        double grossExposure = state.OpenPositions.Where(p => p.IsOpen).Sum(p => p.StakeUsd);
+        var assetPositionCounts = state.OpenPositions.Where(p => p.IsOpen)
+            .GroupBy(p => p.Asset, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Count(), StringComparer.OrdinalIgnoreCase);
+        var assetExposure = state.OpenPositions.Where(p => p.IsOpen)
+            .GroupBy(p => p.Asset, StringComparer.OrdinalIgnoreCase)
+            .ToDictionary(g => g.Key, g => g.Sum(p => p.StakeUsd), StringComparer.OrdinalIgnoreCase);
+        double equityUsd = state.CashBalanceUsd + grossExposure;
+
         var candidates = botReadySignals
             .Where(item => !state.OpenPositions.Any(position => position.MarketId.Equals(item.Signal.MarketId, StringComparison.OrdinalIgnoreCase)))
+            .Where(item =>
+            {
+                int count = assetPositionCounts.GetValueOrDefault(item.Signal.Asset, 0);
+                if (count >= 2) return false; // max 2 positions per asset
+                double exposure = assetExposure.GetValueOrDefault(item.Signal.Asset, 0);
+                if (equityUsd > 0 && exposure / equityUsd >= 0.60) return false; // max 60% per asset
+                return true;
+            })
             .OrderByDescending(item => SignalPriority(item.Signal))
             .Take(Math.Max(1, config.MaxNewTradesPerCycle))
             .ToList();
@@ -400,7 +418,13 @@ public sealed class PolymarketBotService : IPolymarketBotService
 
             double entryPrice = candidate.Assessment.EntryPrice;
             entryPrice = MathUtils.Clamp(entryPrice, 0.01, 0.99);
-            double stakeUsd = Math.Min(config.MaxTradeUsd, state.CashBalanceUsd);
+
+            // Quarter-Kelly position sizing: scale stake by edge strength
+            double edge = candidate.Assessment.SelectedEdgePct;
+            double kellyFraction = edge > 0 ? MathUtils.Clamp(edge / (1.0 - entryPrice), 0.01, 0.25) : 0.01;
+            double kellyStake = kellyFraction * 0.25 * state.CashBalanceUsd; // quarter-Kelly
+            double stakeUsd = MathUtils.Clamp(kellyStake, 0.50, config.MaxTradeUsd);
+            stakeUsd = Math.Min(stakeUsd, state.CashBalanceUsd);
             if (stakeUsd < 0.50)
                 break;
 
@@ -483,16 +507,18 @@ public sealed class PolymarketBotService : IPolymarketBotService
     {
         double horizonBonus = signal.MinutesToExpiry switch
         {
-            <= 30 => 18,
-            <= 60 => 10,
-            <= 180 => 4,
-            _ => -4
+            <= 30 => 25,  // strongly prefer near-expiry
+            <= 60 => 15,
+            <= 120 => 8,
+            <= 180 => 2,
+            _ => -6
         };
 
         return signal.ConvictionScore * 0.55
-            + signal.QualityScore * 0.30
-            + Math.Max(signal.EdgeYesPct, signal.EdgeNoPct) * 1800
-            - signal.Spread * 120
+            + signal.QualityScore * 0.35
+            + Math.Max(signal.EdgeYesPct, signal.EdgeNoPct) * 800
+            - signal.Spread * 200  // penalize wide spreads harder
+            - signal.DistanceToStrikePct * 150  // prefer strikes near spot
             + horizonBonus;
     }
 
@@ -574,9 +600,18 @@ public sealed class PolymarketBotService : IPolymarketBotService
             ? (yesWins ? 1.0 : 0.0)
             : (yesWins ? 0.0 : 1.0);
 
-    private static double TakeProfitUsd(InternalPosition position) => MathUtils.Clamp(Math.Max(0.12, position.ExpectedValueUsd * 0.75), 0.12, 0.45);
+    private static double TakeProfitUsd(InternalPosition position)
+    {
+        // Scale TP with stake: 25-50% of stake depending on expected value
+        double evBased = Math.Max(position.ExpectedValueUsd * 0.60, position.StakeUsd * 0.15);
+        return MathUtils.Clamp(evBased, 0.10, position.StakeUsd * 0.50);
+    }
 
-    private static double StopLossUsd(InternalPosition position) => MathUtils.Clamp(Math.Max(0.16, position.StakeUsd * 0.22), 0.16, 0.40);
+    private static double StopLossUsd(InternalPosition position)
+    {
+        // Wider SL at 35% of stake to survive short-term noise
+        return MathUtils.Clamp(position.StakeUsd * 0.35, 0.15, position.StakeUsd * 0.50);
+    }
 
     private void UpdateDailyLossLockNoLock(RuntimeState state, BotConfig config, DateTimeOffset now)
     {
