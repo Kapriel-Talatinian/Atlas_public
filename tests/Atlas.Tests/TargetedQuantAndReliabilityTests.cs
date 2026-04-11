@@ -910,6 +910,42 @@ public class PostgresConnectionResolverTests
 public class PolymarketBotServiceTests
 {
     [Fact]
+    public void TelegramPolymarketMenuFormatter_Menu_ContainsCoreCommands()
+    {
+        string menu = TelegramPolymarketMenuFormatter.BuildMenu();
+
+        Assert.Contains("/menu", menu, StringComparison.Ordinal);
+        Assert.Contains("/status", menu, StringComparison.Ordinal);
+        Assert.Contains("/pnl", menu, StringComparison.Ordinal);
+        Assert.Contains("/positions", menu, StringComparison.Ordinal);
+        Assert.Contains("/history", menu, StringComparison.Ordinal);
+        Assert.Contains("/journal", menu, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("/menu", "menu")]
+    [InlineData("/pnl@AtlasBot", "pnl")]
+    [InlineData("  /positions  ", "positions")]
+    [InlineData("journal", "journal")]
+    public void TelegramPolymarketMenuFormatter_NormalizeCommand_StripsTelegramSyntax(string raw, string expected)
+    {
+        Assert.Equal(expected, TelegramPolymarketMenuFormatter.NormalizeCommand(raw));
+    }
+
+    [Fact]
+    public void TelegramPolymarketMenuFormatter_Pnl_IncludesEquityCashAndDaily()
+    {
+        string text = TelegramPolymarketMenuFormatter.BuildPnl(BuildLiveSnapshot(
+            BuildSignal("MKT-1", "BTC", "Will Bitcoin be above $80,000 in 20 minutes?", "Buy Yes", 0.42, 0.58, 0.57, 0.43, 20, 72, 81)));
+
+        Assert.Contains("ATLAS PNL", text, StringComparison.Ordinal);
+        Assert.Contains("Equity:", text, StringComparison.Ordinal);
+        Assert.Contains("Cash:", text, StringComparison.Ordinal);
+        Assert.Contains("Daily:", text, StringComparison.Ordinal);
+        Assert.Contains("Monthly:", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task PolymarketBot_OpensOneDollarCappedPositions_AndPublishesJournal()
     {
         string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-poly-tests-{Guid.NewGuid():N}");
@@ -1084,6 +1120,62 @@ public class PolymarketBotServiceTests
             Assert.Equal(0, snapshot.Stats.ActionableSignals);
             Assert.Contains(snapshot.Journal, entry => entry.Type == "watch" && entry.Detail.Contains("Dominant reason:", StringComparison.Ordinal));
             Assert.Empty(telegram.Messages);
+        }
+        finally
+        {
+            RestoreEnvironment(previous);
+            try { Directory.Delete(tempRoot, recursive: true); } catch { }
+        }
+    }
+
+    [Fact]
+    public async Task PolymarketBot_TakeProfit_SendsTelegramWithEquityAndCash()
+    {
+        string tempRoot = Path.Combine(Path.GetTempPath(), $"atlas-poly-tests-{Guid.NewGuid():N}");
+        Directory.CreateDirectory(tempRoot);
+
+        var previous = CaptureEnvironment(
+            "POLYMARKET_BOT_ENABLED",
+            "POLYMARKET_EXECUTION_MODE",
+            "POLYMARKET_MAX_TRADE_USD",
+            "POLYMARKET_STARTING_BALANCE_USD",
+            "POLYMARKET_DAILY_LOSS_LIMIT_USD",
+            "POLYMARKET_BOT_EVALUATION_SECONDS",
+            "POLYMARKET_REPORT_TIMEZONE");
+
+        try
+        {
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_ENABLED", "true");
+            Environment.SetEnvironmentVariable("POLYMARKET_EXECUTION_MODE", "paper");
+            Environment.SetEnvironmentVariable("POLYMARKET_MAX_TRADE_USD", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_STARTING_BALANCE_USD", "10");
+            Environment.SetEnvironmentVariable("POLYMARKET_DAILY_LOSS_LIMIT_USD", "5");
+            Environment.SetEnvironmentVariable("POLYMARKET_BOT_EVALUATION_SECONDS", "1");
+            Environment.SetEnvironmentVariable("POLYMARKET_REPORT_TIMEZONE", "UTC");
+
+            int cycle = 0;
+            var live = new StaticPolymarketBotLiveService(() =>
+            {
+                cycle++;
+                return cycle == 1
+                    ? BuildLiveSnapshot(
+                        BuildSignal("MKT-TP-1", "BTC", "Will Bitcoin be above $80,000 in 20 minutes?", "Buy Yes", 0.42, 0.58, 0.57, 0.43, 20, 72, 81))
+                    : BuildLiveSnapshot(
+                        BuildSignal("MKT-TP-1", "BTC", "Will Bitcoin be above $80,000 in 20 minutes?", "Pass", 0.65, 0.35, 0.57, 0.43, 19, 72, 48));
+            });
+            var telegram = new CaptureTelegramService();
+            var service = BuildPolymarketBotService(tempRoot, live, telegram, AtlasRuntimeRole.All);
+
+            PolymarketLiveSnapshot opened = await service.RunAutopilotAsync();
+            PolymarketLiveSnapshot closed = await service.RunAutopilotAsync();
+
+            Assert.Single(opened.OpenPositions);
+            Assert.Empty(closed.OpenPositions);
+            Assert.True(telegram.Messages.Count >= 2);
+            Assert.Contains(telegram.Messages, message => message.Contains("NEW ORDER |", StringComparison.Ordinal));
+            Assert.Contains(telegram.Messages, message => message.Contains("TP |", StringComparison.Ordinal));
+            Assert.Contains(telegram.Messages, message => message.Contains("EQUITY", StringComparison.Ordinal));
+            Assert.Contains(telegram.Messages, message => message.Contains("CASH", StringComparison.Ordinal));
         }
         finally
         {
@@ -1364,6 +1456,11 @@ public class PolymarketBotServiceTests
         public StaticPolymarketBotLiveService(PolymarketLiveSnapshot snapshot)
         {
             _factory = () => snapshot;
+        }
+
+        public StaticPolymarketBotLiveService(Func<PolymarketLiveSnapshot> factory)
+        {
+            _factory = factory;
         }
 
         public Task<PolymarketLiveSnapshot> GetLiveSnapshotAsync(int lookaheadMinutes = 24 * 60, int maxMarkets = 24, CancellationToken ct = default) =>

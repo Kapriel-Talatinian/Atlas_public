@@ -104,6 +104,7 @@ if (runtimeContext.CanRunBotLoop)
 {
     builder.Services.AddHostedService<ExperimentalBotWorkerService>();
     builder.Services.AddHostedService<PolymarketLiveBotWorkerService>();
+    builder.Services.AddHostedService<TelegramPolymarketMenuWorkerService>();
 }
 
 builder.Services.AddCors(options =>

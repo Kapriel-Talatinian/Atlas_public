@@ -307,6 +307,8 @@ public sealed class PolymarketBotService : IPolymarketBotService
             state.CashBalanceUsd += position.CurrentValueUsd;
             closed.Add(position);
             AddJournal(state, "exit", $"{position.Asset} {position.Side} closed", $"{position.Question} | reason={exitReason} | pnl={position.RealizedPnlUsd:+0.00;-0.00}$", position.PositionId, position.MarketId, now);
+            if (ShouldNotifyClose(exitReason))
+                _ = _telegram.SendAsync(BuildCloseTelegramMessage(position, state, exitReason), CancellationToken.None);
         }
 
         if (closed.Count == 0)
@@ -600,7 +602,7 @@ public sealed class PolymarketBotService : IPolymarketBotService
             .Sum(position => position.RealizedPnlUsd);
 
     private static double ComputeEquity(RuntimeState state) =>
-        state.CashBalanceUsd + state.OpenPositions.Sum(position => position.CurrentValueUsd);
+        state.CashBalanceUsd + state.OpenPositions.Where(position => position.IsOpen).Sum(position => position.CurrentValueUsd);
 
     private static void RefreshEquityAnchorsNoLock(RuntimeState state)
     {
@@ -658,6 +660,20 @@ public sealed class PolymarketBotService : IPolymarketBotService
         string outcome = position.Side.Replace("Buy ", string.Empty, StringComparison.OrdinalIgnoreCase).Trim().ToUpperInvariant();
         string label = position.DisplayLabel?.ToUpperInvariant() ?? position.Question.ToUpperInvariant();
         return $"NEW ORDER | {label} | {outcome} | TP BRUT {position.MaxProfitUsd:0.00}$ | PERTE MAX {position.MaxLossUsd:0.00}$";
+    }
+
+    private static bool ShouldNotifyClose(string exitReason) =>
+        string.Equals(exitReason, "take-profit", StringComparison.OrdinalIgnoreCase) ||
+        string.Equals(exitReason, "stop-loss", StringComparison.OrdinalIgnoreCase);
+
+    private static string BuildCloseTelegramMessage(InternalPosition position, RuntimeState state, string exitReason)
+    {
+        string outcome = position.Side.Replace("Buy ", string.Empty, StringComparison.OrdinalIgnoreCase).Trim().ToUpperInvariant();
+        string label = position.DisplayLabel?.ToUpperInvariant() ?? position.Question.ToUpperInvariant();
+        string prefix = string.Equals(exitReason, "take-profit", StringComparison.OrdinalIgnoreCase) ? "TP" : "SL";
+        double equity = ComputeEquity(state);
+        double cash = state.CashBalanceUsd;
+        return $"{prefix} | {label} | {outcome} | PNL {position.RealizedPnlUsd:+0.00;-0.00}$ | EQUITY {equity:0.00}$ | CASH {cash:0.00}$";
     }
 
     private static TimeZoneInfo ResolveTimeZone(string configured)
@@ -741,7 +757,7 @@ public sealed class PolymarketBotService : IPolymarketBotService
         double realized = state.ClosedPositions.Sum(position => position.RealizedPnlUsd);
         double unrealized = state.OpenPositions.Sum(position => position.UnrealizedPnlUsd);
         double equity = ComputeEquity(state);
-        double grossExposure = state.OpenPositions.Sum(position => position.CurrentValueUsd);
+        double grossExposure = state.OpenPositions.Where(position => position.IsOpen).Sum(position => position.CurrentValueUsd);
         double winRate = state.ClosedPositions.Count == 0 ? 0 : (double)state.ClosedPositions.Count(position => position.RealizedPnlUsd > 0) / state.ClosedPositions.Count;
         double avgWinner = state.ClosedPositions.Where(position => position.RealizedPnlUsd > 0).Select(position => position.RealizedPnlUsd).DefaultIfEmpty(0).Average();
         double avgLoser = state.ClosedPositions.Where(position => position.RealizedPnlUsd < 0).Select(position => position.RealizedPnlUsd).DefaultIfEmpty(0).Average();

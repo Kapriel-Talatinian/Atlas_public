@@ -492,6 +492,7 @@ function App() {
   const refreshPolymarketLive = useCallback(async () => {
     setLoadingPolymarket(true);
     try {
+      setError("");
       const snapshot = await getPolymarketLiveSnapshot({ lookaheadMinutes: 24 * 60, maxMarkets: 24 });
       setPolymarketSnapshot(snapshot);
     } catch (err) {
@@ -558,6 +559,12 @@ function App() {
   useEffect(() => {
     refreshPolymarketLive().catch(() => null);
   }, [refreshPolymarketLive]);
+
+  useEffect(() => {
+    if (activeTab !== "polymarket") return undefined;
+    refreshPolymarketLive().catch(() => null);
+    return undefined;
+  }, [activeTab, refreshPolymarketLive]);
 
   useEffect(() => {
     if (activeTab !== "experimental") return undefined;
