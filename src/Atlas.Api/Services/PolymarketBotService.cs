@@ -740,11 +740,11 @@ public sealed class PolymarketBotService : IPolymarketBotService
     private BotConfig LoadConfig() => new(
         Enabled: string.Equals(Environment.GetEnvironmentVariable("POLYMARKET_BOT_ENABLED"), "true", StringComparison.OrdinalIgnoreCase),
         ExecutionMode: (Environment.GetEnvironmentVariable("POLYMARKET_EXECUTION_MODE") ?? "analysis-only").Trim(),
-        EvaluationIntervalSec: ParseIntEnv("POLYMARKET_BOT_EVALUATION_SECONDS", 12, 3, 60),
+        EvaluationIntervalSec: ParseIntEnv("POLYMARKET_BOT_EVALUATION_SECONDS", 5, 3, 60),
         LookaheadMinutes: ParseIntEnv("POLYMARKET_LOOKAHEAD_MINUTES", 24 * 60, 5, 7 * 24 * 60),
         MaxMarkets: ParseIntEnv("POLYMARKET_MAX_MARKETS", 24, 6, 60),
         MaxNewTradesPerCycle: ParseIntEnv("POLYMARKET_MAX_NEW_TRADES_PER_CYCLE", 2, 1, 8),
-        MaxTradeUsd: ParseDoubleEnv("POLYMARKET_MAX_TRADE_USD", 1.0, 0.25, 5.0),
+        MaxTradeUsd: ParseDoubleEnv("POLYMARKET_MAX_TRADE_USD", 2.0, 0.25, 25.0),
         StartingBalanceUsd: ParseDoubleEnv("POLYMARKET_STARTING_BALANCE_USD", 100.0, 5.0, 100_000),
         DailyLossLimitUsd: ParseDoubleEnv("POLYMARKET_DAILY_LOSS_LIMIT_USD", 5.0, 1.0, 500.0),
         ReportTimeZone: (Environment.GetEnvironmentVariable("POLYMARKET_REPORT_TIMEZONE") ?? "Europe/Paris").Trim());

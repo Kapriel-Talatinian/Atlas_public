@@ -578,10 +578,10 @@ public sealed class PolymarketLiveService : IPolymarketLiveService
             OrderStyle: minutes <= 15 ? "join-best-or-better" : "passive-limit",
             IndicativeEntryPrice: indicativeEntry,
             MaxPositionPct: MathUtils.Clamp((selectedEdge * 140 + qualityScore * 0.015) / 100.0, 0.0025, 0.025),
-            TimeStopMinutes: (int)Math.Clamp(Math.Round(minutes * 0.55), 3, Math.Max(5, (int)Math.Round(minutes))),
+            TimeStopMinutes: (int)Math.Clamp(Math.Round(minutes * 0.80), 3, Math.Max(5, (int)Math.Round(minutes))),
             ExitPlan: side == "Pass"
                 ? "Stand down. Recheck on next scan."
-                : $"Take profits once model edge compresses below 0.5c or market reprices toward fair value. Hard exit by T-{Math.Max(1, (int)Math.Round(minutes * 0.15))}m.",
+                : $"Take profits once model edge compresses below 0.5c or market reprices toward fair value. Hard exit by T-{Math.Max(1, (int)Math.Round(minutes * 0.10))}m.",
             RiskPlan: "Never cross the spread aggressively on thin books. Cancel if spread widens materially or live edge flips negative.");
 
         PolymarketMarketSignal signal = new(
