@@ -85,7 +85,25 @@ else
 }
 builder.Services.AddSingleton<IOptionsMarketDataService, ResilientOptionsMarketDataService>();
 builder.Services.AddSingleton<IOptionsAnalyticsService, OptionsAnalyticsService>();
+builder.Services.AddHttpClient("polymarket-clob", client =>
+{
+    client.BaseAddress = new Uri("https://clob.polymarket.com");
+    client.Timeout = TimeSpan.FromSeconds(15);
+    client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
+    client.DefaultRequestHeaders.UserAgent.ParseAdd("Atlas.Api/1.0 (+https://github.com/Kapriel-Talatinian/Atlas_public)");
+});
 builder.Services.AddSingleton<IPolymarketLiveService, PolymarketLiveService>();
+if (!string.IsNullOrWhiteSpace(builder.Configuration["POLYMARKET_PRIVATE_KEY"]))
+{
+    builder.Services.AddSingleton<IPolymarketSigningService, PolymarketSigningService>();
+    builder.Services.AddSingleton<IPolymarketClobClient, PolymarketClobClient>();
+}
+else
+{
+    builder.Services.AddSingleton<IPolymarketSigningService, NoopPolymarketSigningService>();
+    builder.Services.AddSingleton<IPolymarketClobClient, NoopPolymarketClobClient>();
+}
+builder.Services.AddSingleton<IPolymarketReconciliationService, PolymarketReconciliationService>();
 if (!string.IsNullOrWhiteSpace(builder.Configuration["TELEGRAM_BOT_TOKEN"]) &&
     !string.IsNullOrWhiteSpace(builder.Configuration["TELEGRAM_CHAT_ID"]))
 {

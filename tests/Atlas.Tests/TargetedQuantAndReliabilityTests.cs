@@ -1283,6 +1283,7 @@ public class PolymarketBotServiceTests
             repository,
             runtime,
             telegram,
+            new NoopPolymarketClobClient(),
             NullLogger<PolymarketBotService>.Instance);
     }
 

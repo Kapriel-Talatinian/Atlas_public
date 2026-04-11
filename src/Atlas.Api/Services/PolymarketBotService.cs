@@ -129,6 +129,7 @@ public sealed class PolymarketBotService : IPolymarketBotService
     private readonly IBotStateRepository _repository;
     private readonly AtlasRuntimeContext _runtime;
     private readonly ITelegramSignalService _telegram;
+    private readonly IPolymarketClobClient _clob;
     private readonly ILogger<PolymarketBotService> _logger;
     private readonly RuntimeState _state;
 
@@ -137,12 +138,14 @@ public sealed class PolymarketBotService : IPolymarketBotService
         IBotStateRepository repository,
         AtlasRuntimeContext runtime,
         ITelegramSignalService telegram,
+        IPolymarketClobClient clob,
         ILogger<PolymarketBotService> logger)
     {
         _liveService = liveService;
         _repository = repository;
         _runtime = runtime;
         _telegram = telegram;
+        _clob = clob;
         _logger = logger;
         _state = LoadOrCreateState();
     }
@@ -312,10 +315,29 @@ public sealed class PolymarketBotService : IPolymarketBotService
             if (!shouldClose)
                 continue;
 
+            // In live mode, place a sell order on the CLOB before closing
+            if (IsLiveMode(config) && exitReason != "resolved")
+            {
+                ClobOrderResult sellResult = _clob.PlaceOrderAsync(new ClobPlaceOrderRequest(
+                    TokenId: position.MarketId,
+                    Price: exitPrice,
+                    Size: position.Quantity,
+                    Side: PolymarketOrderSide.Sell), CancellationToken.None).GetAwaiter().GetResult();
+
+                if (!sellResult.Success)
+                {
+                    _logger.LogWarning("CLOB sell order failed for {PositionId}: {Error}", position.PositionId, sellResult.ErrorMessage);
+                    AddJournal(state, "clob-sell-fail", $"{position.Asset} sell failed",
+                        $"{position.Question} | reason={sellResult.ErrorMessage}", position.PositionId, position.MarketId, now);
+                    continue; // keep position open, retry next cycle
+                }
+            }
+
             ClosePosition(position, exitPrice, exitReason, now);
             state.CashBalanceUsd += position.CurrentValueUsd;
             closed.Add(position);
-            AddJournal(state, "exit", $"{position.Asset} {position.Side} closed", $"{position.Question} | reason={exitReason} | pnl={position.RealizedPnlUsd:+0.00;-0.00}$", position.PositionId, position.MarketId, now);
+            string exitModeTag = IsLiveMode(config) ? "LIVE" : "PAPER";
+            AddJournal(state, "exit", $"[{exitModeTag}] {position.Asset} {position.Side} closed", $"{position.Question} | reason={exitReason} | pnl={position.RealizedPnlUsd:+0.00;-0.00}$", position.PositionId, position.MarketId, now);
             if (ShouldNotifyClose(exitReason))
                 _ = _telegram.SendAsync(BuildCloseTelegramMessage(position, state, exitReason), CancellationToken.None);
         }
@@ -327,10 +349,16 @@ public sealed class PolymarketBotService : IPolymarketBotService
         state.ClosedPositions.AddRange(closed.OrderByDescending(position => position.ExitTime));
     }
 
+    private bool IsLiveMode(BotConfig config) =>
+        string.Equals(config.ExecutionMode, "live", StringComparison.OrdinalIgnoreCase) && _clob.IsConfigured;
+
     private void OpenNewPositionsNoLock(RuntimeState state, PolymarketLiveSnapshot live, BotConfig config, DateTimeOffset now)
     {
-        if (!string.Equals(config.ExecutionMode, "paper", StringComparison.OrdinalIgnoreCase) &&
-            !string.Equals(config.ExecutionMode, "dry-run", StringComparison.OrdinalIgnoreCase))
+        bool isPaper = string.Equals(config.ExecutionMode, "paper", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(config.ExecutionMode, "dry-run", StringComparison.OrdinalIgnoreCase);
+        bool isLive = IsLiveMode(config);
+
+        if (!isPaper && !isLive)
             return;
 
         var scannerSignals = live.Opportunities
@@ -481,9 +509,35 @@ public sealed class PolymarketBotService : IPolymarketBotService
             };
             ApplyMark(position, entryPrice);
 
+            // In live mode, place the actual CLOB order before recording the position
+            if (isLive)
+            {
+                ClobOrderResult orderResult = _clob.PlaceOrderAsync(new ClobPlaceOrderRequest(
+                    TokenId: signal.MarketId,
+                    Price: entryPrice,
+                    Size: quantity,
+                    Side: PolymarketBotRuleEngine.UsesPrimaryOutcome(signal.RecommendedSide)
+                        ? PolymarketOrderSide.Buy
+                        : PolymarketOrderSide.Buy), CancellationToken.None).GetAwaiter().GetResult();
+
+                if (!orderResult.Success)
+                {
+                    _logger.LogWarning(
+                        "CLOB order rejected for {MarketId}: {Error}",
+                        signal.MarketId, orderResult.ErrorMessage);
+                    AddJournal(state, "clob-reject", $"{signal.Asset} order rejected",
+                        $"{signal.Question} | reason={orderResult.ErrorMessage}", position.PositionId, signal.MarketId, now);
+                    continue; // skip this position, don't deduct cash
+                }
+
+                position.PositionId = $"CLOB-{orderResult.OrderId}";
+                _logger.LogInformation("CLOB order placed: {OrderId} for {MarketId}", orderResult.OrderId, signal.MarketId);
+            }
+
             state.CashBalanceUsd -= stakeUsd;
             state.OpenPositions.Add(position);
-            AddJournal(state, "entry", $"{signal.Asset} {signal.RecommendedSide} opened", $"{signal.Question} | stake={stakeUsd:0.00}$ | edge={(position.EdgePct * 100):+0.00;-0.00}% | fair={position.FairProbability:P1} | market={position.MarketProbability:P1}", position.PositionId, position.MarketId, now);
+            string modeTag = isLive ? "LIVE" : "PAPER";
+            AddJournal(state, "entry", $"[{modeTag}] {signal.Asset} {signal.RecommendedSide} opened", $"{signal.Question} | stake={stakeUsd:0.00}$ | edge={(position.EdgePct * 100):+0.00;-0.00}% | fair={position.FairProbability:P1} | market={position.MarketProbability:P1}", position.PositionId, position.MarketId, now);
             _ = _telegram.SendAsync(BuildOpenTelegramMessage(position), CancellationToken.None);
             openedAny = true;
         }
