@@ -67,7 +67,7 @@ builder.Services.AddHttpClient("polymarket-gamma", client =>
 builder.Services.AddHttpClient("telegram-bot", client =>
 {
     client.BaseAddress = new Uri("https://api.telegram.org");
-    client.Timeout = TimeSpan.FromSeconds(8);
+    client.Timeout = TimeSpan.FromSeconds(35);
     client.DefaultRequestHeaders.Accept.ParseAdd("application/json");
     client.DefaultRequestHeaders.UserAgent.ParseAdd("Atlas.Api/1.0 (+https://github.com/Kapriel-Talatinian/Atlas_public)");
 });
