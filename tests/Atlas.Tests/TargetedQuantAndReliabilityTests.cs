@@ -917,6 +917,7 @@ public class PolymarketBotServiceTests
         Assert.Contains("/menu", menu, StringComparison.Ordinal);
         Assert.Contains("/status", menu, StringComparison.Ordinal);
         Assert.Contains("/pnl", menu, StringComparison.Ordinal);
+        Assert.Contains("/metrics", menu, StringComparison.Ordinal);
         Assert.Contains("/positions", menu, StringComparison.Ordinal);
         Assert.Contains("/history", menu, StringComparison.Ordinal);
         Assert.Contains("/journal", menu, StringComparison.Ordinal);
@@ -925,6 +926,7 @@ public class PolymarketBotServiceTests
     [Theory]
     [InlineData("/menu", "menu")]
     [InlineData("/pnl@AtlasBot", "pnl")]
+    [InlineData("/metrics@AtlasBot", "metrics")]
     [InlineData("  /positions  ", "positions")]
     [InlineData("journal", "journal")]
     public void TelegramPolymarketMenuFormatter_NormalizeCommand_StripsTelegramSyntax(string raw, string expected)
@@ -943,6 +945,20 @@ public class PolymarketBotServiceTests
         Assert.Contains("Cash:", text, StringComparison.Ordinal);
         Assert.Contains("Daily:", text, StringComparison.Ordinal);
         Assert.Contains("Monthly:", text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void TelegramPolymarketMenuFormatter_Metrics_IncludesRiskAndExposure()
+    {
+        string text = TelegramPolymarketMenuFormatter.BuildMetrics(BuildLiveSnapshot(
+            BuildSignal("MKT-1", "BTC", "Will Bitcoin be above $80,000 in 20 minutes?", "Buy Yes", 0.42, 0.58, 0.57, 0.43, 20, 72, 81)));
+
+        Assert.Contains("ATLAS METRICS", text, StringComparison.Ordinal);
+        Assert.Contains("Win rate:", text, StringComparison.Ordinal);
+        Assert.Contains("Avg winner:", text, StringComparison.Ordinal);
+        Assert.Contains("Avg loser:", text, StringComparison.Ordinal);
+        Assert.Contains("Drawdown:", text, StringComparison.Ordinal);
+        Assert.Contains("Gross exposure:", text, StringComparison.Ordinal);
     }
 
     [Fact]

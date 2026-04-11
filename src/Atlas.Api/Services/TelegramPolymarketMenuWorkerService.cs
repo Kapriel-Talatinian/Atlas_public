@@ -11,6 +11,7 @@ public static class TelegramPolymarketMenuFormatter
         "ATLAS POLYMARKET MENU",
         "/status - runtime, scanner, bot-ready, risk lock",
         "/pnl - equity, cash, daily, monthly, net",
+        "/metrics - win rate, avg winner, avg loser, drawdown, exposure",
         "/positions - open positions",
         "/history - recent closed trades",
         "/journal - recent decision log",
@@ -44,6 +45,20 @@ public static class TelegramPolymarketMenuFormatter
             $"Monthly: {p.MonthlyPnlUsd:+0.00;-0.00}$",
             $"Drawdown: {p.DrawdownUsd:0.00}$ ({p.DrawdownPct:P1})",
             $"Win rate: {p.WinRate:P1}");
+    }
+
+    public static string BuildMetrics(PolymarketLiveSnapshot snapshot)
+    {
+        PolymarketBotPortfolioSnapshot p = snapshot.Portfolio;
+        return string.Join('\n',
+            "ATLAS METRICS",
+            $"Win rate: {p.WinRate:P1}",
+            $"Avg winner: {p.AvgWinnerUsd:+0.00;-0.00}$",
+            $"Avg loser: {p.AvgLoserUsd:+0.00;-0.00}$",
+            $"Drawdown: {p.DrawdownUsd:0.00}$ ({p.DrawdownPct:P1})",
+            $"Gross exposure: {p.GrossExposureUsd:0.00}$",
+            $"Open positions: {p.OpenPositionsCount}",
+            $"Closed positions: {p.ClosedPositionsCount}");
     }
 
     public static string BuildPositions(PolymarketLiveSnapshot snapshot, DateTimeOffset now)
@@ -115,6 +130,17 @@ public static class TelegramPolymarketMenuFormatter
 public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
 {
     private const string BotKey = "POLYMARKET-LIVE";
+    private sealed record TelegramApiEnvelope<T>(
+        [property: JsonPropertyName("ok")] bool Ok,
+        [property: JsonPropertyName("result")] T? Result,
+        [property: JsonPropertyName("error_code")] int? ErrorCode,
+        [property: JsonPropertyName("description")] string? Description);
+
+    private sealed record TelegramWebhookInfo(
+        [property: JsonPropertyName("url")] string? Url,
+        [property: JsonPropertyName("pending_update_count")] int PendingUpdateCount,
+        [property: JsonPropertyName("last_error_message")] string? LastErrorMessage);
+
     private sealed record TelegramGetUpdatesResponse(
         [property: JsonPropertyName("ok")] bool Ok,
         [property: JsonPropertyName("result")] List<TelegramUpdate>? Result);
@@ -181,8 +207,7 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
         }
 
         _logger.LogInformation("Telegram command worker starting on instance {InstanceId}", _runtime.InstanceId);
-        await RegisterCommandsAsync(stoppingToken);
-        await PrimeOffsetAsync(stoppingToken);
+        await WarmupAsync(stoppingToken);
 
         while (!stoppingToken.IsCancellationRequested)
         {
@@ -228,6 +253,23 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
         return base.StopAsync(cancellationToken);
     }
 
+    private async Task WarmupAsync(CancellationToken ct)
+    {
+        try
+        {
+            await EnsurePollingModeAsync(ct);
+            await RegisterCommandsAsync(ct);
+        }
+        catch (OperationCanceledException) when (ct.IsCancellationRequested)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogWarning(ex, "Telegram command worker warmup failed; continuing with polling loop");
+        }
+    }
+
     private async Task RegisterCommandsAsync(CancellationToken ct)
     {
         try
@@ -238,6 +280,7 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
                 new TelegramBotCommand("menu", "Show Atlas Polymarket menu"),
                 new TelegramBotCommand("status", "Runtime and scanner status"),
                 new TelegramBotCommand("pnl", "Equity, cash and performance"),
+                new TelegramBotCommand("metrics", "Win rate, averages, drawdown and exposure"),
                 new TelegramBotCommand("positions", "Open positions"),
                 new TelegramBotCommand("history", "Recent closed trades"),
                 new TelegramBotCommand("journal", "Recent decision log")
@@ -251,21 +294,55 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
         }
     }
 
-    private async Task PrimeOffsetAsync(CancellationToken ct)
+    private async Task EnsurePollingModeAsync(CancellationToken ct)
     {
-        IReadOnlyList<TelegramUpdate> updates = await GetUpdatesAsync(ct, timeoutSeconds: 0);
-        if (updates.Count == 0)
+        var client = _httpClientFactory.CreateClient("telegram-bot");
+        TelegramApiEnvelope<TelegramWebhookInfo>? webhook = await client.GetFromJsonAsync<TelegramApiEnvelope<TelegramWebhookInfo>>(
+            $"/bot{_token}/getWebhookInfo",
+            ct);
+
+        if (webhook?.Result is null)
             return;
 
-        _offset = updates.Max(update => update.UpdateId) + 1;
+        if (!string.IsNullOrWhiteSpace(webhook.Result.Url))
+        {
+            _logger.LogInformation(
+                "Telegram command worker detected webhook mode; clearing webhook before long polling. pendingUpdates={Pending}",
+                webhook.Result.PendingUpdateCount);
+
+            using HttpResponseMessage response = await client.PostAsync(
+                $"/bot{_token}/deleteWebhook?drop_pending_updates=false",
+                content: null,
+                ct);
+            response.EnsureSuccessStatusCode();
+        }
+        else if (webhook.Result.PendingUpdateCount > 0)
+        {
+            _logger.LogInformation(
+                "Telegram command worker found {Pending} pending Telegram update(s) ready to process",
+                webhook.Result.PendingUpdateCount);
+        }
     }
 
     private async Task<IReadOnlyList<TelegramUpdate>> GetUpdatesAsync(CancellationToken ct, int timeoutSeconds = 20)
     {
         var client = _httpClientFactory.CreateClient("telegram-bot");
         string path = $"/bot{_token}/getUpdates?timeout={timeoutSeconds}&offset={_offset}";
-        TelegramGetUpdatesResponse? response = await client.GetFromJsonAsync<TelegramGetUpdatesResponse>(path, ct);
-        return response?.Result ?? [];
+        using HttpResponseMessage response = await client.GetAsync(path, ct);
+
+        if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
+        {
+            string body = await response.Content.ReadAsStringAsync(ct);
+            _logger.LogWarning(
+                "Telegram getUpdates conflict. Another consumer is polling this bot token or a stale webhook is still active. body={Body}",
+                body);
+            return [];
+        }
+
+        response.EnsureSuccessStatusCode();
+
+        TelegramGetUpdatesResponse? payload = await response.Content.ReadFromJsonAsync<TelegramGetUpdatesResponse>(cancellationToken: ct);
+        return payload?.Result ?? [];
     }
 
     private async Task HandleUpdateAsync(TelegramUpdate update, CancellationToken ct)
@@ -281,12 +358,15 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
         if (string.IsNullOrWhiteSpace(command))
             return;
 
-        PolymarketLiveSnapshot snapshot = await _polymarketBotService.GetSnapshotAsync(ct: ct);
+        _logger.LogInformation("Telegram command worker accepted command /{Command} from chat {ChatId}", command, _chatId);
+
+        PolymarketLiveSnapshot snapshot = await _polymarketBotService.GetCachedSnapshotAsync(ct);
         string response = command switch
         {
             "menu" or "start" or "help" => TelegramPolymarketMenuFormatter.BuildMenu(),
             "status" => TelegramPolymarketMenuFormatter.BuildStatus(snapshot),
             "pnl" => TelegramPolymarketMenuFormatter.BuildPnl(snapshot),
+            "metrics" => TelegramPolymarketMenuFormatter.BuildMetrics(snapshot),
             "positions" => TelegramPolymarketMenuFormatter.BuildPositions(snapshot, DateTimeOffset.UtcNow),
             "history" => TelegramPolymarketMenuFormatter.BuildHistory(snapshot),
             "journal" => TelegramPolymarketMenuFormatter.BuildJournal(snapshot),

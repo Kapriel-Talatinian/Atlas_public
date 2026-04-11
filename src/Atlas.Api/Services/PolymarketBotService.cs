@@ -8,6 +8,7 @@ namespace Atlas.Api.Services;
 public interface IPolymarketBotService
 {
     Task<PolymarketLiveSnapshot> GetSnapshotAsync(int lookaheadMinutes = 24 * 60, int maxMarkets = 24, CancellationToken ct = default);
+    Task<PolymarketLiveSnapshot> GetCachedSnapshotAsync(CancellationToken ct = default);
     Task<PolymarketLiveSnapshot> RunAutopilotAsync(CancellationToken ct = default);
 }
 
@@ -151,6 +152,14 @@ public sealed class PolymarketBotService : IPolymarketBotService
         if (_runtime.CanRunBotLoop)
             await EvaluateIfDueAsync(force: false, lookaheadMinutes, maxMarkets, ct);
         else
+            await RefreshFromRepositoryThreadSafeAsync(ct);
+
+        return await BuildSnapshotThreadSafeAsync(ct);
+    }
+
+    public async Task<PolymarketLiveSnapshot> GetCachedSnapshotAsync(CancellationToken ct = default)
+    {
+        if (!_runtime.CanRunBotLoop)
             await RefreshFromRepositoryThreadSafeAsync(ct);
 
         return await BuildSnapshotThreadSafeAsync(ct);
