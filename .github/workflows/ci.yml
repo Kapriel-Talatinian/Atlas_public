@@ -56,13 +56,15 @@ jobs:
         uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '8.0.x'
+      - name: Publish API
+        run: dotnet publish src/Atlas.Api/Atlas.Api.csproj -c Release -o ./publish
       - name: Start API
         run: |
-          nohup dotnet run --project src/Atlas.Api --urls http://127.0.0.1:5099 > api.log 2>&1 &
+          nohup dotnet ./publish/Atlas.Api.dll --urls http://127.0.0.1:5099 > api.log 2>&1 &
           echo $! > api.pid
       - name: Wait API
         run: |
-          for i in {1..45}; do
+          for i in {1..90}; do
             if curl -fsS http://127.0.0.1:5099/health > /dev/null; then
               exit 0
             fi
