@@ -306,7 +306,7 @@ public sealed class PolymarketBotService : IPolymarketBotService
                 shouldClose = true;
                 exitReason = "time-stop";
             }
-            else if (position.EdgePct < -0.02)
+            else if (position.EdgePct < -0.04)
             {
                 shouldClose = true;
                 exitReason = "edge-flip";
