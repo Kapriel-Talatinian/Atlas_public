@@ -1,0 +1,288 @@
+:root {
+  --tg-bg: var(--tg-theme-bg-color, #0f1115);
+  --tg-secondary-bg: var(--tg-theme-secondary-bg-color, #1a1d23);
+  --tg-text: var(--tg-theme-text-color, #f0f0f0);
+  --tg-hint: var(--tg-theme-hint-color, #7a8290);
+  --tg-link: var(--tg-theme-link-color, #5eb0ef);
+  --tg-button: var(--tg-theme-button-color, #5eb0ef);
+  --tg-button-text: var(--tg-theme-button-text-color, #ffffff);
+  --tg-accent: var(--tg-theme-accent-text-color, #5eb0ef);
+  --tg-destructive: var(--tg-theme-destructive-text-color, #ef4444);
+  --tg-separator: var(--tg-theme-section-separator-color, rgba(255, 255, 255, 0.08));
+
+  --green: #22c55e;
+  --red: #ef4444;
+  --yellow: #eab308;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
+}
+
+html, body {
+  margin: 0;
+  padding: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  background: var(--tg-bg);
+  color: var(--tg-text);
+  font-size: 15px;
+  line-height: 1.4;
+  overscroll-behavior: none;
+}
+
+#root {
+  min-height: 100vh;
+  padding: 12px 12px calc(12px + env(safe-area-inset-bottom)) 12px;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.tg-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0 16px 0;
+  border-bottom: 1px solid var(--tg-separator);
+  margin-bottom: 16px;
+}
+
+.tg-header-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.tg-header-status {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--tg-secondary-bg);
+}
+
+.tg-header-status.active { color: var(--green); }
+.tg-header-status.paused { color: var(--yellow); }
+
+.tg-tabs {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-bottom: 16px;
+  position: sticky;
+  top: 0;
+  background: var(--tg-bg);
+  padding: 4px 0 8px 0;
+  z-index: 10;
+}
+
+.tg-tab {
+  background: var(--tg-secondary-bg);
+  border: none;
+  color: var(--tg-hint);
+  padding: 10px 4px;
+  border-radius: 10px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+  min-height: 44px;
+}
+
+.tg-tab.active {
+  color: var(--tg-text);
+  background: color-mix(in srgb, var(--tg-button) 18%, var(--tg-secondary-bg));
+}
+
+.tg-tab:active {
+  transform: scale(0.97);
+}
+
+.tg-hero {
+  background: var(--tg-secondary-bg);
+  border-radius: 16px;
+  padding: 20px;
+  margin-bottom: 16px;
+  text-align: center;
+}
+
+.tg-hero-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--tg-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.tg-hero-value {
+  font-size: 38px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.tg-hero-value.pos { color: var(--green); }
+.tg-hero-value.neg { color: var(--red); }
+
+.tg-hero-sub {
+  font-size: 13px;
+  color: var(--tg-hint);
+  margin-top: 8px;
+}
+
+.tg-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.tg-card {
+  background: var(--tg-secondary-bg);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.tg-card-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--tg-hint);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 6px;
+}
+
+.tg-card-value {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.3px;
+}
+
+.tg-card-value.pos { color: var(--green); }
+.tg-card-value.neg { color: var(--red); }
+
+.tg-card-sub {
+  font-size: 12px;
+  color: var(--tg-hint);
+  margin-top: 4px;
+}
+
+.tg-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--tg-hint);
+  margin: 8px 4px 10px 4px;
+}
+
+.tg-list {
+  background: var(--tg-secondary-bg);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.tg-row {
+  padding: 12px 14px;
+  border-bottom: 1px solid var(--tg-separator);
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 10px;
+}
+
+.tg-row:last-child { border-bottom: none; }
+
+.tg-row-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.tg-row-title {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tg-row-sub {
+  font-size: 12px;
+  color: var(--tg-hint);
+}
+
+.tg-row-value {
+  font-size: 14px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  text-align: right;
+}
+
+.tg-row-value.pos { color: var(--green); }
+.tg-row-value.neg { color: var(--red); }
+
+.tg-badge {
+  display: inline-block;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+
+.tg-badge.yes, .tg-badge.up { background: color-mix(in srgb, var(--green) 20%, transparent); color: var(--green); }
+.tg-badge.no, .tg-badge.down { background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); }
+
+.tg-empty {
+  padding: 32px 16px;
+  text-align: center;
+  color: var(--tg-hint);
+  font-size: 14px;
+}
+
+.tg-loading {
+  padding: 80px 16px;
+  text-align: center;
+  color: var(--tg-hint);
+}
+
+.tg-controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-top: 8px;
+}
+
+.tg-btn {
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: opacity 0.15s ease;
+  min-height: 48px;
+}
+
+.tg-btn:active { opacity: 0.75; }
+.tg-btn.primary { background: var(--tg-button); color: var(--tg-button-text); }
+.tg-btn.danger { background: var(--red); color: #fff; }
+.tg-btn:disabled { opacity: 0.4; cursor: default; }
+
+.tg-error {
+  background: color-mix(in srgb, var(--red) 15%, var(--tg-secondary-bg));
+  color: var(--red);
+  padding: 12px;
+  border-radius: 10px;
+  font-size: 13px;
+  margin-bottom: 12px;
+}
