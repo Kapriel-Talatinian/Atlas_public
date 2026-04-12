@@ -7,15 +7,182 @@ namespace Atlas.Api.Services;
 
 public static class TelegramPolymarketMenuFormatter
 {
-    public static string BuildMenu() => string.Join('\n',
-        "ATLAS POLYMARKET MENU",
-        "/status - runtime, scanner, bot-ready, risk lock",
-        "/pnl - equity, cash, daily, monthly, net",
-        "/metrics - win rate, avg winner, avg loser, drawdown, exposure",
-        "/positions - open positions",
-        "/history - recent closed trades",
-        "/journal - recent decision log",
-        "/menu - show this command center");
+    public static string BuildMenu(bool isPaused = false) => string.Join('\n',
+        "ATLAS CONTROL CENTER",
+        isPaused ? "STATE: PAUSED (no new entries)" : "STATE: ACTIVE",
+        "",
+        "Use the buttons below or type a command:",
+        "",
+        "PORTFOLIO",
+        "/pnl - equity, cash, daily, monthly",
+        "/metrics - win rate, drawdown, exposure",
+        "/today - today PnL & trades",
+        "/week - last 7 days summary",
+        "",
+        "POSITIONS",
+        "/positions - open tickets",
+        "/history - closed trades",
+        "/best - top winners",
+        "/worst - biggest losers",
+        "",
+        "PER ASSET",
+        "/btc  /eth  /sol",
+        "",
+        "CONTROL",
+        "/pause - block new entries",
+        "/resume - unblock entries",
+        "/status - runtime diagnostics",
+        "/journal - decision log",
+        "/menu - show this menu again");
+
+    public static string BuildToday(PolymarketLiveSnapshot snapshot, DateTimeOffset now)
+    {
+        var todayClosed = snapshot.RecentClosedPositions
+            .Where(p => p.ExitTime.HasValue && p.ExitTime.Value.UtcDateTime.Date == now.UtcDateTime.Date)
+            .ToList();
+        double pnl = todayClosed.Sum(p => p.RealizedPnlUsd);
+        int wins = todayClosed.Count(p => p.RealizedPnlUsd > 0);
+        int losses = todayClosed.Count(p => p.RealizedPnlUsd < 0);
+        double winRate = todayClosed.Count > 0 ? (double)wins / todayClosed.Count : 0;
+        double bestTrade = todayClosed.DefaultIfEmpty().Max(p => p?.RealizedPnlUsd ?? 0);
+        double worstTrade = todayClosed.DefaultIfEmpty().Min(p => p?.RealizedPnlUsd ?? 0);
+
+        return string.Join('\n',
+            "TODAY",
+            $"Realized PnL: {pnl:+0.00;-0.00}$",
+            $"Trades: {todayClosed.Count} ({wins}W / {losses}L)",
+            $"Win rate: {winRate:P1}",
+            $"Best: {bestTrade:+0.00;-0.00}$",
+            $"Worst: {worstTrade:+0.00;-0.00}$",
+            $"Still open: {snapshot.OpenPositions.Count}");
+    }
+
+    public static string BuildWeek(PolymarketLiveSnapshot snapshot, DateTimeOffset now)
+    {
+        DateTime cutoff = now.UtcDateTime.AddDays(-7);
+        var weekClosed = snapshot.RecentClosedPositions
+            .Where(p => p.ExitTime.HasValue && p.ExitTime.Value.UtcDateTime >= cutoff)
+            .ToList();
+        double pnl = weekClosed.Sum(p => p.RealizedPnlUsd);
+        int wins = weekClosed.Count(p => p.RealizedPnlUsd > 0);
+        int losses = weekClosed.Count(p => p.RealizedPnlUsd < 0);
+        double winRate = weekClosed.Count > 0 ? (double)wins / weekClosed.Count : 0;
+        double avgWin = wins > 0 ? weekClosed.Where(p => p.RealizedPnlUsd > 0).Average(p => p.RealizedPnlUsd) : 0;
+        double avgLoss = losses > 0 ? weekClosed.Where(p => p.RealizedPnlUsd < 0).Average(p => p.RealizedPnlUsd) : 0;
+
+        return string.Join('\n',
+            "LAST 7 DAYS",
+            $"Realized PnL: {pnl:+0.00;-0.00}$",
+            $"Trades: {weekClosed.Count} ({wins}W / {losses}L)",
+            $"Win rate: {winRate:P1}",
+            $"Avg winner: {avgWin:+0.00;-0.00}$",
+            $"Avg loser: {avgLoss:+0.00;-0.00}$");
+    }
+
+    public static string BuildByAsset(PolymarketLiveSnapshot snapshot, string asset)
+    {
+        string upper = asset.ToUpperInvariant();
+        var openForAsset = snapshot.OpenPositions.Where(p => p.Asset.Equals(upper, StringComparison.OrdinalIgnoreCase)).ToList();
+        var closedForAsset = snapshot.RecentClosedPositions.Where(p => p.Asset.Equals(upper, StringComparison.OrdinalIgnoreCase)).ToList();
+        double realized = closedForAsset.Sum(p => p.RealizedPnlUsd);
+        int wins = closedForAsset.Count(p => p.RealizedPnlUsd > 0);
+        int losses = closedForAsset.Count(p => p.RealizedPnlUsd < 0);
+        double winRate = closedForAsset.Count > 0 ? (double)wins / closedForAsset.Count : 0;
+        double openExposure = openForAsset.Sum(p => p.StakeUsd);
+        double unrealized = openForAsset.Sum(p => p.UnrealizedPnlUsd);
+
+        return string.Join('\n',
+            $"{upper} BREAKDOWN",
+            $"Open: {openForAsset.Count} positions | exposure {openExposure:0.00}$ | uPnL {unrealized:+0.00;-0.00}$",
+            $"Closed: {closedForAsset.Count} trades | realized {realized:+0.00;-0.00}$",
+            $"Win rate: {winRate:P1} ({wins}W / {losses}L)");
+    }
+
+    public static string BuildBest(PolymarketLiveSnapshot snapshot)
+    {
+        var top = snapshot.RecentClosedPositions
+            .Where(p => p.RealizedPnlUsd > 0)
+            .OrderByDescending(p => p.RealizedPnlUsd)
+            .Take(5)
+            .ToList();
+
+        if (top.Count == 0)
+            return "TOP WINNERS\nNo winning trade yet.";
+
+        var lines = new List<string> { "TOP WINNERS" };
+        foreach (PolymarketPosition p in top)
+        {
+            string outcome = p.Side.Replace("Buy ", string.Empty, StringComparison.OrdinalIgnoreCase).Trim().ToUpperInvariant();
+            lines.Add($"+{p.RealizedPnlUsd:0.00}$ | {p.DisplayLabel} {outcome} | stake {p.StakeUsd:0.00}$ | {p.ExitReason}");
+        }
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildWorst(PolymarketLiveSnapshot snapshot)
+    {
+        var bottom = snapshot.RecentClosedPositions
+            .Where(p => p.RealizedPnlUsd < 0)
+            .OrderBy(p => p.RealizedPnlUsd)
+            .Take(5)
+            .ToList();
+
+        if (bottom.Count == 0)
+            return "BIGGEST LOSERS\nNo losing trade yet.";
+
+        var lines = new List<string> { "BIGGEST LOSERS" };
+        foreach (PolymarketPosition p in bottom)
+        {
+            string outcome = p.Side.Replace("Buy ", string.Empty, StringComparison.OrdinalIgnoreCase).Trim().ToUpperInvariant();
+            lines.Add($"{p.RealizedPnlUsd:0.00}$ | {p.DisplayLabel} {outcome} | stake {p.StakeUsd:0.00}$ | {p.ExitReason}");
+        }
+        return string.Join('\n', lines);
+    }
+
+    public static TelegramInlineKeyboard BuildMenuKeyboard(string? dashboardUrl = null)
+    {
+        var rows = new List<IReadOnlyList<TelegramInlineButton>>
+        {
+            new List<TelegramInlineButton>
+            {
+                new("PnL", Callback: "/pnl"),
+                new("Metrics", Callback: "/metrics"),
+                new("Today", Callback: "/today")
+            },
+            new List<TelegramInlineButton>
+            {
+                new("Positions", Callback: "/positions"),
+                new("History", Callback: "/history"),
+                new("Journal", Callback: "/journal")
+            },
+            new List<TelegramInlineButton>
+            {
+                new("BTC", Callback: "/btc"),
+                new("ETH", Callback: "/eth"),
+                new("SOL", Callback: "/sol")
+            },
+            new List<TelegramInlineButton>
+            {
+                new("Best", Callback: "/best"),
+                new("Worst", Callback: "/worst"),
+                new("Status", Callback: "/status")
+            },
+            new List<TelegramInlineButton>
+            {
+                new("Pause", Callback: "/pause"),
+                new("Resume", Callback: "/resume")
+            }
+        };
+
+        if (!string.IsNullOrWhiteSpace(dashboardUrl))
+        {
+            rows.Add(new List<TelegramInlineButton>
+            {
+                new("Open Dashboard", WebApp: dashboardUrl)
+            });
+        }
+
+        return new TelegramInlineKeyboard(rows);
+    }
 
     public static string BuildStatus(PolymarketLiveSnapshot snapshot)
     {
@@ -147,7 +314,8 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
 
     private sealed record TelegramUpdate(
         [property: JsonPropertyName("update_id")] long UpdateId,
-        [property: JsonPropertyName("message")] TelegramMessage? Message);
+        [property: JsonPropertyName("message")] TelegramMessage? Message,
+        [property: JsonPropertyName("callback_query")] TelegramCallbackQuery? CallbackQuery);
 
     private sealed record TelegramMessage(
         [property: JsonPropertyName("message_id")] long MessageId,
@@ -155,6 +323,15 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
         [property: JsonPropertyName("chat")] TelegramChat? Chat);
 
     private sealed record TelegramChat(
+        [property: JsonPropertyName("id")] long Id);
+
+    private sealed record TelegramCallbackQuery(
+        [property: JsonPropertyName("id")] string Id,
+        [property: JsonPropertyName("data")] string? Data,
+        [property: JsonPropertyName("message")] TelegramMessage? Message,
+        [property: JsonPropertyName("from")] TelegramCallbackUser? From);
+
+    private sealed record TelegramCallbackUser(
         [property: JsonPropertyName("id")] long Id);
 
     private sealed record TelegramSetCommandsRequest(
@@ -172,6 +349,7 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
     private readonly ILogger<TelegramPolymarketMenuWorkerService> _logger;
     private readonly string _token;
     private readonly string _chatId;
+    private readonly string? _dashboardUrl;
     private long _offset;
 
     public TelegramPolymarketMenuWorkerService(
@@ -190,6 +368,8 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
         _logger = logger;
         _token = Environment.GetEnvironmentVariable("TELEGRAM_BOT_TOKEN")?.Trim() ?? string.Empty;
         _chatId = Environment.GetEnvironmentVariable("TELEGRAM_CHAT_ID")?.Trim() ?? string.Empty;
+        string rawDashboard = Environment.GetEnvironmentVariable("ATLAS_DASHBOARD_URL")?.Trim() ?? string.Empty;
+        _dashboardUrl = rawDashboard.StartsWith("https://", StringComparison.OrdinalIgnoreCase) ? rawDashboard : null;
     }
 
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -282,12 +462,21 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
             var client = _httpClientFactory.CreateClient("telegram-bot");
             var payload = new TelegramSetCommandsRequest(new[]
             {
-                new TelegramBotCommand("menu", "Show Atlas Polymarket menu"),
+                new TelegramBotCommand("menu", "Atlas command center"),
                 new TelegramBotCommand("status", "Runtime and scanner status"),
                 new TelegramBotCommand("pnl", "Equity, cash and performance"),
-                new TelegramBotCommand("metrics", "Win rate, averages, drawdown and exposure"),
+                new TelegramBotCommand("metrics", "Win rate, drawdown, exposure"),
+                new TelegramBotCommand("today", "Today PnL and trades"),
+                new TelegramBotCommand("week", "Last 7 days summary"),
                 new TelegramBotCommand("positions", "Open positions"),
                 new TelegramBotCommand("history", "Recent closed trades"),
+                new TelegramBotCommand("best", "Top winning trades"),
+                new TelegramBotCommand("worst", "Biggest losing trades"),
+                new TelegramBotCommand("btc", "BTC breakdown"),
+                new TelegramBotCommand("eth", "ETH breakdown"),
+                new TelegramBotCommand("sol", "SOL breakdown"),
+                new TelegramBotCommand("pause", "Block new entries"),
+                new TelegramBotCommand("resume", "Unblock entries"),
                 new TelegramBotCommand("journal", "Recent decision log")
             });
             using HttpResponseMessage response = await client.PostAsJsonAsync($"/bot{_token}/setMyCommands", payload, ct);
@@ -332,7 +521,7 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
     private async Task<IReadOnlyList<TelegramUpdate>> GetUpdatesAsync(CancellationToken ct, int timeoutSeconds = 20)
     {
         var client = _httpClientFactory.CreateClient("telegram-bot");
-        string path = $"/bot{_token}/getUpdates?timeout={timeoutSeconds}&offset={_offset}";
+        string path = $"/bot{_token}/getUpdates?timeout={timeoutSeconds}&offset={_offset}&allowed_updates=%5B%22message%22%2C%22callback_query%22%5D";
         using HttpResponseMessage response = await client.GetAsync(path, ct);
 
         if (response.StatusCode == System.Net.HttpStatusCode.Conflict)
@@ -353,6 +542,23 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
 
     private async Task HandleUpdateAsync(TelegramUpdate update, CancellationToken ct)
     {
+        // Callback query (button press)
+        if (update.CallbackQuery is not null)
+        {
+            string? callbackData = update.CallbackQuery.Data;
+            long? fromId = update.CallbackQuery.From?.Id;
+            if (fromId.HasValue && !string.Equals(fromId.Value.ToString(CultureInfo.InvariantCulture), _chatId, StringComparison.Ordinal))
+            {
+                _logger.LogWarning("Telegram callback from user {UserId} ignored (expected {ExpectedChatId})", fromId, _chatId);
+                return;
+            }
+            await AnswerCallbackAsync(update.CallbackQuery.Id, ct);
+            if (!string.IsNullOrWhiteSpace(callbackData))
+                await DispatchCommandAsync(TelegramPolymarketMenuFormatter.NormalizeCommand(callbackData), ct);
+            return;
+        }
+
+        // Regular message
         string text = update.Message?.Text?.Trim() ?? string.Empty;
         if (string.IsNullOrWhiteSpace(text) || update.Message?.Chat is null)
         {
@@ -371,28 +577,71 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
         if (string.IsNullOrWhiteSpace(command))
             return;
 
+        await DispatchCommandAsync(command, ct);
+    }
+
+    private async Task DispatchCommandAsync(string command, CancellationToken ct)
+    {
         _logger.LogInformation("Telegram command worker accepted command /{Command} from chat {ChatId}", command, _chatId);
 
-        string response;
         if (command is "menu" or "start" or "help")
         {
-            response = TelegramPolymarketMenuFormatter.BuildMenu();
-        }
-        else
-        {
-            PolymarketLiveSnapshot snapshot = await _polymarketBotService.GetCachedSnapshotAsync(ct);
-            response = command switch
-            {
-                "status" => TelegramPolymarketMenuFormatter.BuildStatus(snapshot),
-                "pnl" => TelegramPolymarketMenuFormatter.BuildPnl(snapshot),
-                "metrics" => TelegramPolymarketMenuFormatter.BuildMetrics(snapshot),
-                "positions" => TelegramPolymarketMenuFormatter.BuildPositions(snapshot, DateTimeOffset.UtcNow),
-                "history" => TelegramPolymarketMenuFormatter.BuildHistory(snapshot),
-                "journal" => TelegramPolymarketMenuFormatter.BuildJournal(snapshot),
-                _ => "Unknown command. Use /menu."
-            };
+            bool paused = _polymarketBotService.IsPaused;
+            string menu = TelegramPolymarketMenuFormatter.BuildMenu(paused);
+            TelegramInlineKeyboard keyboard = TelegramPolymarketMenuFormatter.BuildMenuKeyboard(_dashboardUrl);
+            await _telegram.SendWithKeyboardAsync(menu, keyboard, ct);
+            return;
         }
 
+        if (command is "pause")
+        {
+            await _polymarketBotService.SetPausedAsync(true, ct);
+            await _telegram.SendAsync("Bot paused. No new entries will be opened. Existing positions continue to be managed.", ct);
+            return;
+        }
+
+        if (command is "resume")
+        {
+            await _polymarketBotService.SetPausedAsync(false, ct);
+            await _telegram.SendAsync("Bot resumed. New entries allowed.", ct);
+            return;
+        }
+
+        PolymarketLiveSnapshot snapshot = await _polymarketBotService.GetCachedSnapshotAsync(ct);
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        string response = command switch
+        {
+            "status" => TelegramPolymarketMenuFormatter.BuildStatus(snapshot),
+            "pnl" => TelegramPolymarketMenuFormatter.BuildPnl(snapshot),
+            "metrics" => TelegramPolymarketMenuFormatter.BuildMetrics(snapshot),
+            "today" => TelegramPolymarketMenuFormatter.BuildToday(snapshot, now),
+            "week" => TelegramPolymarketMenuFormatter.BuildWeek(snapshot, now),
+            "positions" => TelegramPolymarketMenuFormatter.BuildPositions(snapshot, now),
+            "history" => TelegramPolymarketMenuFormatter.BuildHistory(snapshot),
+            "best" => TelegramPolymarketMenuFormatter.BuildBest(snapshot),
+            "worst" => TelegramPolymarketMenuFormatter.BuildWorst(snapshot),
+            "btc" => TelegramPolymarketMenuFormatter.BuildByAsset(snapshot, "BTC"),
+            "eth" => TelegramPolymarketMenuFormatter.BuildByAsset(snapshot, "ETH"),
+            "sol" => TelegramPolymarketMenuFormatter.BuildByAsset(snapshot, "SOL"),
+            "journal" => TelegramPolymarketMenuFormatter.BuildJournal(snapshot),
+            _ => "Unknown command. Use /menu."
+        };
+
         await _telegram.SendAsync(response, ct);
+    }
+
+    private async Task AnswerCallbackAsync(string callbackId, CancellationToken ct)
+    {
+        try
+        {
+            var client = _httpClientFactory.CreateClient("telegram-bot");
+            var payload = new { callback_query_id = callbackId };
+            using HttpResponseMessage response = await client.PostAsJsonAsync($"/bot{_token}/answerCallbackQuery", payload, ct);
+            response.EnsureSuccessStatusCode();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogDebug(ex, "Failed to answer Telegram callback");
+        }
     }
 }

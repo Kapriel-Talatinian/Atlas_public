@@ -10,6 +10,8 @@ public interface IPolymarketBotService
     Task<PolymarketLiveSnapshot> GetSnapshotAsync(int lookaheadMinutes = 24 * 60, int maxMarkets = 24, CancellationToken ct = default);
     Task<PolymarketLiveSnapshot> GetCachedSnapshotAsync(CancellationToken ct = default);
     Task<PolymarketLiveSnapshot> RunAutopilotAsync(CancellationToken ct = default);
+    Task<bool> SetPausedAsync(bool paused, CancellationToken ct = default);
+    bool IsPaused { get; }
 }
 
 public sealed class PolymarketBotService : IPolymarketBotService
@@ -82,6 +84,7 @@ public sealed class PolymarketBotService : IPolymarketBotService
         public string? LastMonthlySummaryKey { get; set; }
         public string? LastEntryDecisionDigest { get; set; }
         public DateTimeOffset LastEntryDecisionAt { get; set; } = DateTimeOffset.MinValue;
+        public bool Paused { get; set; }
         public List<InternalPosition> OpenPositions { get; set; } = [];
         public List<InternalPosition> ClosedPositions { get; set; } = [];
         public List<PolymarketJournalEntry> Journal { get; set; } = [];
@@ -106,6 +109,7 @@ public sealed class PolymarketBotService : IPolymarketBotService
         public string? LastMonthlySummaryKey { get; set; }
         public string? LastEntryDecisionDigest { get; set; }
         public DateTimeOffset LastEntryDecisionAt { get; set; } = DateTimeOffset.MinValue;
+        public bool Paused { get; set; }
         public List<InternalPosition> OpenPositions { get; } = [];
         public List<InternalPosition> ClosedPositions { get; } = [];
         public List<PolymarketJournalEntry> Journal { get; } = [];
@@ -175,6 +179,26 @@ public sealed class PolymarketBotService : IPolymarketBotService
 
         await EvaluateIfDueAsync(force: true, lookaheadMinutes: 24 * 60, maxMarkets: 24, ct);
         return await BuildSnapshotThreadSafeAsync(ct);
+    }
+
+    public bool IsPaused => _state.Paused;
+
+    public async Task<bool> SetPausedAsync(bool paused, CancellationToken ct = default)
+    {
+        await _state.Gate.WaitAsync(ct);
+        try
+        {
+            _state.Paused = paused;
+            AddJournal(_state, "control", paused ? "Bot paused" : "Bot resumed",
+                paused ? "New entries blocked. Existing positions continue to be managed." : "New entries allowed again.",
+                null, null, DateTimeOffset.UtcNow);
+            PersistStateNoLock(_state);
+            return _state.Paused;
+        }
+        finally
+        {
+            _state.Gate.Release();
+        }
     }
 
     private async Task EvaluateIfDueAsync(bool force, int lookaheadMinutes, int maxMarkets, CancellationToken ct)
@@ -360,6 +384,13 @@ public sealed class PolymarketBotService : IPolymarketBotService
 
         if (!isPaper && !isLive)
             return;
+
+        if (state.Paused)
+        {
+            MaybeRecordNoTradeDecision(state, "No new trade opened",
+                "Bot is paused via Telegram /pause. Existing positions remain managed.", now);
+            return;
+        }
 
         var scannerSignals = live.Opportunities
             .Where(signal => !string.Equals(signal.RecommendedSide, "Pass", StringComparison.OrdinalIgnoreCase))
@@ -1006,6 +1037,7 @@ public sealed class PolymarketBotService : IPolymarketBotService
             state.LastMonthlySummaryKey = persisted.LastMonthlySummaryKey;
             state.LastEntryDecisionDigest = persisted.LastEntryDecisionDigest;
             state.LastEntryDecisionAt = persisted.LastEntryDecisionAt;
+            state.Paused = persisted.Paused;
             state.OpenPositions.AddRange(persisted.OpenPositions);
             state.ClosedPositions.AddRange(persisted.ClosedPositions);
             state.Journal.AddRange(persisted.Journal);
@@ -1057,6 +1089,7 @@ public sealed class PolymarketBotService : IPolymarketBotService
             LastMonthlySummaryKey = state.LastMonthlySummaryKey,
             LastEntryDecisionDigest = state.LastEntryDecisionDigest,
             LastEntryDecisionAt = state.LastEntryDecisionAt,
+            Paused = state.Paused,
             OpenPositions = state.OpenPositions.ToList(),
             ClosedPositions = state.ClosedPositions.ToList(),
             Journal = state.Journal.ToList(),
@@ -1104,6 +1137,7 @@ public sealed class PolymarketBotService : IPolymarketBotService
             _state.LastMonthlySummaryKey = persisted.LastMonthlySummaryKey;
             _state.LastEntryDecisionDigest = persisted.LastEntryDecisionDigest;
             _state.LastEntryDecisionAt = persisted.LastEntryDecisionAt;
+            _state.Paused = persisted.Paused;
             _state.OpenPositions.Clear();
             _state.OpenPositions.AddRange(persisted.OpenPositions);
             _state.ClosedPositions.Clear();

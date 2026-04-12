@@ -1494,6 +1494,12 @@ public class PolymarketBotServiceTests
             Messages.Add(message);
             return Task.CompletedTask;
         }
+
+        public Task SendWithKeyboardAsync(string message, TelegramInlineKeyboard keyboard, CancellationToken ct = default)
+        {
+            Messages.Add(message);
+            return Task.CompletedTask;
+        }
     }
 
     private sealed class RuntimeFakeHostEnvironment : IHostEnvironment
