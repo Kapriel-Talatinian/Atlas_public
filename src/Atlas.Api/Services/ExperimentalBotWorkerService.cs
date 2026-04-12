@@ -38,6 +38,12 @@ public sealed class ExperimentalBotWorkerService : BackgroundService
             return;
         }
 
+        if (string.Equals(Environment.GetEnvironmentVariable("EXPERIMENTAL_BOT_ENABLED"), "false", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogInformation("Experimental bot worker is disabled via EXPERIMENTAL_BOT_ENABLED=false");
+            return;
+        }
+
         _logger.LogInformation(
             "Experimental bot worker starting with role {Role}, instance {InstanceId}, leader backend {Backend}",
             _runtime.Role,
