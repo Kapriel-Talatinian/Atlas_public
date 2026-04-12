@@ -1,0 +1,29 @@
+:{$PORT:3000} {
+	root * /app/dist
+
+	# Serve pre-compressed files if available
+	encode gzip
+
+	# Cache static assets (JS, CSS, images, fonts) aggressively
+	@static {
+		path *.js *.css *.png *.jpg *.jpeg *.gif *.svg *.ico *.woff *.woff2 *.ttf *.eot
+	}
+	header @static Cache-Control "public, max-age=31536000, immutable"
+
+	# Cache HTML files with revalidation
+	@html {
+		path *.html
+	}
+	header @html Cache-Control "no-cache"
+
+	# Serve telegram.html directly — must not be rewritten to index.html
+	handle /telegram.html {
+		file_server
+	}
+
+	# For all other routes, try the file first; fall back to index.html for SPA routing
+	handle {
+		try_files {path} /index.html
+		file_server
+	}
+}
