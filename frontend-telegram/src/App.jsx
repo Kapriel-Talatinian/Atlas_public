@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import { getSnapshot } from "./api";
 
 const REFRESH_MS = 8000;
+const DAY_MS = 24 * 60 * 60 * 1000;
 
 function formatUsd(n, signed = false) {
   if (n == null || isNaN(n)) return "—";
@@ -25,10 +26,18 @@ function formatTime(iso) {
   const d = new Date(iso);
   const now = new Date();
   const diffMin = (now - d) / 60000;
-  if (diffMin < 1) return "just now";
-  if (diffMin < 60) return `${Math.floor(diffMin)}m ago`;
-  if (diffMin < 1440) return `${Math.floor(diffMin / 60)}h ago`;
+  if (diffMin < 1) return "now";
+  if (diffMin < 60) return `${Math.floor(diffMin)}m`;
+  if (diffMin < 1440) return `${Math.floor(diffMin / 60)}h`;
+  const days = Math.floor(diffMin / 1440);
+  if (days < 30) return `${days}d`;
   return d.toLocaleDateString(undefined, { day: "2-digit", month: "2-digit" });
+}
+
+function formatSpot(value) {
+  if (value == null || isNaN(value)) return "—";
+  if (value >= 1000) return `$${Math.round(value).toLocaleString()}`;
+  return `$${value.toFixed(2)}`;
 }
 
 function cls(value) {
@@ -44,6 +53,7 @@ function useTelegram() {
     if (!webApp) return;
     webApp.ready();
     webApp.expand();
+    webApp.setHeaderColor?.("bg_color");
     setTg(webApp);
   }, []);
   return tg;
@@ -75,15 +85,27 @@ function useSnapshot() {
   return { snapshot, loading, error, refresh: fetchNow };
 }
 
+function computeWeeklyPnl(closed) {
+  if (!Array.isArray(closed)) return 0;
+  const cutoff = Date.now() - 7 * DAY_MS;
+  return closed
+    .filter(p => p.exitTime && new Date(p.exitTime).getTime() >= cutoff)
+    .reduce((s, p) => s + (p.realizedPnlUsd || 0), 0);
+}
+
 function Header({ snapshot }) {
-  const paused = snapshot?.journal?.[0]?.headline === "Bot paused";
-  const active = snapshot?.runtime?.executionArmed && !paused;
+  const lastJournal = snapshot?.journal?.[0];
+  const paused = lastJournal?.headline === "Bot paused";
+  const armed = snapshot?.runtime?.executionArmed && !paused;
+  const label = paused ? "Paused" : armed ? "Active" : "Idle";
+  const state = paused ? "paused" : armed ? "active" : "idle";
   return (
     <div className="tg-header">
-      <div className="tg-header-title">Atlas</div>
-      <div className={`tg-header-status ${active ? "active" : "paused"}`}>
-        {active ? "Active" : paused ? "Paused" : "Idle"}
+      <div className="tg-header-brand">
+        <div className="tg-header-logo">A</div>
+        <div className="tg-header-title">Atlas</div>
       </div>
+      <div className={`tg-header-status ${state}`}>{label}</div>
     </div>
   );
 }
@@ -105,83 +127,77 @@ function Tabs({ active, onChange }) {
   );
 }
 
-function OverviewTab({ snapshot, tg }) {
+function OverviewTab({ snapshot }) {
   const p = snapshot?.portfolio;
+  const weeklyPnl = useMemo(
+    () => computeWeeklyPnl(snapshot?.recentClosedPositions),
+    [snapshot]
+  );
+
   if (!p) return <div className="tg-loading">Loading portfolio…</div>;
-
-  const handlePause = useCallback(() => {
-    tg?.HapticFeedback?.impactOccurred?.("medium");
-    tg?.showConfirm?.("Pause the bot? New entries will be blocked.", ok => {
-      if (ok) tg?.sendData?.(JSON.stringify({ action: "pause" }));
-    });
-  }, [tg]);
-
-  const handleResume = useCallback(() => {
-    tg?.HapticFeedback?.impactOccurred?.("medium");
-    tg?.sendData?.(JSON.stringify({ action: "resume" }));
-  }, [tg]);
 
   return (
     <>
       <div className="tg-hero">
         <div className="tg-hero-label">Net PnL</div>
         <div className={`tg-hero-value ${cls(p.netPnlUsd)}`}>{formatUsd(p.netPnlUsd, true)}</div>
-        <div className="tg-hero-sub">Equity {formatUsd(p.equityUsd)} · Cash {formatUsd(p.cashBalanceUsd)}</div>
+        <div className="tg-hero-sub">
+          <span>Equity <strong>{formatUsd(p.equityUsd)}</strong></span>
+          <span>Cash <strong>{formatUsd(p.cashBalanceUsd)}</strong></span>
+        </div>
       </div>
 
-      <div className="tg-grid">
-        <div className="tg-card">
-          <div className="tg-card-label">Daily</div>
-          <div className={`tg-card-value ${cls(p.dailyPnlUsd)}`}>{formatUsd(p.dailyPnlUsd, true)}</div>
+      <div className="tg-period-grid">
+        <div className="tg-period">
+          <div className="tg-period-label">Today</div>
+          <div className={`tg-period-value ${cls(p.dailyPnlUsd)}`}>{formatUsd(p.dailyPnlUsd, true)}</div>
         </div>
-        <div className="tg-card">
-          <div className="tg-card-label">Monthly</div>
-          <div className={`tg-card-value ${cls(p.monthlyPnlUsd)}`}>{formatUsd(p.monthlyPnlUsd, true)}</div>
+        <div className="tg-period">
+          <div className="tg-period-label">7 days</div>
+          <div className={`tg-period-value ${cls(weeklyPnl)}`}>{formatUsd(weeklyPnl, true)}</div>
         </div>
-        <div className="tg-card">
-          <div className="tg-card-label">Win rate</div>
-          <div className="tg-card-value">{formatPct(p.winRate)}</div>
-          <div className="tg-card-sub">{p.closedPositionsCount} closed</div>
+        <div className="tg-period">
+          <div className="tg-period-label">Month</div>
+          <div className={`tg-period-value ${cls(p.monthlyPnlUsd)}`}>{formatUsd(p.monthlyPnlUsd, true)}</div>
         </div>
-        <div className="tg-card">
-          <div className="tg-card-label">Drawdown</div>
-          <div className={`tg-card-value ${p.drawdownUsd > 0 ? "neg" : ""}`}>{formatUsd(p.drawdownUsd)}</div>
-          <div className="tg-card-sub">{formatPct(p.drawdownPct)}</div>
+      </div>
+
+      <div className="tg-exposure">
+        <div className="tg-exposure-col">
+          <div className="tg-exposure-label">Open trades</div>
+          <div className="tg-exposure-value">{p.openPositionsCount}</div>
         </div>
-        <div className="tg-card">
-          <div className="tg-card-label">Open</div>
-          <div className="tg-card-value">{p.openPositionsCount}</div>
-          <div className="tg-card-sub">Exposure {formatUsd(p.grossExposureUsd)}</div>
-        </div>
-        <div className="tg-card">
-          <div className="tg-card-label">Avg winner</div>
-          <div className="tg-card-value pos">{formatUsd(p.avgWinnerUsd, true)}</div>
-          <div className="tg-card-sub">Loser {formatUsd(p.avgLoserUsd, true)}</div>
+        <div className="tg-exposure-col" style={{ alignItems: "flex-end" }}>
+          <div className="tg-exposure-label">Gross exposure</div>
+          <div className="tg-exposure-value">{formatUsd(p.grossExposureUsd)}</div>
         </div>
       </div>
 
       <div className="tg-section-title">Runtime</div>
-      <div className="tg-list">
-        <div className="tg-row">
-          <div className="tg-row-main">
-            <div className="tg-row-title">Mode</div>
-            <div className="tg-row-sub">{snapshot.runtime.runtimeMode}</div>
-          </div>
-          <div className="tg-row-value">{snapshot.runtime.tradingEnabled ? "On" : "Off"}</div>
+      <div className="tg-runtime">
+        <div className="tg-pill">
+          <div className="tg-pill-label">Mode</div>
+          <div className="tg-pill-value">{snapshot.runtime.runtimeMode}</div>
         </div>
-        <div className="tg-row">
-          <div className="tg-row-main">
-            <div className="tg-row-title">Risk per trade</div>
-            <div className="tg-row-sub">Daily loss limit {formatUsd(snapshot.runtime.dailyLossLimitUsd)}</div>
-          </div>
-          <div className="tg-row-value">{formatUsd(snapshot.runtime.maxTradeUsd)}</div>
+        <div className="tg-pill">
+          <div className="tg-pill-label">Trading</div>
+          <div className="tg-pill-value">{snapshot.runtime.tradingEnabled ? "On" : "Off"}</div>
         </div>
-        <div className="tg-row">
-          <div className="tg-row-main">
-            <div className="tg-row-title">Scanner</div>
-            <div className="tg-row-sub">{snapshot.stats.actionableSignals} bot-ready / {snapshot.stats.scannerSignals} signals</div>
-          </div>
-          <div className="tg-row-value">{snapshot.stats.tradeableMarkets}</div>
+        <div className="tg-pill">
+          <div className="tg-pill-label">Max per trade</div>
+          <div className="tg-pill-value">{formatUsd(snapshot.runtime.maxTradeUsd)}</div>
+        </div>
+        <div className="tg-pill">
+          <div className="tg-pill-label">Daily loss limit</div>
+          <div className="tg-pill-value">{formatUsd(snapshot.runtime.dailyLossLimitUsd)}</div>
+        </div>
+        <div className="tg-pill">
+          <div className="tg-pill-label">Scanner</div>
+          <div className="tg-pill-value">{snapshot.stats.actionableSignals} ready · {snapshot.stats.scannerSignals} signals</div>
+        </div>
+        <div className="tg-pill">
+          <div className="tg-pill-label">Markets</div>
+          <div className="tg-pill-value">{snapshot.stats.tradeableMarkets} tradeable</div>
         </div>
       </div>
     </>
@@ -191,7 +207,13 @@ function OverviewTab({ snapshot, tg }) {
 function OpenTab({ snapshot }) {
   const positions = snapshot?.openPositions || [];
   if (positions.length === 0) {
-    return <div className="tg-empty">Flat right now. Waiting for edge.</div>;
+    return (
+      <div className="tg-empty">
+        <div className="tg-empty-icon">—</div>
+        Flat right now.
+        <br />Waiting for edge.
+      </div>
+    );
   }
 
   return (
@@ -202,15 +224,18 @@ function OpenTab({ snapshot }) {
           <div className="tg-row" key={p.positionId}>
             <div className="tg-row-main">
               <div className="tg-row-title">
-                <span className={`tg-badge ${outcome.toLowerCase()}`}>{outcome}</span>{" "}
-                {p.displayLabel || p.question}
+                <span className={`tg-badge ${outcome.toLowerCase()}`}>{outcome}</span>
+                <span className="tg-row-title-text">{p.displayLabel || p.question}</span>
               </div>
               <div className="tg-row-sub">
-                Stake {formatUsd(p.stakeUsd)} · entry {formatPct(p.entryPrice)} → {formatPct(p.currentPrice)}
+                Stake {formatUsd(p.stakeUsd)} · {formatPct(p.entryPrice)} → {formatPct(p.currentPrice)}
               </div>
             </div>
-            <div className={`tg-row-value ${cls(p.unrealizedPnlUsd)}`}>
-              {formatUsd(p.unrealizedPnlUsd, true)}
+            <div className="tg-row-right">
+              <div className={`tg-row-value ${cls(p.unrealizedPnlUsd)}`}>
+                {formatUsd(p.unrealizedPnlUsd, true)}
+              </div>
+              <div className="tg-row-meta">{p.asset}</div>
             </div>
           </div>
         );
@@ -222,26 +247,34 @@ function OpenTab({ snapshot }) {
 function ClosedTab({ snapshot }) {
   const closed = snapshot?.recentClosedPositions || [];
   if (closed.length === 0) {
-    return <div className="tg-empty">No closed trades yet.</div>;
+    return (
+      <div className="tg-empty">
+        <div className="tg-empty-icon">—</div>
+        No closed trades yet.
+      </div>
+    );
   }
 
   return (
     <div className="tg-list">
-      {closed.slice(0, 30).map(p => {
+      {closed.slice(0, 40).map(p => {
         const outcome = (p.side || "").replace(/^Buy\s+/i, "").toUpperCase();
         return (
           <div className="tg-row" key={p.positionId}>
             <div className="tg-row-main">
               <div className="tg-row-title">
-                <span className={`tg-badge ${outcome.toLowerCase()}`}>{outcome}</span>{" "}
-                {p.displayLabel || p.question}
+                <span className={`tg-badge ${outcome.toLowerCase()}`}>{outcome}</span>
+                <span className="tg-row-title-text">{p.displayLabel || p.question}</span>
               </div>
               <div className="tg-row-sub">
                 {p.exitReason} · {formatTime(p.exitTime)}
               </div>
             </div>
-            <div className={`tg-row-value ${cls(p.realizedPnlUsd)}`}>
-              {formatUsd(p.realizedPnlUsd, true)}
+            <div className="tg-row-right">
+              <div className={`tg-row-value ${cls(p.realizedPnlUsd)}`}>
+                {formatUsd(p.realizedPnlUsd, true)}
+              </div>
+              <div className="tg-row-meta">{p.asset}</div>
             </div>
           </div>
         );
@@ -255,32 +288,50 @@ function AssetsTab({ snapshot }) {
   const open = snapshot?.openPositions || [];
   const closed = snapshot?.recentClosedPositions || [];
 
-  const byAsset = assets.map(a => {
-    const openForA = open.filter(p => p.asset === a);
-    const closedForA = closed.filter(p => p.asset === a);
-    const realized = closedForA.reduce((s, p) => s + (p.realizedPnlUsd || 0), 0);
-    const wins = closedForA.filter(p => p.realizedPnlUsd > 0).length;
-    const unrealized = openForA.reduce((s, p) => s + (p.unrealizedPnlUsd || 0), 0);
-    const exposure = openForA.reduce((s, p) => s + (p.stakeUsd || 0), 0);
-    const winRate = closedForA.length > 0 ? wins / closedForA.length : 0;
-    const spot = snapshot.assets?.find(x => x.asset === a)?.spot;
-    return { asset: a, openCount: openForA.length, closedCount: closedForA.length, realized, unrealized, exposure, winRate, spot };
+  const rows = assets.map(a => {
+    const openA = open.filter(p => p.asset === a);
+    const closedA = closed.filter(p => p.asset === a);
+    const realized = closedA.reduce((s, p) => s + (p.realizedPnlUsd || 0), 0);
+    const unrealized = openA.reduce((s, p) => s + (p.unrealizedPnlUsd || 0), 0);
+    const exposure = openA.reduce((s, p) => s + (p.stakeUsd || 0), 0);
+    const spot = snapshot?.assets?.find(x => x.asset === a)?.spot;
+    return {
+      asset: a,
+      openCount: openA.length,
+      closedCount: closedA.length,
+      realized,
+      unrealized,
+      exposure,
+      spot,
+    };
   });
 
   return (
     <div className="tg-list">
-      {byAsset.map(a => (
-        <div className="tg-row" key={a.asset}>
-          <div className="tg-row-main">
-            <div className="tg-row-title">
-              {a.asset} {a.spot ? `· $${Math.round(a.spot).toLocaleString()}` : ""}
+      {rows.map(r => (
+        <div className="tg-asset-row" key={r.asset}>
+          <div className="tg-asset-head">
+            <div className="tg-asset-name">
+              {r.asset}
+              <span className="tg-asset-spot">{formatSpot(r.spot)}</span>
             </div>
-            <div className="tg-row-sub">
-              {a.openCount} open · {a.closedCount} closed · WR {formatPct(a.winRate)}
+            <div className={`tg-row-value ${cls(r.realized + r.unrealized)}`}>
+              {formatUsd(r.realized + r.unrealized, true)}
             </div>
           </div>
-          <div className={`tg-row-value ${cls(a.realized)}`}>
-            {formatUsd(a.realized, true)}
+          <div className="tg-asset-stats">
+            <div className="tg-asset-stat">
+              <div className="tg-asset-stat-label">Open</div>
+              <div className="tg-asset-stat-value">{r.openCount}</div>
+            </div>
+            <div className="tg-asset-stat">
+              <div className="tg-asset-stat-label">Exposure</div>
+              <div className="tg-asset-stat-value">{formatUsd(r.exposure)}</div>
+            </div>
+            <div className="tg-asset-stat">
+              <div className="tg-asset-stat-label">Closed</div>
+              <div className="tg-asset-stat-value">{r.closedCount}</div>
+            </div>
           </div>
         </div>
       ))}
@@ -289,15 +340,9 @@ function AssetsTab({ snapshot }) {
 }
 
 export default function App() {
-  const tg = useTelegram();
+  useTelegram();
   const [tab, setTab] = useState("Overview");
   const { snapshot, loading, error } = useSnapshot();
-
-  useEffect(() => {
-    if (!tg) return;
-    tg.setHeaderColor?.("secondary_bg_color");
-    tg.setBackgroundColor?.(getComputedStyle(document.body).getPropertyValue("--tg-bg") || "#0f1115");
-  }, [tg]);
 
   if (loading && !snapshot) {
     return <div className="tg-loading">Loading Atlas…</div>;
@@ -308,7 +353,7 @@ export default function App() {
       <Header snapshot={snapshot} />
       {error && <div className="tg-error">Connection issue: {error}</div>}
       <Tabs active={tab} onChange={setTab} />
-      {tab === "Overview" && <OverviewTab snapshot={snapshot} tg={tg} />}
+      {tab === "Overview" && <OverviewTab snapshot={snapshot} />}
       {tab === "Open" && <OpenTab snapshot={snapshot} />}
       {tab === "Closed" && <ClosedTab snapshot={snapshot} />}
       {tab === "Assets" && <AssetsTab snapshot={snapshot} />}
