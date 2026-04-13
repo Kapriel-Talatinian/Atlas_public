@@ -11,29 +11,27 @@ public static class TelegramPolymarketMenuFormatter
         "ATLAS CONTROL CENTER",
         isPaused ? "STATE: PAUSED (no new entries)" : "STATE: ACTIVE",
         "",
-        "Use the buttons below or type a command:",
+        "Tap a button or send /help for the full list.",
         "",
         "PORTFOLIO",
-        "/pnl - equity, cash, daily, monthly",
-        "/metrics - win rate, drawdown, exposure",
-        "/today - today PnL & trades",
-        "/week - last 7 days summary",
+        "/pnl /metrics /stats /today /week /month",
         "",
         "POSITIONS",
-        "/positions - open tickets",
-        "/history - closed trades",
-        "/best - top winners",
-        "/worst - biggest losers",
+        "/positions /history /recent /best /worst",
+        "",
+        "RISK & EXITS",
+        "/risk /exposure /exits /streak",
+        "",
+        "SCANNER",
+        "/scanner /ready /blocked /spot",
         "",
         "PER ASSET",
-        "/btc  /eth  /sol",
+        "/btc /eth /sol /hours",
         "",
         "CONTROL",
-        "/pause - block new entries",
-        "/resume - unblock entries",
-        "/status - runtime diagnostics",
-        "/journal - decision log",
-        "/menu - show this menu again");
+        "/pause /resume /status /config /uptime /ping /errors /journal",
+        "",
+        "/menu /help - always come back here");
 
     public static string BuildToday(PolymarketLiveSnapshot snapshot, DateTimeOffset now)
     {
@@ -137,6 +135,426 @@ public static class TelegramPolymarketMenuFormatter
         }
         return string.Join('\n', lines);
     }
+
+    public static string BuildScanner(PolymarketLiveSnapshot snapshot)
+    {
+        var opps = snapshot.Opportunities
+            .OrderByDescending(o => o.ConvictionScore)
+            .Take(8)
+            .ToList();
+
+        if (opps.Count == 0)
+            return "SCANNER\nNo markets in view.";
+
+        var lines = new List<string>
+        {
+            $"SCANNER ({snapshot.Stats.ActionableSignals} ready / {snapshot.Stats.ScannerSignals} signals / {snapshot.Stats.TradeableMarkets} tradeable)"
+        };
+        foreach (PolymarketMarketSignal s in opps)
+        {
+            double edge = Math.Max(s.EdgeYesPct, s.EdgeNoPct);
+            string side = s.RecommendedSide.Replace("Buy ", string.Empty, StringComparison.OrdinalIgnoreCase).Trim().ToUpperInvariant();
+            string tag = s.BotEligible ? "READY" : "blocked";
+            lines.Add($"- {s.DisplayLabel} | {side} | edge {(edge * 100):+0.0;-0.0}% | conv {s.ConvictionScore:0} | {tag}");
+        }
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildReady(PolymarketLiveSnapshot snapshot)
+    {
+        var ready = snapshot.Opportunities
+            .Where(o => o.BotEligible)
+            .OrderByDescending(o => o.ConvictionScore)
+            .Take(10)
+            .ToList();
+
+        if (ready.Count == 0)
+            return "BOT-READY\nNo markets clear all gates right now.";
+
+        var lines = new List<string> { $"BOT-READY ({ready.Count})" };
+        foreach (PolymarketMarketSignal s in ready)
+        {
+            double edge = Math.Max(s.EdgeYesPct, s.EdgeNoPct);
+            string side = s.RecommendedSide.Replace("Buy ", string.Empty, StringComparison.OrdinalIgnoreCase).Trim().ToUpperInvariant();
+            double minutes = s.MinutesToExpiry;
+            lines.Add($"- {s.DisplayLabel} | {side} | edge {(edge * 100):+0.0}% | conv {s.ConvictionScore:0} | T-{FormatMinutes(minutes)}");
+        }
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildBlocked(PolymarketLiveSnapshot snapshot)
+    {
+        var blocked = snapshot.Opportunities
+            .Where(o => !string.Equals(o.RecommendedSide, "Pass", StringComparison.OrdinalIgnoreCase) && !o.BotEligible)
+            .OrderByDescending(o => o.ConvictionScore)
+            .Take(8)
+            .ToList();
+
+        if (blocked.Count == 0)
+            return "BLOCKED\nNo scanner signal currently blocked.";
+
+        var lines = new List<string> { $"BLOCKED ({blocked.Count})" };
+        foreach (PolymarketMarketSignal s in blocked)
+        {
+            string reason = s.BotEligibilityReason.Length > 60
+                ? s.BotEligibilityReason[..60] + "..."
+                : s.BotEligibilityReason;
+            lines.Add($"- {s.DisplayLabel}: {reason}");
+        }
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildRisk(PolymarketLiveSnapshot snapshot)
+    {
+        PolymarketBotPortfolioSnapshot p = snapshot.Portfolio;
+        PolymarketRuntimeStatus r = snapshot.Runtime;
+        var openByAsset = snapshot.OpenPositions
+            .GroupBy(x => x.Asset, StringComparer.OrdinalIgnoreCase)
+            .OrderByDescending(g => g.Sum(x => x.StakeUsd))
+            .ToList();
+
+        double exposurePct = p.EquityUsd > 0 ? p.GrossExposureUsd / p.EquityUsd : 0;
+
+        var lines = new List<string>
+        {
+            "RISK SNAPSHOT",
+            $"Daily PnL: {p.DailyPnlUsd:+0.00;-0.00}$ / limit -{r.DailyLossLimitUsd:0.00}$",
+            $"Daily lock: {(r.DailyLossLockActive ? "ON" : "off")}",
+            $"Drawdown: {p.DrawdownUsd:0.00}$ ({p.DrawdownPct:P1})",
+            $"Peak equity: {p.PeakEquityUsd:0.00}$",
+            $"Gross exposure: {p.GrossExposureUsd:0.00}$ ({exposurePct:P1} of equity)",
+            $"Max per trade: {r.MaxTradeUsd:0.00}$",
+            $"Open risk: {p.MaxTradeRiskUsd:0.00}$"
+        };
+        if (openByAsset.Count > 0)
+        {
+            lines.Add("By asset:");
+            foreach (var g in openByAsset)
+            {
+                double expo = g.Sum(x => x.StakeUsd);
+                double upl = g.Sum(x => x.UnrealizedPnlUsd);
+                lines.Add($"- {g.Key}: {g.Count()} open | {expo:0.00}$ exposure | uPnL {upl:+0.00;-0.00}$");
+            }
+        }
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildExposure(PolymarketLiveSnapshot snapshot)
+    {
+        var rows = snapshot.OpenPositions
+            .GroupBy(p => p.Asset, StringComparer.OrdinalIgnoreCase)
+            .Select(g => new
+            {
+                Asset = g.Key,
+                Count = g.Count(),
+                Exposure = g.Sum(x => x.StakeUsd),
+                Unrealized = g.Sum(x => x.UnrealizedPnlUsd)
+            })
+            .OrderByDescending(x => x.Exposure)
+            .ToList();
+
+        if (rows.Count == 0)
+            return "EXPOSURE\nFlat.";
+
+        double equity = snapshot.Portfolio.EquityUsd;
+        var lines = new List<string> { "EXPOSURE BY ASSET" };
+        foreach (var r in rows)
+        {
+            double pct = equity > 0 ? r.Exposure / equity : 0;
+            lines.Add($"- {r.Asset}: {r.Count} open | {r.Exposure:0.00}$ ({pct:P1}) | uPnL {r.Unrealized:+0.00;-0.00}$");
+        }
+        lines.Add($"Total: {rows.Sum(r => r.Exposure):0.00}$ ({rows.Sum(r => r.Exposure) / Math.Max(equity, 1):P1} of equity)");
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildExits(PolymarketLiveSnapshot snapshot)
+    {
+        var closed = snapshot.RecentClosedPositions;
+        if (closed.Count == 0)
+            return "EXIT BREAKDOWN\nNo closed trade yet.";
+
+        var groups = closed
+            .GroupBy(p => string.IsNullOrWhiteSpace(p.ExitReason) ? "unknown" : p.ExitReason.ToLowerInvariant())
+            .Select(g => new
+            {
+                Reason = g.Key,
+                Count = g.Count(),
+                TotalPnl = g.Sum(p => p.RealizedPnlUsd),
+                AvgPnl = g.Average(p => p.RealizedPnlUsd)
+            })
+            .OrderByDescending(x => x.Count)
+            .ToList();
+
+        double total = closed.Count;
+        var lines = new List<string> { $"EXIT BREAKDOWN (last {closed.Count})" };
+        foreach (var g in groups)
+        {
+            double share = g.Count / total;
+            lines.Add($"- {g.Reason}: {g.Count} ({share:P0}) | avg {g.AvgPnl:+0.00;-0.00}$ | total {g.TotalPnl:+0.00;-0.00}$");
+        }
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildStreak(PolymarketLiveSnapshot snapshot)
+    {
+        var ordered = snapshot.RecentClosedPositions
+            .Where(p => p.RealizedPnlUsd != 0)
+            .OrderByDescending(p => p.ExitTime)
+            .ToList();
+
+        if (ordered.Count == 0)
+            return "STREAK\nNo closed trade yet.";
+
+        int currentStreak = 0;
+        bool currentWin = ordered[0].RealizedPnlUsd > 0;
+        double currentPnl = 0;
+        foreach (var p in ordered)
+        {
+            bool isWin = p.RealizedPnlUsd > 0;
+            if (isWin == currentWin)
+            {
+                currentStreak++;
+                currentPnl += p.RealizedPnlUsd;
+            }
+            else break;
+        }
+
+        int bestWinStreak = 0, bestLossStreak = 0, run = 0;
+        bool? prev = null;
+        foreach (var p in ordered.OrderBy(x => x.ExitTime))
+        {
+            bool win = p.RealizedPnlUsd > 0;
+            if (prev is null || prev.Value != win)
+            {
+                run = 1;
+            }
+            else run++;
+            if (win) bestWinStreak = Math.Max(bestWinStreak, run);
+            else bestLossStreak = Math.Max(bestLossStreak, run);
+            prev = win;
+        }
+
+        string last10 = string.Join(" ",
+            ordered.Take(10).Select(p => p.RealizedPnlUsd > 0 ? "W" : "L"));
+
+        return string.Join('\n',
+            "STREAK",
+            $"Current: {currentStreak} {(currentWin ? "wins" : "losses")} ({currentPnl:+0.00;-0.00}$)",
+            $"Best win streak: {bestWinStreak}",
+            $"Worst loss streak: {bestLossStreak}",
+            $"Last 10: {last10}");
+    }
+
+    public static string BuildSpot(PolymarketLiveSnapshot snapshot)
+    {
+        if (snapshot.Assets.Count == 0)
+            return "SPOT\nNo asset data yet.";
+
+        var lines = new List<string> { "SPOT + VOL REGIME" };
+        foreach (var a in snapshot.Assets.OrderBy(x => x.Asset))
+        {
+            string spotTxt = a.Spot >= 1000 ? $"${a.Spot:N0}" : $"${a.Spot:0.00}";
+            lines.Add($"{a.Asset}: {spotTxt}");
+            lines.Add($"  ATM IV {(a.AtmIv * 100):0.0}% | {a.Regime} | {a.LiveBiasLabel} ({a.LiveBiasScore:+0.0;-0.0})");
+        }
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildStats(PolymarketLiveSnapshot snapshot)
+    {
+        var closed = snapshot.RecentClosedPositions;
+        PolymarketBotPortfolioSnapshot p = snapshot.Portfolio;
+        if (closed.Count == 0)
+            return "STATS\nNo closed trade yet.";
+
+        int total = closed.Count;
+        int wins = closed.Count(x => x.RealizedPnlUsd > 0);
+        int losses = closed.Count(x => x.RealizedPnlUsd < 0);
+        double winRate = total > 0 ? (double)wins / total : 0;
+        double grossWin = closed.Where(x => x.RealizedPnlUsd > 0).Sum(x => x.RealizedPnlUsd);
+        double grossLoss = Math.Abs(closed.Where(x => x.RealizedPnlUsd < 0).Sum(x => x.RealizedPnlUsd));
+        double profitFactor = grossLoss > 0 ? grossWin / grossLoss : 0;
+        double avgTrade = closed.Average(x => x.RealizedPnlUsd);
+        double best = closed.Max(x => x.RealizedPnlUsd);
+        double worst = closed.Min(x => x.RealizedPnlUsd);
+        double startingBalance = p.StartingBalanceUsd > 0 ? p.StartingBalanceUsd : 100;
+        double roi = startingBalance > 0 ? p.NetPnlUsd / startingBalance : 0;
+
+        return string.Join('\n',
+            "TOTAL STATS",
+            $"Trades: {total} ({wins}W / {losses}L)",
+            $"Win rate: {winRate:P1}",
+            $"Profit factor: {profitFactor:0.00}",
+            $"Net PnL: {p.NetPnlUsd:+0.00;-0.00}$ ({roi:+0.0;-0.0%})",
+            $"Avg trade: {avgTrade:+0.00;-0.00}$",
+            $"Best: {best:+0.00;-0.00}$",
+            $"Worst: {worst:+0.00;-0.00}$");
+    }
+
+    public static string BuildMonth(PolymarketLiveSnapshot snapshot, DateTimeOffset now)
+    {
+        DateTime startOfMonth = new DateTime(now.UtcDateTime.Year, now.UtcDateTime.Month, 1, 0, 0, 0, DateTimeKind.Utc);
+        DateTime startOfPrev = startOfMonth.AddMonths(-1);
+
+        var monthTrades = snapshot.RecentClosedPositions
+            .Where(p => p.ExitTime.HasValue && p.ExitTime.Value.UtcDateTime >= startOfMonth)
+            .ToList();
+        var prevMonthTrades = snapshot.RecentClosedPositions
+            .Where(p => p.ExitTime.HasValue
+                && p.ExitTime.Value.UtcDateTime >= startOfPrev
+                && p.ExitTime.Value.UtcDateTime < startOfMonth)
+            .ToList();
+
+        double pnl = monthTrades.Sum(p => p.RealizedPnlUsd);
+        double prevPnl = prevMonthTrades.Sum(p => p.RealizedPnlUsd);
+        int wins = monthTrades.Count(p => p.RealizedPnlUsd > 0);
+        int losses = monthTrades.Count(p => p.RealizedPnlUsd < 0);
+        double winRate = monthTrades.Count > 0 ? (double)wins / monthTrades.Count : 0;
+
+        return string.Join('\n',
+            $"MONTH {now.UtcDateTime:MMMM yyyy}",
+            $"Realized PnL: {pnl:+0.00;-0.00}$",
+            $"Trades: {monthTrades.Count} ({wins}W / {losses}L)",
+            $"Win rate: {winRate:P1}",
+            $"Prev month: {prevPnl:+0.00;-0.00}$ ({prevMonthTrades.Count} trades)");
+    }
+
+    public static string BuildRecent(PolymarketLiveSnapshot snapshot)
+    {
+        var recent = snapshot.RecentClosedPositions.Take(15).ToList();
+        if (recent.Count == 0) return "RECENT\nNo closed trade yet.";
+
+        var lines = new List<string> { $"RECENT ({recent.Count})" };
+        foreach (PolymarketPosition p in recent)
+        {
+            string side = p.Side.Replace("Buy ", string.Empty, StringComparison.OrdinalIgnoreCase).Trim().ToUpperInvariant();
+            string whenTxt = p.ExitTime.HasValue
+                ? p.ExitTime.Value.UtcDateTime.ToString("HH:mm", CultureInfo.InvariantCulture)
+                : "--:--";
+            lines.Add($"{whenTxt} {p.Asset} {side} | {p.RealizedPnlUsd:+0.00;-0.00}$ | {p.ExitReason}");
+        }
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildHours(PolymarketLiveSnapshot snapshot)
+    {
+        var withTime = snapshot.RecentClosedPositions
+            .Where(p => p.ExitTime.HasValue)
+            .ToList();
+        if (withTime.Count == 0) return "HOURS\nNo closed trade yet.";
+
+        var buckets = withTime
+            .GroupBy(p => p.ExitTime!.Value.UtcDateTime.Hour)
+            .Select(g => new
+            {
+                Hour = g.Key,
+                Count = g.Count(),
+                Pnl = g.Sum(x => x.RealizedPnlUsd),
+                WinRate = (double)g.Count(x => x.RealizedPnlUsd > 0) / g.Count()
+            })
+            .OrderByDescending(x => x.Pnl)
+            .ToList();
+
+        var best = buckets.Take(3);
+        var worst = buckets.OrderBy(x => x.Pnl).Take(3);
+
+        var lines = new List<string> { "BEST HOURS (UTC)" };
+        foreach (var b in best)
+            lines.Add($"{b.Hour:00}h: {b.Pnl:+0.00;-0.00}$ | {b.Count} trades | WR {b.WinRate:P0}");
+        lines.Add("WORST HOURS (UTC)");
+        foreach (var b in worst)
+            lines.Add($"{b.Hour:00}h: {b.Pnl:+0.00;-0.00}$ | {b.Count} trades | WR {b.WinRate:P0}");
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildConfig()
+    {
+        string Env(string key, string fallback = "unset") =>
+            Environment.GetEnvironmentVariable(key)?.Trim() is { Length: > 0 } v ? v : fallback;
+
+        return string.Join('\n',
+            "CONFIG",
+            $"Execution mode: {Env("POLYMARKET_EXECUTION_MODE", "paper")}",
+            $"Trading enabled: {Env("POLYMARKET_TRADING_ENABLED", "false")}",
+            $"Max per trade: {Env("POLYMARKET_MAX_TRADE_USD", "2")}$",
+            $"Daily loss limit: {Env("POLYMARKET_DAILY_LOSS_LIMIT_USD", "5")}$",
+            $"Max new trades/cycle: {Env("POLYMARKET_MAX_NEW_TRADES_PER_CYCLE", "2")}",
+            $"Scan interval: {Env("POLYMARKET_BOT_EVALUATION_SECONDS", "5")}s",
+            $"Lookahead: {Env("POLYMARKET_LOOKAHEAD_MINUTES", "1440")} min",
+            $"Max markets: {Env("POLYMARKET_MAX_MARKETS", "24")}",
+            "Gates: edge >= 1.5% | conv >= 55 | qual >= 46",
+            "       liq >= 5000$ | spread <= 5% | strike dist <= 5%",
+            "Sizing: quarter-Kelly | stop-loss 35% stake",
+            "Concentration: max 2 pos/asset | max 60% expo/asset");
+    }
+
+    public static string BuildUptime(PolymarketLiveSnapshot snapshot)
+    {
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        TimeSpan sinceSnapshot = now - snapshot.Timestamp;
+        var lastEntry = snapshot.Journal.FirstOrDefault(j => j.Type == "entry");
+        var lastExit = snapshot.Journal.FirstOrDefault(j => j.Type == "exit");
+        string lastEntryTxt = lastEntry != null
+            ? $"{(now - lastEntry.Timestamp).TotalMinutes:0} min ago"
+            : "never";
+        string lastExitTxt = lastExit != null
+            ? $"{(now - lastExit.Timestamp).TotalMinutes:0} min ago"
+            : "never";
+
+        return string.Join('\n',
+            "UPTIME",
+            $"Now (UTC): {now:yyyy-MM-dd HH:mm:ss}",
+            $"Last scan: {sinceSnapshot.TotalSeconds:0}s ago",
+            $"Last entry: {lastEntryTxt}",
+            $"Last exit: {lastExitTxt}",
+            $"Scanner state: {snapshot.Status}");
+    }
+
+    public static string BuildPing(PolymarketLiveSnapshot snapshot) =>
+        $"PONG\n{DateTimeOffset.UtcNow:yyyy-MM-dd HH:mm:ss} UTC\nLast scan {(DateTimeOffset.UtcNow - snapshot.Timestamp).TotalSeconds:0}s ago";
+
+    public static string BuildErrors(PolymarketLiveSnapshot snapshot)
+    {
+        var errors = snapshot.Journal
+            .Where(j => j.Type is "clob-reject" or "clob-sell-fail" or "risk")
+            .Take(10)
+            .ToList();
+
+        if (errors.Count == 0)
+            return "ERRORS / ALERTS\nNo recent error.";
+
+        var lines = new List<string> { $"ERRORS / ALERTS ({errors.Count})" };
+        foreach (PolymarketJournalEntry e in errors)
+            lines.Add($"[{e.Timestamp.UtcDateTime:HH:mm}] {e.Type}: {e.Headline} — {e.Detail}");
+        return string.Join('\n', lines);
+    }
+
+    public static string BuildHelp() => string.Join('\n',
+        "ATLAS COMMAND REFERENCE",
+        "",
+        "PORTFOLIO",
+        "/pnl /metrics /stats /today /week /month /recent",
+        "",
+        "POSITIONS",
+        "/positions /history /best /worst /exits /streak",
+        "",
+        "RISK",
+        "/risk /exposure /limits",
+        "",
+        "SCANNER / MARKETS",
+        "/scanner /ready /blocked /spot",
+        "",
+        "PER ASSET",
+        "/btc /eth /sol /hours",
+        "",
+        "OPERATIONS",
+        "/status /config /uptime /ping /journal /errors",
+        "",
+        "CONTROL",
+        "/pause /resume",
+        "",
+        "/menu - main control center",
+        "/help - this reference");
 
     public static TelegramInlineKeyboard BuildMenuKeyboard(string? dashboardUrl = null)
     {
@@ -462,22 +880,39 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
             var client = _httpClientFactory.CreateClient("telegram-bot");
             var payload = new TelegramSetCommandsRequest(new[]
             {
-                new TelegramBotCommand("menu", "Atlas command center"),
-                new TelegramBotCommand("status", "Runtime and scanner status"),
-                new TelegramBotCommand("pnl", "Equity, cash and performance"),
-                new TelegramBotCommand("metrics", "Win rate, drawdown, exposure"),
-                new TelegramBotCommand("today", "Today PnL and trades"),
-                new TelegramBotCommand("week", "Last 7 days summary"),
+                new TelegramBotCommand("menu", "Control center"),
+                new TelegramBotCommand("pnl", "Equity, cash, PnL"),
+                new TelegramBotCommand("stats", "Total stats (WR, PF, best, worst)"),
+                new TelegramBotCommand("today", "Today performance"),
+                new TelegramBotCommand("week", "Last 7 days"),
+                new TelegramBotCommand("month", "Current month vs previous"),
                 new TelegramBotCommand("positions", "Open positions"),
-                new TelegramBotCommand("history", "Recent closed trades"),
-                new TelegramBotCommand("best", "Top winning trades"),
-                new TelegramBotCommand("worst", "Biggest losing trades"),
+                new TelegramBotCommand("history", "Recent closed"),
+                new TelegramBotCommand("recent", "Last 15 trades"),
+                new TelegramBotCommand("best", "Top winners"),
+                new TelegramBotCommand("worst", "Biggest losers"),
+                new TelegramBotCommand("risk", "Risk snapshot"),
+                new TelegramBotCommand("exposure", "Exposure by asset"),
+                new TelegramBotCommand("exits", "Exit reason breakdown"),
+                new TelegramBotCommand("streak", "Win/loss streak"),
+                new TelegramBotCommand("scanner", "Top ranked markets"),
+                new TelegramBotCommand("ready", "Bot-ready markets"),
+                new TelegramBotCommand("blocked", "Blocked signals + reason"),
+                new TelegramBotCommand("spot", "Spot prices + vol regime"),
                 new TelegramBotCommand("btc", "BTC breakdown"),
                 new TelegramBotCommand("eth", "ETH breakdown"),
                 new TelegramBotCommand("sol", "SOL breakdown"),
+                new TelegramBotCommand("hours", "Best/worst trading hours"),
+                new TelegramBotCommand("status", "Runtime status"),
+                new TelegramBotCommand("config", "Bot configuration"),
+                new TelegramBotCommand("uptime", "Last scan and activity"),
+                new TelegramBotCommand("ping", "Health check"),
+                new TelegramBotCommand("errors", "Recent errors and alerts"),
+                new TelegramBotCommand("journal", "Decision log"),
                 new TelegramBotCommand("pause", "Block new entries"),
                 new TelegramBotCommand("resume", "Unblock entries"),
-                new TelegramBotCommand("journal", "Recent decision log")
+                new TelegramBotCommand("metrics", "Quick metrics summary"),
+                new TelegramBotCommand("help", "Full command reference")
             });
             using HttpResponseMessage response = await client.PostAsJsonAsync($"/bot{_token}/setMyCommands", payload, ct);
             response.EnsureSuccessStatusCode();
@@ -607,6 +1042,17 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
             return;
         }
 
+        if (command is "config")
+        {
+            await _telegram.SendAsync(TelegramPolymarketMenuFormatter.BuildConfig(), ct);
+            return;
+        }
+        if (command is "help")
+        {
+            await _telegram.SendAsync(TelegramPolymarketMenuFormatter.BuildHelp(), ct);
+            return;
+        }
+
         PolymarketLiveSnapshot snapshot = await _polymarketBotService.GetCachedSnapshotAsync(ct);
         DateTimeOffset now = DateTimeOffset.UtcNow;
         string response = command switch
@@ -614,17 +1060,32 @@ public sealed class TelegramPolymarketMenuWorkerService : BackgroundService
             "status" => TelegramPolymarketMenuFormatter.BuildStatus(snapshot),
             "pnl" => TelegramPolymarketMenuFormatter.BuildPnl(snapshot),
             "metrics" => TelegramPolymarketMenuFormatter.BuildMetrics(snapshot),
+            "stats" => TelegramPolymarketMenuFormatter.BuildStats(snapshot),
             "today" => TelegramPolymarketMenuFormatter.BuildToday(snapshot, now),
             "week" => TelegramPolymarketMenuFormatter.BuildWeek(snapshot, now),
+            "month" => TelegramPolymarketMenuFormatter.BuildMonth(snapshot, now),
             "positions" => TelegramPolymarketMenuFormatter.BuildPositions(snapshot, now),
             "history" => TelegramPolymarketMenuFormatter.BuildHistory(snapshot),
+            "recent" => TelegramPolymarketMenuFormatter.BuildRecent(snapshot),
             "best" => TelegramPolymarketMenuFormatter.BuildBest(snapshot),
             "worst" => TelegramPolymarketMenuFormatter.BuildWorst(snapshot),
+            "risk" => TelegramPolymarketMenuFormatter.BuildRisk(snapshot),
+            "exposure" or "expo" => TelegramPolymarketMenuFormatter.BuildExposure(snapshot),
+            "exits" => TelegramPolymarketMenuFormatter.BuildExits(snapshot),
+            "streak" => TelegramPolymarketMenuFormatter.BuildStreak(snapshot),
+            "scanner" or "scan" => TelegramPolymarketMenuFormatter.BuildScanner(snapshot),
+            "ready" => TelegramPolymarketMenuFormatter.BuildReady(snapshot),
+            "blocked" => TelegramPolymarketMenuFormatter.BuildBlocked(snapshot),
+            "spot" or "prices" => TelegramPolymarketMenuFormatter.BuildSpot(snapshot),
             "btc" => TelegramPolymarketMenuFormatter.BuildByAsset(snapshot, "BTC"),
             "eth" => TelegramPolymarketMenuFormatter.BuildByAsset(snapshot, "ETH"),
             "sol" => TelegramPolymarketMenuFormatter.BuildByAsset(snapshot, "SOL"),
+            "hours" => TelegramPolymarketMenuFormatter.BuildHours(snapshot),
             "journal" => TelegramPolymarketMenuFormatter.BuildJournal(snapshot),
-            _ => "Unknown command. Use /menu."
+            "errors" or "alerts" => TelegramPolymarketMenuFormatter.BuildErrors(snapshot),
+            "uptime" => TelegramPolymarketMenuFormatter.BuildUptime(snapshot),
+            "ping" => TelegramPolymarketMenuFormatter.BuildPing(snapshot),
+            _ => "Unknown command. Use /menu or /help."
         };
 
         await _telegram.SendAsync(response, ct);
