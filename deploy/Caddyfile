@@ -1,0 +1,19 @@
+{$DOMAIN:-:80} {
+	# API + health
+	@api path /api/* /health
+	handle @api {
+		reverse_proxy api:8080
+	}
+
+	# Telegram mini app + root (SPA)
+	handle {
+		reverse_proxy telegram:4173
+	}
+
+	encode gzip zstd
+
+	log {
+		output stdout
+		format console
+	}
+}

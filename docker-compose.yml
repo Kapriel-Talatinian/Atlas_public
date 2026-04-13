@@ -1,0 +1,120 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: atlas
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in .env}
+      POSTGRES_DB: atlas
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U atlas"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      ATLAS_RUNTIME_ROLE: api
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: atlas
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: atlas
+      PORT: 8080
+      CORS_ALLOWED_ORIGINS: "*"
+      POLYMARKET_BOT_ENABLED: "true"
+      POLYMARKET_EXECUTION_MODE: ${POLYMARKET_EXECUTION_MODE:-paper}
+      POLYMARKET_STARTING_BALANCE_USD: ${POLYMARKET_STARTING_BALANCE_USD:-100}
+      POLYMARKET_MAX_TRADE_USD: ${POLYMARKET_MAX_TRADE_USD:-2}
+      POLYMARKET_DAILY_LOSS_LIMIT_USD: ${POLYMARKET_DAILY_LOSS_LIMIT_USD:-5}
+      POLYMARKET_MAX_NEW_TRADES_PER_CYCLE: ${POLYMARKET_MAX_NEW_TRADES_PER_CYCLE:-2}
+      POLYMARKET_BOT_EVALUATION_SECONDS: ${POLYMARKET_BOT_EVALUATION_SECONDS:-5}
+      POLYMARKET_LOOKAHEAD_MINUTES: ${POLYMARKET_LOOKAHEAD_MINUTES:-1440}
+      POLYMARKET_MAX_MARKETS: ${POLYMARKET_MAX_MARKETS:-24}
+      POLYMARKET_REPORT_TIMEZONE: ${POLYMARKET_REPORT_TIMEZONE:-Europe/Paris}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      POLYMARKET_API_KEY: ${POLYMARKET_API_KEY:-}
+      POLYMARKET_API_SECRET: ${POLYMARKET_API_SECRET:-}
+      POLYMARKET_API_PASSPHRASE: ${POLYMARKET_API_PASSPHRASE:-}
+      POLYMARKET_PRIVATE_KEY: ${POLYMARKET_PRIVATE_KEY:-}
+      POLYMARKET_WALLET_ADDRESS: ${POLYMARKET_WALLET_ADDRESS:-}
+      POLYMARKET_SIGNER_ADDRESS: ${POLYMARKET_SIGNER_ADDRESS:-}
+      POLYMARKET_TRADING_ENABLED: ${POLYMARKET_TRADING_ENABLED:-false}
+      EXPERIMENTAL_BOT_ENABLED: "false"
+
+  bot-worker:
+    build:
+      context: .
+      dockerfile: Dockerfile.worker
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      api:
+        condition: service_started
+    environment:
+      ATLAS_RUNTIME_ROLE: bot-worker
+      PGHOST: postgres
+      PGPORT: 5432
+      PGUSER: atlas
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+      PGDATABASE: atlas
+      ATLAS_DASHBOARD_URL: ${ATLAS_DASHBOARD_URL:-}
+      POLYMARKET_BOT_ENABLED: "true"
+      POLYMARKET_EXECUTION_MODE: ${POLYMARKET_EXECUTION_MODE:-paper}
+      POLYMARKET_STARTING_BALANCE_USD: ${POLYMARKET_STARTING_BALANCE_USD:-100}
+      POLYMARKET_MAX_TRADE_USD: ${POLYMARKET_MAX_TRADE_USD:-2}
+      POLYMARKET_DAILY_LOSS_LIMIT_USD: ${POLYMARKET_DAILY_LOSS_LIMIT_USD:-5}
+      POLYMARKET_MAX_NEW_TRADES_PER_CYCLE: ${POLYMARKET_MAX_NEW_TRADES_PER_CYCLE:-2}
+      POLYMARKET_BOT_EVALUATION_SECONDS: ${POLYMARKET_BOT_EVALUATION_SECONDS:-5}
+      POLYMARKET_LOOKAHEAD_MINUTES: ${POLYMARKET_LOOKAHEAD_MINUTES:-1440}
+      POLYMARKET_MAX_MARKETS: ${POLYMARKET_MAX_MARKETS:-24}
+      POLYMARKET_REPORT_TIMEZONE: ${POLYMARKET_REPORT_TIMEZONE:-Europe/Paris}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_CHAT_ID: ${TELEGRAM_CHAT_ID:-}
+      POLYMARKET_API_KEY: ${POLYMARKET_API_KEY:-}
+      POLYMARKET_API_SECRET: ${POLYMARKET_API_SECRET:-}
+      POLYMARKET_API_PASSPHRASE: ${POLYMARKET_API_PASSPHRASE:-}
+      POLYMARKET_PRIVATE_KEY: ${POLYMARKET_PRIVATE_KEY:-}
+      POLYMARKET_WALLET_ADDRESS: ${POLYMARKET_WALLET_ADDRESS:-}
+      POLYMARKET_SIGNER_ADDRESS: ${POLYMARKET_SIGNER_ADDRESS:-}
+      POLYMARKET_TRADING_ENABLED: ${POLYMARKET_TRADING_ENABLED:-false}
+      EXPERIMENTAL_BOT_ENABLED: "false"
+
+  telegram:
+    build:
+      context: ./frontend-telegram
+    restart: unless-stopped
+    environment:
+      PORT: 4173
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN:-}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      - api
+      - telegram
+
+volumes:
+  postgres-data:
+  caddy-data:
+  caddy-config:
