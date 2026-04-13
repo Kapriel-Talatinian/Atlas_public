@@ -1,7 +1,8 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { getSnapshot } from "./api";
 
-const REFRESH_MS = 8000;
+const REFRESH_MS = 1000;
+const REFRESH_MS_HIDDEN = 15000;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 function formatUsd(n, signed = false) {
@@ -77,9 +78,27 @@ function useSnapshot() {
   }, []);
 
   useEffect(() => {
-    fetchNow();
-    const id = setInterval(fetchNow, REFRESH_MS);
-    return () => clearInterval(id);
+    let timer;
+    let stopped = false;
+
+    const tick = async () => {
+      if (stopped) return;
+      if (!document.hidden) await fetchNow();
+      const delay = document.hidden ? REFRESH_MS_HIDDEN : REFRESH_MS;
+      timer = setTimeout(tick, delay);
+    };
+
+    const onVisibility = () => {
+      if (!document.hidden) fetchNow();
+    };
+
+    tick();
+    document.addEventListener("visibilitychange", onVisibility);
+    return () => {
+      stopped = true;
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
   }, [fetchNow]);
 
   return { snapshot, loading, error, refresh: fetchNow };
