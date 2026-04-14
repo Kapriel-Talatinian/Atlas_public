@@ -385,7 +385,7 @@ public static class TelegramPolymarketMenuFormatter
             $"Trades: {total} ({wins}W / {losses}L)",
             $"Win rate: {winRate:P1}",
             $"Profit factor: {profitFactor:0.00}",
-            $"Net PnL: {p.NetPnlUsd:+0.00;-0.00}$ ({roi:+0.0;-0.0%})",
+            $"Net PnL: {p.NetPnlUsd:+0.00;-0.00}$ ({(roi * 100):+0.0;-0.0}%)",
             $"Avg trade: {avgTrade:+0.00;-0.00}$",
             $"Best: {best:+0.00;-0.00}$",
             $"Worst: {worst:+0.00;-0.00}$");
