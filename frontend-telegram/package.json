@@ -5,7 +5,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "serve:prod": "serve -l ${PORT:-4173} dist"
+    "start": "serve dist",
+    "serve:prod": "serve dist"
   },
   "dependencies": {
     "react": "^18.2.0",
