@@ -918,21 +918,28 @@ public sealed class PolymarketBotService : IPolymarketBotService
             MaxTradeRiskUsd: config.MaxTradeUsd,
             Timestamp: DateTimeOffset.UtcNow);
 
+        bool isLive = string.Equals(config.ExecutionMode, "live", StringComparison.OrdinalIgnoreCase);
+        bool liveArmed = isLive && _clob.IsConfigured;
+        bool isPaper = string.Equals(config.ExecutionMode, "paper", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(config.ExecutionMode, "dry-run", StringComparison.OrdinalIgnoreCase);
+
         PolymarketRuntimeStatus runtime = baseSnapshot.Runtime with
         {
             TradingEnabled = config.Enabled || baseSnapshot.Runtime.TradingEnabled,
             TelegramConfigured = _telegram.IsConfigured,
-            ExecutionArmed = config.Enabled && (
-                string.Equals(config.ExecutionMode, "paper", StringComparison.OrdinalIgnoreCase) ||
-                string.Equals(config.ExecutionMode, "dry-run", StringComparison.OrdinalIgnoreCase)),
-            RuntimeMode = config.Enabled ? config.ExecutionMode : baseSnapshot.Runtime.RuntimeMode,
+            ExecutionArmed = config.Enabled && (isPaper || liveArmed),
+            RuntimeMode = config.Enabled
+                ? (liveArmed ? "live-armed" : isLive ? "paper-live-ready" : config.ExecutionMode)
+                : baseSnapshot.Runtime.RuntimeMode,
             DailyLossLockActive = state.DailyLossLockActive,
             MaxTradeUsd = config.MaxTradeUsd,
             DailyLossLimitUsd = config.DailyLossLimitUsd,
             Summary = state.DailyLossLockActive
                 ? $"Daily loss lock is active. New entries are blocked until the next {config.ReportTimeZone} trading day."
-                : config.Enabled && string.Equals(config.ExecutionMode, "live", StringComparison.OrdinalIgnoreCase)
-                    ? "Live routing was requested, but Atlas still keeps Polymarket in guarded mode until the authenticated CLOB execution router is wired."
+                : liveArmed
+                    ? $"Live CLOB routing armed. Max stake {config.MaxTradeUsd:0.00}$ per trade. Kill-switch via /pause on Telegram."
+                : isLive
+                    ? "Live mode requested but the CLOB signer is not configured. Set POLYMARKET_PRIVATE_KEY + API keys."
                 : config.Enabled
                     ? $"Polymarket autopilot is running in {config.ExecutionMode} mode with {config.MaxTradeUsd:0.00}$ maximum stake per trade."
                     : baseSnapshot.Runtime.Summary
@@ -940,16 +947,20 @@ public sealed class PolymarketBotService : IPolymarketBotService
 
         string status = state.DailyLossLockActive
             ? "risk-lock"
-            : config.Enabled && string.Equals(config.ExecutionMode, "live", StringComparison.OrdinalIgnoreCase)
-                ? "guarded"
-            : config.Enabled && !string.Equals(config.ExecutionMode, "analysis-only", StringComparison.OrdinalIgnoreCase)
+            : liveArmed
                 ? state.OpenPositions.Count > 0 ? "live-trading" : "live-ready"
+            : isLive
+                ? "live-unarmed"
+            : config.Enabled && !string.Equals(config.ExecutionMode, "analysis-only", StringComparison.OrdinalIgnoreCase)
+                ? state.OpenPositions.Count > 0 ? "paper-trading" : "paper-ready"
                 : baseSnapshot.Status;
 
         string summary = state.OpenPositions.Count > 0
-            ? $"{state.OpenPositions.Count} Polymarket position(s) are live across BTC/ETH/SOL with fixed {config.MaxTradeUsd:0.00}$ stake sizing and automated risk exits."
-            : config.Enabled && string.Equals(config.ExecutionMode, "live", StringComparison.OrdinalIgnoreCase)
-                ? "Polymarket live mode is requested, but Atlas is still guarded until the real signed order router is implemented."
+            ? $"{state.OpenPositions.Count} Polymarket position(s) are live across BTC/ETH/SOL in {(liveArmed ? "LIVE" : config.ExecutionMode.ToUpperInvariant())} mode with Kelly-sized stakes (max {config.MaxTradeUsd:0.00}$) and automated risk exits."
+            : liveArmed
+                ? $"Live CLOB routing is armed and scanning. Max stake {config.MaxTradeUsd:0.00}$ per trade."
+            : isLive
+                ? "Live mode requested but the CLOB signer is not configured. Check POLYMARKET_PRIVATE_KEY and API keys."
             : config.Enabled && !string.Equals(config.ExecutionMode, "analysis-only", StringComparison.OrdinalIgnoreCase)
                 ? $"Polymarket autopilot is armed in {config.ExecutionMode} mode and waiting for short-horizon crypto threshold edges."
                 : baseSnapshot.Summary;

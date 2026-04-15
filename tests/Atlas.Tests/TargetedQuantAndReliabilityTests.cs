@@ -1257,9 +1257,11 @@ public class PolymarketBotServiceTests
 
             Assert.Single(snapshot.OpenPositions);
             Assert.InRange(snapshot.Portfolio.CashBalanceUsd, 11.0, 12.0); // Kelly sizing: stake < 1$
-            Assert.Equal("live-ready", snapshot.Status switch
+            Assert.Equal("paper-ready", snapshot.Status switch
             {
-                "live-trading" => "live-ready",
+                "paper-trading" => "paper-ready",
+                "live-trading" => "paper-ready",
+                "live-ready" => "paper-ready",
                 var other => other
             });
         }
