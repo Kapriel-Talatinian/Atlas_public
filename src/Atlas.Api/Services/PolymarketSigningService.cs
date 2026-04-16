@@ -127,13 +127,21 @@ public sealed class PolymarketSigningService : IPolymarketSigningService
         if (string.IsNullOrWhiteSpace(_apiSecret))
             throw new InvalidOperationException("POLYMARKET_API_SECRET is not configured.");
 
+        // Polymarket uses URL-safe base64 for the API secret (- and _ instead of + and /).
+        // Convert back to standard base64 before decoding.
+        string secretB64 = _apiSecret.Replace('-', '+').Replace('_', '/');
+        int padding = secretB64.Length % 4;
+        if (padding > 0) secretB64 = secretB64.PadRight(secretB64.Length + (4 - padding), '=');
+
         string message = $"{timestamp}{method.ToUpperInvariant()}{path}{body}";
-        byte[] secretBytes = Convert.FromBase64String(_apiSecret);
+        byte[] secretBytes = Convert.FromBase64String(secretB64);
         byte[] messageBytes = Encoding.UTF8.GetBytes(message);
 
         using var hmac = new HMACSHA256(secretBytes);
         byte[] hash = hmac.ComputeHash(messageBytes);
-        return Convert.ToBase64String(hash);
+
+        // Polymarket expects URL-safe base64 in the signature header.
+        return Convert.ToBase64String(hash).Replace('+', '-').Replace('/', '_');
     }
 
     private byte[] BuildDomainSeparator()
