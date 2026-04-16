@@ -24,15 +24,19 @@ public sealed record PolymarketOrderPayload(
     long Expiration = 0);
 
 public sealed record PolymarketSignedOrder(
+    string Salt,
+    string Maker,
+    string Signer,
+    string Taker,
     string TokenId,
-    double Price,
-    double Size,
-    PolymarketOrderSide Side,
-    string FeeRateBps,
-    string Nonce,
+    string MakerAmount,
+    string TakerAmount,
     long Expiration,
-    string Signature,
-    string Owner);
+    string Nonce,
+    string FeeRateBps,
+    PolymarketOrderSide Side,
+    int SignatureType,
+    string Signature);
 
 public enum PolymarketOrderSide
 {
@@ -86,23 +90,46 @@ public sealed class PolymarketSigningService : IPolymarketSigningService
         if (_ecKey is null)
             throw new InvalidOperationException("Polymarket signer is not configured. Set POLYMARKET_PRIVATE_KEY.");
 
-        string nonce = string.IsNullOrWhiteSpace(order.Nonce)
-            ? GenerateNonce()
-            : order.Nonce;
-
+        string nonce = string.IsNullOrWhiteSpace(order.Nonce) ? "0" : order.Nonce;
         long expiration = order.Expiration > 0
             ? order.Expiration
-            : DateTimeOffset.UtcNow.AddMinutes(5).ToUnixTimeSeconds();
+            : 0; // 0 = no expiration (order lives until filled or cancelled)
+
+        // Polymarket amounts: fixed-point with 6 decimals (same as USDC).
+        // For a BUY order @price for `size` shares: maker pays size*price USDC,
+        // taker receives `size` outcome tokens (also 10^6).
+        // For a SELL order @price for `size` shares: maker gives `size` tokens,
+        // taker gives size*price USDC.
+        BigInteger scale = BigInteger.Pow(10, 6);
+        BigInteger sizeUnits = new BigInteger(Math.Round(order.Size * 1e6));
+        BigInteger priceUnits = new BigInteger(Math.Round(order.Price * 1e6));
+        BigInteger notionalUnits = sizeUnits * priceUnits / scale; // size * price in USDC units
+
+        BigInteger makerAmount = order.Side == PolymarketOrderSide.Buy ? notionalUnits : sizeUnits;
+        BigInteger takerAmount = order.Side == PolymarketOrderSide.Buy ? sizeUnits : notionalUnits;
+
+        // Salt must fit in a long for the JSON payload. Use millisecond timestamp + random.
+        string salt = (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() * 1000 + Random.Shared.Next(1000)).ToString();
+        string makerAddress = _ecKey.GetPublicAddress();
+        string signerAddress = makerAddress;
+        string takerAddress = "0x0000000000000000000000000000000000000000";
+        int signatureType = 0; // EOA
+        string feeRateBps = string.IsNullOrWhiteSpace(order.FeeRateBps) ? "0" : order.FeeRateBps;
 
         // Build the EIP-712 order struct hash for Polymarket CTF Exchange
         byte[] structHash = BuildOrderStructHash(
-            order.TokenId,
-            order.Price,
-            order.Size,
-            order.Side,
-            order.FeeRateBps,
-            nonce,
-            expiration);
+            salt: salt,
+            maker: makerAddress,
+            signer: signerAddress,
+            taker: takerAddress,
+            tokenId: order.TokenId,
+            makerAmount: makerAmount,
+            takerAmount: takerAmount,
+            expiration: expiration,
+            nonce: nonce,
+            feeRateBps: feeRateBps,
+            side: order.Side,
+            signatureType: signatureType);
 
         byte[] domainSeparator = BuildDomainSeparator();
         byte[] digest = BuildEip712Digest(domainSeparator, structHash);
@@ -111,15 +138,19 @@ public sealed class PolymarketSigningService : IPolymarketSigningService
         string sigHex = ToSignatureHex(signature);
 
         return new PolymarketSignedOrder(
+            Salt: salt,
+            Maker: makerAddress,
+            Signer: signerAddress,
+            Taker: takerAddress,
             TokenId: order.TokenId,
-            Price: order.Price,
-            Size: order.Size,
-            Side: order.Side,
-            FeeRateBps: order.FeeRateBps,
-            Nonce: nonce,
+            MakerAmount: makerAmount.ToString(),
+            TakerAmount: takerAmount.ToString(),
             Expiration: expiration,
-            Signature: sigHex,
-            Owner: _ecKey.GetPublicAddress());
+            Nonce: nonce,
+            FeeRateBps: feeRateBps,
+            Side: order.Side,
+            SignatureType: signatureType,
+            Signature: sigHex);
     }
 
     public string GenerateHmacSignature(string method, string path, string body, long timestamp)
@@ -158,36 +189,39 @@ public sealed class PolymarketSigningService : IPolymarketSigningService
     }
 
     private static byte[] BuildOrderStructHash(
+        string salt,
+        string maker,
+        string signer,
+        string taker,
         string tokenId,
-        double price,
-        double size,
-        PolymarketOrderSide side,
-        string feeRateBps,
+        BigInteger makerAmount,
+        BigInteger takerAmount,
+        long expiration,
         string nonce,
-        long expiration)
+        string feeRateBps,
+        PolymarketOrderSide side,
+        int signatureType)
     {
-        // Polymarket uses a fixed-point representation: price * 10^20 for makerAmount/takerAmount
-        // Order struct: salt, maker, signer, taker, tokenId, makerAmount, takerAmount, expiration, nonce, feeRateBps, side, signatureType
-        BigInteger scaledSize = ToClobDecimal(size);
-        BigInteger scaledPrice = ToClobDecimal(price);
-        BigInteger makerAmount = side == PolymarketOrderSide.Buy ? scaledSize * scaledPrice / BigInteger.Pow(10, 20) : scaledSize;
-        BigInteger takerAmount = side == PolymarketOrderSide.Buy ? scaledSize : scaledSize * scaledPrice / BigInteger.Pow(10, 20);
-
+        // EIP-712 type hash for Polymarket CTF Exchange Order struct
         byte[] typeHash = new Sha3Keccack().CalculateHash(
             Encoding.UTF8.GetBytes("Order(uint256 salt,address maker,address signer,address taker,uint256 tokenId,uint256 makerAmount,uint256 takerAmount,uint256 expiration,uint256 nonce,uint256 feeRateBps,uint8 side,uint8 signatureType)"));
 
-        byte[] salt = PadUint256(new BigInteger(DateTimeOffset.UtcNow.ToUnixTimeMilliseconds()));
+        byte[] saltBytes = PadUint256(BigInteger.Parse(salt));
+        byte[] makerBytes = PadAddress(maker);
+        byte[] signerBytes = PadAddress(signer);
+        byte[] takerBytes = PadAddress(taker);
         byte[] tokenIdBytes = PadUint256(BigInteger.Parse(tokenId));
         byte[] makerAmountBytes = PadUint256(makerAmount);
         byte[] takerAmountBytes = PadUint256(takerAmount);
         byte[] expirationBytes = PadUint256(new BigInteger(expiration));
-        byte[] nonceBytes = PadUint256(BigInteger.Parse(nonce == "" ? "0" : nonce));
+        byte[] nonceBytes = PadUint256(BigInteger.Parse(string.IsNullOrWhiteSpace(nonce) ? "0" : nonce));
         byte[] feeBytes = PadUint256(BigInteger.Parse(feeRateBps));
         byte[] sideBytes = PadUint256(new BigInteger((int)side));
-        byte[] sigTypeBytes = PadUint256(BigInteger.Zero); // EOA
+        byte[] sigTypeBytes = PadUint256(new BigInteger(signatureType));
 
         return new Sha3Keccack().CalculateHash(
-            ConcatBytes(typeHash, salt, tokenIdBytes, makerAmountBytes, takerAmountBytes,
+            ConcatBytes(typeHash, saltBytes, makerBytes, signerBytes, takerBytes,
+                tokenIdBytes, makerAmountBytes, takerAmountBytes,
                 expirationBytes, nonceBytes, feeBytes, sideBytes, sigTypeBytes));
     }
 

@@ -113,17 +113,21 @@ public sealed class PolymarketClobClient : IPolymarketClobClient
             {
                 order = new
                 {
-                    tokenID = signed.TokenId,
-                    price = signed.Price.ToString("0.####"),
-                    size = signed.Size.ToString("0.####"),
-                    side = signed.Side == PolymarketOrderSide.Buy ? "BUY" : "SELL",
-                    feeRateBps = signed.FeeRateBps,
-                    nonce = signed.Nonce,
+                    salt = long.Parse(signed.Salt),
+                    maker = signed.Maker,
+                    signer = signed.Signer,
+                    taker = signed.Taker,
+                    tokenId = signed.TokenId,
+                    makerAmount = signed.MakerAmount,
+                    takerAmount = signed.TakerAmount,
                     expiration = signed.Expiration.ToString(),
-                    signature = signed.Signature,
-                    owner = signed.Owner,
-                    signatureType = 0
+                    nonce = signed.Nonce,
+                    feeRateBps = signed.FeeRateBps,
+                    side = signed.Side == PolymarketOrderSide.Buy ? "BUY" : "SELL",
+                    signatureType = signed.SignatureType,
+                    signature = signed.Signature
                 },
+                owner = _apiKey,
                 orderType = request.OrderType
             };
 
