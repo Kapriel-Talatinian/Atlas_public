@@ -61,10 +61,19 @@ public sealed record ClobBalanceSnapshot(
 
 public sealed class PolymarketClobClient : IPolymarketClobClient
 {
-    private static readonly JsonSerializerOptions JsonOptions = new()
+    // For serializing outbound requests: keep property names as-is so we
+    // control the exact casing Polymarket expects (tokenID, feeRateBps, etc.)
+    private static readonly JsonSerializerOptions SerializeOptions = new()
+    {
+        PropertyNamingPolicy = null,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+    };
+
+    // For deserializing responses from Polymarket (they use snake_case)
+    private static readonly JsonSerializerOptions DeserializeOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
-        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull
+        PropertyNameCaseInsensitive = true
     };
 
     private readonly IHttpClientFactory _httpClientFactory;
@@ -118,7 +127,7 @@ public sealed class PolymarketClobClient : IPolymarketClobClient
                 orderType = request.OrderType
             };
 
-            string body = JsonSerializer.Serialize(payload, JsonOptions);
+            string body = JsonSerializer.Serialize(payload, SerializeOptions);
             using HttpResponseMessage response = await SendAuthenticatedAsync(HttpMethod.Post, "/order", body, ct);
 
             if (!response.IsSuccessStatusCode)
@@ -128,7 +137,7 @@ public sealed class PolymarketClobClient : IPolymarketClobClient
                 return new ClobOrderResult(false, string.Empty, "rejected", $"{response.StatusCode}: {errorBody}");
             }
 
-            ClobOrderResponse? result = await response.Content.ReadFromJsonAsync<ClobOrderResponse>(JsonOptions, ct);
+            ClobOrderResponse? result = await response.Content.ReadFromJsonAsync<ClobOrderResponse>(DeserializeOptions, ct);
             string orderId = result?.OrderId ?? result?.Id ?? string.Empty;
             string status = result?.Status ?? "submitted";
 
@@ -152,7 +161,7 @@ public sealed class PolymarketClobClient : IPolymarketClobClient
 
         try
         {
-            string body = JsonSerializer.Serialize(new { orderID = orderId }, JsonOptions);
+            string body = JsonSerializer.Serialize(new { orderID = orderId }, SerializeOptions);
             using HttpResponseMessage response = await SendAuthenticatedAsync(HttpMethod.Delete, "/order", body, ct);
 
             if (!response.IsSuccessStatusCode)
@@ -206,7 +215,7 @@ public sealed class PolymarketClobClient : IPolymarketClobClient
         {
             using HttpResponseMessage response = await SendAuthenticatedAsync(HttpMethod.Get, "/orders?state=LIVE", null, ct);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<List<ClobOpenOrder>>(JsonOptions, ct) ?? [];
+            return await response.Content.ReadFromJsonAsync<List<ClobOpenOrder>>(DeserializeOptions, ct) ?? [];
         }
         catch (Exception ex)
         {
@@ -228,7 +237,7 @@ public sealed class PolymarketClobClient : IPolymarketClobClient
 
             using HttpResponseMessage response = await SendAuthenticatedAsync(HttpMethod.Get, path, null, ct);
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<List<ClobTradeRecord>>(JsonOptions, ct) ?? [];
+            return await response.Content.ReadFromJsonAsync<List<ClobTradeRecord>>(DeserializeOptions, ct) ?? [];
         }
         catch (Exception ex)
         {
@@ -247,7 +256,7 @@ public sealed class PolymarketClobClient : IPolymarketClobClient
             using HttpResponseMessage response = await SendAuthenticatedAsync(HttpMethod.Get, "/balance", null, ct);
             response.EnsureSuccessStatusCode();
 
-            ClobBalanceResponse? result = await response.Content.ReadFromJsonAsync<ClobBalanceResponse>(JsonOptions, ct);
+            ClobBalanceResponse? result = await response.Content.ReadFromJsonAsync<ClobBalanceResponse>(DeserializeOptions, ct);
             double available = ParseDouble(result?.Available);
             double locked = ParseDouble(result?.Locked);
             return new ClobBalanceSnapshot(available, locked, available + locked);
